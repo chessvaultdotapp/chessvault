@@ -2,13 +2,18 @@
 
 ## Commands and toolchain
 
-- Run Cargo commands from the workspace root. The only member is `apps/chessvault`, package `chessvault`.
-- `rust-toolchain.toml` pins Rust **1.98.0**; the package uses edition 2024 and the workspace uses resolver 3.
+- Run Cargo commands from the workspace root. `rust-toolchain.toml` pins Rust **1.98.0**; all packages use edition 2024 and the workspace uses resolver 3.
 - Launch the desktop GUI: `cargo run -p chessvault`.
-- Check compilation including tests: `cargo check -p chessvault --all-targets`.
-- Run tests: `cargo test -p chessvault`. Tests live in the binary's `logs.rs`; there is no library target.
-- Run one test: `cargo test -p chessvault --bin chessvault logs::tests::bridged_logs_follow_the_original_source_when_log_is_disabled -- --exact`.
-- Formatting: `cargo fmt --all -- --check`. Lint: `cargo clippy -p chessvault --all-targets`.
+- Workspace checks: `cargo check --workspace --all-targets`, `cargo test --workspace`, `cargo clippy --workspace --all-targets`. Formatting: `cargo fmt --all -- --check`.
+- Focus check/test/clippy on one package by replacing `--workspace` with `-p chessvault` or `-p chess-core`.
+- Single GUI-package test: `cargo test -p chessvault --bin chessvault logs::tests::bridged_logs_follow_the_original_source_when_log_is_disabled -- --exact`.
+- Single core test: `cargo test -p chess-core --lib tests::side_uses_one_byte -- --exact`.
+
+## Package boundaries
+
+- The workspace has two packages: `apps/chessvault` (binary-only GUI, tests in `src/logs.rs`) and `crates/chess-core` (library). The GUI does not yet depend on `chess-core`.
+- `crates/chess-core` contains private chess primitives and inline unit tests. Tests pin `Side`/`Piece` to one-byte representations and their current discriminants, and `Bitboard` to zero-default `u64` storage.
+- `Position::default()` is empty, with `Side::Empty` to move, not the chess starting position. Its arrays hold six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, not valid array indices.
 
 ## App wiring
 
