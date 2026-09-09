@@ -13,7 +13,8 @@
 
 - The workspace has two packages: `apps/chessvault` (binary-only GUI, tests in `src/logs.rs`) and `crates/chess-core` (library). The GUI does not yet depend on `chess-core`.
 - `crates/chess-core` contains private chess primitives and inline unit tests. Tests pin `Side`/`Piece` to one-byte representations and their current discriminants, and `Bitboard` to zero-default `u64` storage.
-- `Position::default()` is empty, with `Side::Empty` to move, not the chess starting position. Its arrays hold six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, not valid array indices.
+- Use `Bitboard::empty()` for explicit zero-bit construction. `Bitboard` also implements `Default` by delegating to `empty()`; `Position::empty()` initializes its arrays with `Bitboard::empty()`.
+- Use `Position::empty()` to construct an empty position with all bitboards zeroed and `Side::Empty` to move. `Position` does not implement `Default`. Its arrays hold six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, not valid array indices. Inline tests verify the empty constructor's bitboards and side to move.
 
 ## App wiring
 

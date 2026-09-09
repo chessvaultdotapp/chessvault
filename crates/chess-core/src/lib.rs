@@ -24,9 +24,16 @@ const NUM_PIECES: usize = 6;
 #[derive(Debug, PartialEq)]
 struct Bitboard(u64);
 
+impl Bitboard {
+    /// Creates a bitboard with no bits set.
+    fn empty() -> Self {
+        Self(0)
+    }
+}
+
 impl Default for Bitboard {
     fn default() -> Self {
-        return Self(u64::default());
+        Self::empty()
     }
 }
 
@@ -36,11 +43,12 @@ struct Position {
     side_to_move: Side,
 }
 
-impl Default for Position {
-    fn default() -> Self {
+impl Position {
+    /// Creates an empty position with no pieces and no side to move.
+    fn empty() -> Self {
         Self {
-            pieces: Default::default(),
-            sides: Default::default(),
+            pieces: std::array::from_fn(|_| Bitboard::empty()),
+            sides: std::array::from_fn(|_| Bitboard::empty()),
             side_to_move: Side::Empty,
         }
     }
@@ -81,7 +89,8 @@ mod tests {
     #[test]
     fn bitboard_initializes_with_value_zero() {
         let bitboard = Bitboard::default();
-        assert_eq!(bitboard, Bitboard(0))
+        assert_eq!(bitboard, Bitboard(0));
+        assert_eq!(bitboard, Bitboard::empty());
     }
 
     #[test]
@@ -110,8 +119,8 @@ mod tests {
     }
 
     #[test]
-    fn position_has_one_bitboard_per_piece_type() {
-        let position = Position::default();
+    fn empty_position_has_one_zero_bitboard_per_piece_type() {
+        let position = Position::empty();
         let pieces = [
             Piece::Pawn,
             Piece::Knight,
@@ -128,8 +137,8 @@ mod tests {
     }
 
     #[test]
-    fn position_has_one_bitboard_per_side() {
-        let position = Position::default();
+    fn empty_position_has_one_zero_bitboard_per_side() {
+        let position = Position::empty();
         let sides = [Side::White, Side::Black];
 
         assert_eq!(position.sides.len(), sides.len());
@@ -139,8 +148,8 @@ mod tests {
     }
 
     #[test]
-    fn position_defaults_to_no_side_to_move() {
-        let position = Position::default();
+    fn empty_position_has_no_side_to_move() {
+        let position = Position::empty();
         assert!(matches!(position.side_to_move, Side::Empty));
     }
 }
