@@ -1,5 +1,16 @@
 # Repository guide
 
+## Contributor documentation and commits
+
+- See `CONTRIBUTING.md` for the developer workflow.
+- Prefer small, atomic, focused commits: one complete, coherent change per
+  commit, with its relevant tests and documentation. Separate unrelated work
+  and keep each commit buildable with relevant checks passing.
+- Prefix commit subjects with `[desktop]` for desktop app changes and
+  `[chess-core]` for chess core changes. Use `[desktop][chess-core]` when a
+  commit changes both. Package-specific docs and tests follow the same rule;
+  shared documentation and workspace-only changes require neither tag.
+
 ## Commands and toolchain
 
 - Run Cargo commands from the workspace root. `rust-toolchain.toml` pins Rust **1.98.0**; all packages use edition 2024 and the workspace uses resolver 3.
