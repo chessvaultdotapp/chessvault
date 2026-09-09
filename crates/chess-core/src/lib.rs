@@ -6,6 +6,8 @@ enum Side {
     Empty,
 }
 
+const NUM_SIDES: usize = 2;
+
 #[repr(u8)]
 enum Piece {
     Pawn,
@@ -17,12 +19,30 @@ enum Piece {
     Empty,
 }
 
+const NUM_PIECES: usize = 6;
+
 #[derive(Debug, PartialEq)]
 struct Bitboard(u64);
 
 impl Default for Bitboard {
     fn default() -> Self {
         return Self(u64::default());
+    }
+}
+
+struct Position {
+    pieces: [Bitboard; NUM_PIECES],
+    sides: [Bitboard; NUM_SIDES],
+    side_to_move: Side,
+}
+
+impl Default for Position {
+    fn default() -> Self {
+        Self {
+            pieces: Default::default(),
+            sides: Default::default(),
+            side_to_move: Side::Empty,
+        }
     }
 }
 
@@ -87,5 +107,40 @@ mod tests {
             assert_ne!(Bitboard(value), Bitboard(0));
             assert_ne!(Bitboard(u64::MAX ^ value), Bitboard(u64::MAX));
         }
+    }
+
+    #[test]
+    fn position_has_one_bitboard_per_piece_type() {
+        let position = Position::default();
+        let pieces = [
+            Piece::Pawn,
+            Piece::Knight,
+            Piece::Bishop,
+            Piece::Rook,
+            Piece::Queen,
+            Piece::King,
+        ];
+
+        assert_eq!(position.pieces.len(), pieces.len());
+        for piece in pieces {
+            assert_eq!(position.pieces[piece as usize], Bitboard(0));
+        }
+    }
+
+    #[test]
+    fn position_has_one_bitboard_per_side() {
+        let position = Position::default();
+        let sides = [Side::White, Side::Black];
+
+        assert_eq!(position.sides.len(), sides.len());
+        for side in sides {
+            assert_eq!(position.sides[side as usize], Bitboard(0));
+        }
+    }
+
+    #[test]
+    fn position_defaults_to_no_side_to_move() {
+        let position = Position::default();
+        assert!(matches!(position.side_to_move, Side::Empty));
     }
 }
