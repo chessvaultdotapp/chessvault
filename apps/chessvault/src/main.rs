@@ -1,5 +1,7 @@
 use iced::keyboard::{self, Key, key::Named};
-use iced::widget::{Space, button, column, container, row, text, text_editor};
+use iced::widget::{
+    Space, button, checkbox, column, container, row, scrollable, text, text_editor,
+};
 use iced::{Element, Fill, Font, Subscription, Task};
 
 fn main() -> iced::Result {
@@ -12,6 +14,7 @@ fn main() -> iced::Result {
             console_open: false,
             log_text: String::new(),
             log_content: text_editor::Content::new(),
+            sources_open: false,
         },
         ChessVault::update,
         ChessVault::view,
@@ -26,6 +29,7 @@ struct ChessVault {
     console_open: bool,
     log_text: String,
     log_content: text_editor::Content,
+    sources_open: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -35,6 +39,8 @@ enum Message {
     RefreshLogs,
     LogAction(text_editor::Action),
     CopyLogs,
+    ToggleSources,
+    SetSourceEnabled(String, bool),
 }
 
 impl ChessVault {
@@ -63,6 +69,11 @@ impl ChessVault {
                 }
             }
             Message::CopyLogs => return iced::clipboard::write(self.logs.snapshot()),
+            Message::ToggleSources => self.sources_open = !self.sources_open,
+            Message::SetSourceEnabled(source, enabled) => {
+                self.logs.set_source_enabled(source, enabled);
+                self.refresh_logs();
+            }
         }
         Task::none()
     }
@@ -107,6 +118,12 @@ impl ChessVault {
         let header = row![
             text("Developer console").size(18),
             Space::new().width(Fill),
+            button(if self.sources_open {
+                "Hide sources"
+            } else {
+                "Sources"
+            })
+            .on_press(Message::ToggleSources),
             button("Copy all").on_press(Message::CopyLogs),
             button("Clear").on_press(Message::ClearLogs),
             button("Close (F12)").on_press(Message::ToggleConsole),
@@ -114,22 +131,30 @@ impl ChessVault {
         .spacing(12)
         .align_y(iced::Center);
 
-        let console = container(
-            column![
-                header,
-                text_editor(&self.log_content)
-                    .on_action(Message::LogAction)
-                    .placeholder("No logs yet.")
-                    .font(Font::MONOSPACE)
-                    .size(13)
-                    .height(Fill),
-            ]
-            .spacing(12),
-        )
-        .padding(16)
-        .width(Fill)
-        .height(300)
-        .style(container::rounded_box);
+        let editor = text_editor(&self.log_content)
+            .on_action(Message::LogAction)
+            .placeholder("No logs match the selected sources.")
+            .font(Font::MONOSPACE)
+            .size(13)
+            .height(Fill);
+
+        let mut body = row![editor].spacing(12).height(Fill);
+        if self.sources_open {
+            let mut sources = column![text("Log sources").size(16)].spacing(8);
+            for (source, enabled) in self.logs.sources() {
+                sources =
+                    sources.push(checkbox(enabled).label(source.clone()).on_toggle(
+                        move |enabled| Message::SetSourceEnabled(source.clone(), enabled),
+                    ));
+            }
+            body = body.push(scrollable(sources).width(200).height(Fill));
+        }
+
+        let console = container(column![header, body].spacing(12))
+            .padding(16)
+            .width(Fill)
+            .height(300)
+            .style(container::rounded_box);
 
         content.push(console).into()
     }
