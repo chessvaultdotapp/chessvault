@@ -1,13 +1,28 @@
-#[repr(u8)]
+//! Core chess primitives and bitboard-based position storage.
+//!
+//! Positions store six piece-type bitboards and two side bitboards. The
+//! `Piece::Empty` and `Side::Empty` variants represent absence; they are
+//! sentinels, not valid indices into those arrays.
 
+/// A chess side, or a sentinel indicating that no side is present.
+///
+/// White and Black have discriminants 0 and 1 for indexing [`Position::sides`].
+/// [`Side::Empty`] is not a valid index into that array.
+#[repr(u8)]
 enum Side {
     White,
     Black,
+    /// No side, including no side to move in an empty position.
     Empty,
 }
 
+/// Number of playing sides (two), excluding the [`Side::Empty`] sentinel.
 const NUM_SIDES: usize = 2;
 
+/// A chess piece type, or a sentinel indicating that no piece is present.
+///
+/// Pawn through King have discriminants 0 through 5 for indexing
+/// [`Position::pieces`]. [`Piece::Empty`] is not a valid index into that array.
 #[repr(u8)]
 enum Piece {
     Pawn,
@@ -16,35 +31,54 @@ enum Piece {
     Rook,
     Queen,
     King,
+    /// No piece; excluded from the piece-type bitboard array.
     Empty,
 }
 
+/// Number of piece types (six), excluding the [`Piece::Empty`] sentinel.
 const NUM_PIECES: usize = 6;
 
+/// A set of chessboard squares stored as 64 bits in a `u64`.
+///
+/// Each set bit marks a square in the set. The default is an empty set,
+/// equivalent to [`Bitboard::empty`].
 #[derive(Debug, PartialEq)]
 struct Bitboard(u64);
 
 impl Bitboard {
-    /// Creates a bitboard with no bits set.
+    /// Creates a zero-valued bitboard with no squares in its set.
+    ///
+    /// This is also the value returned by [`Default::default`].
     fn empty() -> Self {
         Self(0)
     }
 }
 
+/// Defaults to a zero-valued bitboard via [`Bitboard::empty`].
 impl Default for Bitboard {
     fn default() -> Self {
         Self::empty()
     }
 }
 
+/// Piece-type and side occupancy bitboards, together with the side to move.
 struct Position {
+    /// Six piece-type bitboards, indexed by Pawn through King.
+    /// The [`Piece::Empty`] sentinel has no entry and is not a valid index.
     pieces: [Bitboard; NUM_PIECES],
+    /// Two side bitboards, indexed by White and Black.
+    /// The [`Side::Empty`] sentinel has no entry and is not a valid index.
     sides: [Bitboard; NUM_SIDES],
+    /// The side whose turn it is, or [`Side::Empty`] when no side is to move.
     side_to_move: Side,
 }
 
 impl Position {
     /// Creates an empty position with no pieces and no side to move.
+    ///
+    /// All six piece-type bitboards and both side bitboards are initialized
+    /// with [`Bitboard::empty`], and the side to move is [`Side::Empty`].
+    /// Neither array includes an entry for its `Empty` sentinel.
     fn empty() -> Self {
         Self {
             pieces: std::array::from_fn(|_| Bitboard::empty()),
