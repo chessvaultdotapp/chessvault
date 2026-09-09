@@ -43,13 +43,18 @@ impl Logs {
     pub fn init() -> Self {
         let logs = Self::default();
 
+        #[cfg(debug_assertions)]
+        let terminal = tracing_subscriber::fmt::writer::BoxMakeWriter::new(io::stderr);
+        #[cfg(not(debug_assertions))]
+        let terminal = tracing_subscriber::fmt::writer::BoxMakeWriter::new(io::sink);
+
         tracing_subscriber::fmt()
             .with_env_filter(
                 EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
             )
             .with_ansi(false)
             .event_format(LogFormatter(logs.clone()))
-            .with_writer(io::sink)
+            .with_writer(terminal)
             .init();
 
         logs
@@ -102,7 +107,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        _writer: format::Writer<'_>,
+        mut writer: format::Writer<'_>,
         event: &tracing::Event<'_>,
     ) -> std::fmt::Result {
         let mut text = String::new();
@@ -119,7 +124,9 @@ where
         self.0
             .writer(metadata.target())
             .write_all(text.as_bytes())
-            .map_err(|_| std::fmt::Error)
+            .map_err(|_| std::fmt::Error)?;
+
+        writer.write_str(&text)
     }
 }
 
