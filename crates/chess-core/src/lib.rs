@@ -122,32 +122,38 @@ mod tests {
         assert_eq!(size, size_of::<u8>());
     }
 
-    #[test]
-    fn side_variants_have_expected_values() {
-        assert_eq!(Side::White as u8, 0);
-        assert_eq!(Side::Black as u8, 1);
-        assert_eq!(Side::Empty as u8, 2);
+    #[rstest]
+    #[case::white(Side::White, 0)]
+    #[case::black(Side::Black, 1)]
+    #[case::empty(Side::Empty, 2)]
+    fn side_variants_have_expected_values(#[case] variant: Side, #[case] expected: u8) {
+        assert_eq!(variant as u8, expected);
     }
 
-    #[test]
-    fn piece_variants_have_expected_values() {
-        assert_eq!(Piece::Pawn as u8, 0);
-        assert_eq!(Piece::Knight as u8, 1);
-        assert_eq!(Piece::Bishop as u8, 2);
-        assert_eq!(Piece::Rook as u8, 3);
-        assert_eq!(Piece::Queen as u8, 4);
-        assert_eq!(Piece::King as u8, 5);
-        assert_eq!(Piece::Empty as u8, 6);
+    #[rstest]
+    #[case::pawn(Piece::Pawn, 0)]
+    #[case::knight(Piece::Knight, 1)]
+    #[case::bishop(Piece::Bishop, 2)]
+    #[case::rook(Piece::Rook, 3)]
+    #[case::queen(Piece::Queen, 4)]
+    #[case::king(Piece::King, 5)]
+    #[case::empty(Piece::Empty, 6)]
+    fn piece_variants_have_expected_values(#[case] variant: Piece, #[case] expected: u8) {
+        assert_eq!(variant as u8, expected);
     }
 
-    #[test]
-    fn castling_rights_variants_have_expected_values() {
-        assert_eq!(CastlingRights::NoCastling as u8, 0);
-        assert_eq!(CastlingRights::WhiteKingside as u8, 1);
-        assert_eq!(CastlingRights::WhiteQueenside as u8, 2);
-        assert_eq!(CastlingRights::BlackKingside as u8, 4);
-        assert_eq!(CastlingRights::BlackQueenside as u8, 8);
-        assert_eq!(CastlingRights::All as u8, 15);
+    #[rstest]
+    #[case::none(CastlingRights::NoCastling, 0)]
+    #[case::white_kingside(CastlingRights::WhiteKingside, 1)]
+    #[case::white_queenside(CastlingRights::WhiteQueenside, 2)]
+    #[case::black_kingside(CastlingRights::BlackKingside, 4)]
+    #[case::black_queenside(CastlingRights::BlackQueenside, 8)]
+    #[case::all(CastlingRights::All, 15)]
+    fn castling_rights_variants_have_expected_values(
+        #[case] variant: CastlingRights,
+        #[case] expected: u8,
+    ) {
+        assert_eq!(variant as u8, expected);
     }
 
     #[test]
