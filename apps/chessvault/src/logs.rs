@@ -170,6 +170,7 @@ impl Drop for LogWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn captures_formatted_events_and_clears_history() {
@@ -207,8 +208,15 @@ mod tests {
         assert!(snapshot.ends_with(&format!("event {MAX_ENTRIES}\n")));
     }
 
-    #[test]
-    fn bridged_logs_follow_the_original_source_when_log_is_disabled() {
+    #[rstest]
+    #[case::wgpu_hal("wgpu_hal::vulkan", "wgpu_hal")]
+    #[case::iced_winit("iced_winit::window", "iced_winit")]
+    #[case::iced_wgpu("iced_wgpu", "iced_wgpu")]
+    #[case::calloop("calloop", "calloop")]
+    fn bridged_logs_follow_the_original_source_when_log_is_disabled(
+        #[case] target: &str,
+        #[case] source: &str,
+    ) {
         let logs = Logs::default();
         let subscriber = tracing_subscriber::fmt()
             .event_format(LogFormatter(logs.clone()))
@@ -216,32 +224,23 @@ mod tests {
             .finish();
 
         tracing::subscriber::with_default(subscriber, || {
-            for target in [
-                "wgpu_hal::vulkan",
-                "iced_winit::window",
-                "iced_wgpu",
-                "calloop",
-            ] {
-                log::Log::log(
-                    &tracing_log::LogTracer::new(),
-                    &log::Record::builder()
-                        .args(format_args!("bridged dependency event"))
-                        .level(log::Level::Info)
-                        .target(target)
-                        .build(),
-                );
-            }
+            log::Log::log(
+                &tracing_log::LogTracer::new(),
+                &log::Record::builder()
+                    .args(format_args!("bridged dependency event"))
+                    .level(log::Level::Info)
+                    .target(target)
+                    .build(),
+            );
         });
 
         assert!(logs.snapshot().is_empty());
-        for source in ["wgpu_hal", "iced_winit", "iced_wgpu", "calloop"] {
-            logs.set_source_enabled(source.into(), true);
-            let snapshot = logs.snapshot();
-            assert_eq!(snapshot.lines().count(), 1);
-            assert!(snapshot.contains(source));
-            assert!(snapshot.contains("bridged dependency event"));
-            logs.set_source_enabled(source.into(), false);
-        }
+        logs.set_source_enabled(source.into(), true);
+        let snapshot = logs.snapshot();
+        assert_eq!(snapshot.lines().count(), 1);
+        assert!(snapshot.contains(source));
+        assert!(snapshot.contains("bridged dependency event"));
+        logs.set_source_enabled(source.into(), false);
         assert!(logs.sources().contains(&("log".into(), false)));
         logs.set_source_enabled("log".into(), true);
         assert!(logs.snapshot().is_empty());
