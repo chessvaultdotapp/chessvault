@@ -25,6 +25,7 @@ fn resolve_user_state_dir(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use std::os::unix::ffi::OsStringExt;
 
     #[test]
@@ -37,16 +38,17 @@ mod tests {
         assert_eq!(path, PathBuf::from("/custom/state"));
     }
 
-    #[test]
-    fn missing_or_invalid_xdg_state_home_falls_back_to_home() {
-        for xdg in [None, Some(""), Some("relative/state")] {
-            let path = resolve_user_state_dir(xdg.map(OsString::from), || {
-                Some(PathBuf::from("/srv/users/alice"))
-            })
-            .unwrap();
+    #[rstest]
+    #[case::missing(None)]
+    #[case::empty(Some(""))]
+    #[case::relative(Some("relative/state"))]
+    fn missing_or_invalid_xdg_state_home_falls_back_to_home(#[case] xdg: Option<&str>) {
+        let path = resolve_user_state_dir(xdg.map(OsString::from), || {
+            Some(PathBuf::from("/srv/users/alice"))
+        })
+        .unwrap();
 
-            assert_eq!(path, PathBuf::from("/srv/users/alice/.local/state"));
-        }
+        assert_eq!(path, PathBuf::from("/srv/users/alice/.local/state"));
     }
 
     #[test]
