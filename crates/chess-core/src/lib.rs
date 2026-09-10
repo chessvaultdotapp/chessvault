@@ -186,11 +186,13 @@ mod tests {
         assert_eq!(Bitboard(value).0, value);
     }
 
-    #[test]
-    fn bitboard_preserves_full_and_alternating_bit_patterns() {
-        for value in [0, u64::MAX, 0xAAAA_AAAA_AAAA_AAAA, 0x5555_5555_5555_5555] {
-            assert_eq!(Bitboard(value).0, value);
-        }
+    #[rstest]
+    #[case::empty(0)]
+    #[case::full(u64::MAX)]
+    #[case::odd_squares(0xAAAA_AAAA_AAAA_AAAA)]
+    #[case::even_squares(0x5555_5555_5555_5555)]
+    fn bitboard_preserves_full_and_alternating_bit_patterns(#[case] value: u64) {
+        assert_eq!(Bitboard(value).0, value);
     }
 
     #[rstest]
