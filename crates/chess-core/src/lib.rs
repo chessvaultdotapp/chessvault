@@ -112,7 +112,7 @@ impl Position {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
+    use rstest::{fixture, rstest};
 
     #[rstest]
     #[case::side(size_of::<Side>())]
@@ -234,27 +234,19 @@ mod tests {
         assert_eq!(position.sides[side as usize], Bitboard(0));
     }
 
-    #[test]
-    fn empty_position_has_no_side_to_move() {
-        let position = Position::empty();
-        assert!(matches!(position.side_to_move, Side::Empty));
+    #[fixture]
+    fn empty_position() -> Position {
+        Position::empty()
     }
 
-    #[test]
-    fn empty_position_has_no_castling_rights() {
-        let position = Position::empty();
+    #[rstest]
+    #[case::no_side_to_move(|position: &Position| assert!(matches!(position.side_to_move, Side::Empty)))]
+    #[case::no_castling_rights(|position: &Position| {
         assert_eq!(position.castling_rights, CastlingRights::NoCastling as u8);
-    }
-
-    #[test]
-    fn empty_position_has_zero_halfmove_count() {
-        let position = Position::empty();
-        assert_eq!(position.halfmove_count, 0_u8);
-    }
-
-    #[test]
-    fn empty_position_has_zero_fullmove_count() {
-        let position = Position::empty();
-        assert_eq!(position.fullmove_count, 0_u32);
+    })]
+    #[case::zero_halfmove_count(|position: &Position| assert_eq!(position.halfmove_count, 0_u8))]
+    #[case::zero_fullmove_count(|position: &Position| assert_eq!(position.fullmove_count, 0_u32))]
+    fn empty_position_has_expected_fields(empty_position: Position, #[case] check: fn(&Position)) {
+        check(&empty_position);
     }
 }
