@@ -51,21 +51,19 @@ mod tests {
         assert_eq!(path, PathBuf::from("/srv/users/alice/.local/state"));
     }
 
-    #[test]
-    fn missing_or_invalid_home_returns_error_when_fallback_is_needed() {
-        for xdg in [None, Some(""), Some("relative/state")] {
-            for home in [None, Some(""), Some("relative/home")] {
-                let error =
-                    resolve_user_state_dir(xdg.map(OsString::from), || home.map(PathBuf::from))
-                        .unwrap_err();
+    #[rstest]
+    fn missing_or_invalid_home_returns_error_when_fallback_is_needed(
+        #[values(None, Some(""), Some("relative/state"))] xdg: Option<&str>,
+        #[values(None, Some(""), Some("relative/home"))] home: Option<&str>,
+    ) {
+        let error = resolve_user_state_dir(xdg.map(OsString::from), || home.map(PathBuf::from))
+            .unwrap_err();
 
-                assert!(
-                    error
-                        .to_string()
-                        .contains("no absolute home directory could be determined")
-                );
-            }
-        }
+        assert!(
+            error
+                .to_string()
+                .contains("no absolute home directory could be determined")
+        );
     }
 
     #[test]
