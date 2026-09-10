@@ -72,7 +72,7 @@ impl Default for Bitboard {
     }
 }
 
-/// Piece-type and side occupancy bitboards, side to move, and castling rights.
+/// Occupancy bitboards, side to move, castling rights, and move counts.
 struct Position {
     /// Six piece-type bitboards, indexed by Pawn through King.
     /// The [`Piece::Empty`] sentinel has no entry and is not a valid index.
@@ -84,6 +84,10 @@ struct Position {
     side_to_move: Side,
     /// Bitwise OR of [`CastlingRights`] values cast to `u8`.
     castling_rights: u8,
+    /// Number of halfmoves since the last pawn move or capture.
+    halfmove_count: u8,
+    /// Full move count, initialized to zero in an empty position.
+    fullmove_count: u32,
 }
 
 impl Position {
@@ -92,12 +96,15 @@ impl Position {
     /// All six piece-type bitboards and both side bitboards are initialized
     /// with [`Bitboard::empty`], and the side to move is [`Side::Empty`].
     /// Neither array includes an entry for its `Empty` sentinel.
+    /// Both move counts are initialized to zero.
     fn empty() -> Self {
         Self {
             pieces: std::array::from_fn(|_| Bitboard::empty()),
             sides: std::array::from_fn(|_| Bitboard::empty()),
             side_to_move: Side::Empty,
             castling_rights: CastlingRights::NoCastling as u8,
+            halfmove_count: 0,
+            fullmove_count: 0,
         }
     }
 }
@@ -230,5 +237,17 @@ mod tests {
     fn empty_position_has_no_castling_rights() {
         let position = Position::empty();
         assert_eq!(position.castling_rights, CastlingRights::NoCastling as u8);
+    }
+
+    #[test]
+    fn empty_position_has_zero_halfmove_count() {
+        let position = Position::empty();
+        assert_eq!(position.halfmove_count, 0_u8);
+    }
+
+    #[test]
+    fn empty_position_has_zero_fullmove_count() {
+        let position = Position::empty();
+        assert_eq!(position.fullmove_count, 0_u32);
     }
 }
