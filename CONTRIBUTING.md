@@ -89,7 +89,7 @@ series such as `0.9` or an exact release version.
 cargo build --workspace --all-targets --locked
 cargo test --workspace --locked
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
+cargo clippy --workspace --all-targets --locked --no-deps
 ```
 
 For package-local changes, replace `--workspace` with `-p chessvault` or
@@ -101,6 +101,14 @@ interaction. Include a brief description of what changed and how it was
 verified in the pull request; screenshots are useful for UI changes.
 
 ## GitHub Actions
+
+CI caches Cargo registry downloads, Git dependency data, and `target` build
+artifacts. Cache keys include the runner OS and architecture, pinned toolchain,
+manifests, lockfile, and commit. Restore prefixes reuse compatible caches from
+earlier commits, including dependency artifacts when the lockfile changes.
+
+Clippy uses `--no-deps` to lint workspace packages only. It still needs to
+compile or check dependencies, so dependency names can appear in its output.
 
 Pin all external GitHub Actions used in workflows and composite actions to a
 full 40-character commit SHA, rather than a mutable tag or branch. Include the
