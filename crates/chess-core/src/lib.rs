@@ -38,6 +38,17 @@ enum Piece {
 /// Number of piece types (six), excluding the [`Piece::Empty`] sentinel.
 const NUM_PIECES: usize = 6;
 
+/// Named castling-rights masks, combinable with bitwise OR after casting to `u8`.
+#[repr(u8)]
+enum CastlingRights {
+    NoCastling = 0,
+    WhiteKingside = 1,
+    WhiteQueenside = 2,
+    BlackKingside = 4,
+    BlackQueenside = 8,
+    All = 1 | 2 | 4 | 8,
+}
+
 /// A set of chessboard squares stored as 64 bits in a `u64`.
 ///
 /// Each set bit marks a square in the set. The default is an empty set,
@@ -61,7 +72,7 @@ impl Default for Bitboard {
     }
 }
 
-/// Piece-type and side occupancy bitboards, together with the side to move.
+/// Piece-type and side occupancy bitboards, side to move, and castling rights.
 struct Position {
     /// Six piece-type bitboards, indexed by Pawn through King.
     /// The [`Piece::Empty`] sentinel has no entry and is not a valid index.
@@ -71,10 +82,12 @@ struct Position {
     sides: [Bitboard; NUM_SIDES],
     /// The side whose turn it is, or [`Side::Empty`] when no side is to move.
     side_to_move: Side,
+    /// Bitwise OR of [`CastlingRights`] values cast to `u8`.
+    castling_rights: u8,
 }
 
 impl Position {
-    /// Creates an empty position with no pieces and no side to move.
+    /// Creates an empty position with no pieces, side to move, or castling rights.
     ///
     /// All six piece-type bitboards and both side bitboards are initialized
     /// with [`Bitboard::empty`], and the side to move is [`Side::Empty`].
@@ -84,6 +97,7 @@ impl Position {
             pieces: std::array::from_fn(|_| Bitboard::empty()),
             sides: std::array::from_fn(|_| Bitboard::empty()),
             side_to_move: Side::Empty,
+            castling_rights: CastlingRights::NoCastling as u8,
         }
     }
 }
@@ -118,6 +132,31 @@ mod tests {
         assert_eq!(Piece::Queen as u8, 4);
         assert_eq!(Piece::King as u8, 5);
         assert_eq!(Piece::Empty as u8, 6);
+    }
+
+    #[test]
+    fn castling_rights_uses_one_byte() {
+        assert_eq!(size_of::<CastlingRights>(), size_of::<u8>());
+    }
+
+    #[test]
+    fn castling_rights_variants_have_expected_values() {
+        assert_eq!(CastlingRights::NoCastling as u8, 0);
+        assert_eq!(CastlingRights::WhiteKingside as u8, 1);
+        assert_eq!(CastlingRights::WhiteQueenside as u8, 2);
+        assert_eq!(CastlingRights::BlackKingside as u8, 4);
+        assert_eq!(CastlingRights::BlackQueenside as u8, 8);
+        assert_eq!(CastlingRights::All as u8, 15);
+    }
+
+    #[test]
+    fn all_castling_rights_combines_the_four_individual_rights() {
+        let combined = CastlingRights::WhiteKingside as u8
+            | CastlingRights::WhiteQueenside as u8
+            | CastlingRights::BlackKingside as u8
+            | CastlingRights::BlackQueenside as u8;
+
+        assert_eq!(CastlingRights::All as u8, combined);
     }
 
     #[test]
@@ -185,5 +224,11 @@ mod tests {
     fn empty_position_has_no_side_to_move() {
         let position = Position::empty();
         assert!(matches!(position.side_to_move, Side::Empty));
+    }
+
+    #[test]
+    fn empty_position_has_no_castling_rights() {
+        let position = Position::empty();
+        assert_eq!(position.castling_rights, CastlingRights::NoCastling as u8);
     }
 }
