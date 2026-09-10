@@ -66,13 +66,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn non_unicode_paths_are_preserved() {
-        let raw_path = OsString::from_vec(b"/srv/user-\xff".to_vec());
-        let path = resolve_user_state_dir(Some(raw_path.clone()), || None).unwrap();
-        assert_eq!(path, PathBuf::from(raw_path.clone()));
+    #[rstest]
+    #[case::xdg(Some(b"/srv/user-\xff".as_slice()), None, b"/srv/user-\xff")]
+    #[case::home_fallback(None, Some(b"/srv/user-\xff".as_slice()), b"/srv/user-\xff/.local/state")]
+    fn non_unicode_paths_are_preserved(
+        #[case] xdg: Option<&[u8]>,
+        #[case] home: Option<&[u8]>,
+        #[case] expected: &[u8],
+    ) {
+        let path =
+            resolve_user_state_dir(xdg.map(|bytes| OsString::from_vec(bytes.to_vec())), || {
+                home.map(|bytes| PathBuf::from(OsString::from_vec(bytes.to_vec())))
+            })
+            .unwrap();
 
-        let path = resolve_user_state_dir(None, || Some(PathBuf::from(raw_path.clone()))).unwrap();
-        assert_eq!(path, PathBuf::from(raw_path).join(".local/state"));
+        assert_eq!(path, PathBuf::from(OsString::from_vec(expected.to_vec())));
     }
 }
