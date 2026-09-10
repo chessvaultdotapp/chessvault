@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Build and check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      # Keep the build first: quality checks only matter if the code builds.
+      - name: Build
+        run: cargo build --workspace --all-targets --locked
+
+      - name: Install nextest
+        uses: ./.github/actions/setup-nextest
+
+      - name: Test
+        run: cargo nextest run --workspace --locked
+
+      - name: Test documentation
+        run: cargo test --workspace --doc --locked
+
+      - name: Install formatting and linting components
+        run: rustup component add rustfmt clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked

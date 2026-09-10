@@ -1,0 +1,17 @@
+name: Setup cargo-nextest
+description: Install official nextest prebuilt binaries on Linux, Windows, and macOS
+
+inputs:
+  version:
+    description: Nextest release version or series (for example, 0.9), or latest
+    default: latest
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install nextest
+      shell: bash
+      env:
+        NEXTEST_VERSION: ${{ inputs.version }}
+        SETUP_NEXTEST_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_NEXTEST_ACTION_PATH/install.sh"

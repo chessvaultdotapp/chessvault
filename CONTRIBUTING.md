@@ -21,11 +21,14 @@ The desktop app does not yet depend on `chess-core`.
 
 ## Commit messages
 
-Prefix the commit subject with the tags for the packages it changes:
+Prefix the commit subject with the tags for the packages or CI configuration it
+changes:
 
 - `[desktop]` for changes to the desktop app.
 - `[chess-core]` for changes to the chess core.
 - `[desktop][chess-core]` for a commit that changes both.
+- `[ci]` for CI workflow changes and CI-specific documentation. Combine it with
+  package tags when a commit also changes a package.
 
 Use a short, imperative description after the tags:
 
@@ -33,11 +36,12 @@ Use a short, imperative description after the tags:
 [desktop] Preserve console selection during refresh
 [chess-core] Add empty position construction
 [desktop][chess-core] Display core positions in the desktop app
+[ci] Run tests before formatting and linting
 ```
 
 Package-specific documentation and tests use the same package tag. Changes
 limited to shared documentation or workspace infrastructure do not require
-either package tag.
+either package tag; use `[ci]` when those changes are CI-specific.
 
 ### Small, atomic, focused commits
 
@@ -58,12 +62,33 @@ For example, a desktop console fix and its regression test belong in one
 
 ## Checks
 
-Before submitting changes, check formatting and run the relevant checks:
+Before submitting changes, build first, then run tests, formatting, and linting
+in that order. CI follows the same rule: a failed build or test run skips
+formatting and linting.
+
+CI uses `cargo nextest run --workspace --locked` for tests, followed by
+`cargo test --workspace --doc --locked` because nextest does not run doctests.
+To use the same runner locally, install it with
+`cargo install cargo-nextest --locked`.
+
+The local action at `.github/actions/setup-nextest` installs official prebuilt
+binaries directly from `get.nexte.st`. It supports x64 and ARM64 runners on
+Linux, Windows, and macOS, using Bash (Git Bash on Windows). After checkout,
+workflows can use it with:
+
+```yaml
+- uses: ./.github/actions/setup-nextest
+  with:
+    version: latest
+```
+
+The optional `version` input defaults to `latest` and also accepts a release
+series such as `0.9` or an exact release version.
 
 ```sh
+cargo build --workspace --all-targets --locked
+cargo test --workspace --locked
 cargo fmt --all -- --check
-cargo check --workspace --all-targets
-cargo test --workspace
 cargo clippy --workspace --all-targets
 ```
 
@@ -74,6 +99,22 @@ or shared configuration.
 For visible desktop changes, also launch the app and exercise the affected
 interaction. Include a brief description of what changed and how it was
 verified in the pull request; screenshots are useful for UI changes.
+
+## GitHub Actions
+
+Pin all external GitHub Actions used in workflows and composite actions to a
+full 40-character commit SHA, rather than a mutable tag or branch. Include the
+corresponding release version in an inline comment for readability:
+
+```yaml
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+When updating an action, verify that the SHA belongs to the intended release
+in the action's upstream repository, and update both the SHA and version comment.
+Repository-local actions use relative paths, such as
+`uses: ./.github/actions/setup-nextest`; their version comes from the checked-out
+repository commit.
 
 ## Desktop debugging
 
