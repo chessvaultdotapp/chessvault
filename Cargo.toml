@@ -4,3 +4,4 @@ members = ["apps/chessvault", "crates/chess-core", "crates/platform-dirs"]
 
 [workspace.dependencies]
 anyhow = "1.0.104"
+rstest = "0.27.0"

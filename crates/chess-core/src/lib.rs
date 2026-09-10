@@ -112,10 +112,14 @@ impl Position {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
-    #[test]
-    fn side_uses_one_byte() {
-        assert_eq!(size_of::<Side>(), size_of::<u8>());
+    #[rstest]
+    #[case::side(size_of::<Side>())]
+    #[case::piece(size_of::<Piece>())]
+    #[case::castling_rights(size_of::<CastlingRights>())]
+    fn enums_use_one_byte(#[case] size: usize) {
+        assert_eq!(size, size_of::<u8>());
     }
 
     #[test]
@@ -123,11 +127,6 @@ mod tests {
         assert_eq!(Side::White as u8, 0);
         assert_eq!(Side::Black as u8, 1);
         assert_eq!(Side::Empty as u8, 2);
-    }
-
-    #[test]
-    fn piece_uses_one_byte() {
-        assert_eq!(size_of::<Piece>(), size_of::<u8>());
     }
 
     #[test]
@@ -139,11 +138,6 @@ mod tests {
         assert_eq!(Piece::Queen as u8, 4);
         assert_eq!(Piece::King as u8, 5);
         assert_eq!(Piece::Empty as u8, 6);
-    }
-
-    #[test]
-    fn castling_rights_uses_one_byte() {
-        assert_eq!(size_of::<CastlingRights>(), size_of::<u8>());
     }
 
     #[test]
