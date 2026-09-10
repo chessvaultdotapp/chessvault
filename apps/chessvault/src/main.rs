@@ -109,7 +109,12 @@ impl ChessVault {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let content = column![Space::new().height(Fill)];
+        let content = column![
+            container(board::view())
+                .padding(24)
+                .width(Fill)
+                .height(Fill)
+        ];
 
         if !self.console_open {
             return content.into();
@@ -159,6 +164,7 @@ impl ChessVault {
         content.push(console).into()
     }
 }
+mod board;
 mod logs;
 
 use std::time::Duration;
