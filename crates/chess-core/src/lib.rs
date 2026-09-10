@@ -210,33 +210,28 @@ mod tests {
         assert_ne!(Bitboard(u64::MAX ^ value), Bitboard(u64::MAX));
     }
 
-    #[test]
-    fn empty_position_has_one_zero_bitboard_per_piece_type() {
+    #[rstest]
+    #[case::pawn(Piece::Pawn)]
+    #[case::knight(Piece::Knight)]
+    #[case::bishop(Piece::Bishop)]
+    #[case::rook(Piece::Rook)]
+    #[case::queen(Piece::Queen)]
+    #[case::king(Piece::King)]
+    fn empty_position_has_one_zero_bitboard_per_piece_type(#[case] piece: Piece) {
         let position = Position::empty();
-        let pieces = [
-            Piece::Pawn,
-            Piece::Knight,
-            Piece::Bishop,
-            Piece::Rook,
-            Piece::Queen,
-            Piece::King,
-        ];
 
-        assert_eq!(position.pieces.len(), pieces.len());
-        for piece in pieces {
-            assert_eq!(position.pieces[piece as usize], Bitboard(0));
-        }
+        assert_eq!(position.pieces.len(), 6);
+        assert_eq!(position.pieces[piece as usize], Bitboard(0));
     }
 
-    #[test]
-    fn empty_position_has_one_zero_bitboard_per_side() {
+    #[rstest]
+    #[case::white(Side::White)]
+    #[case::black(Side::Black)]
+    fn empty_position_has_one_zero_bitboard_per_side(#[case] side: Side) {
         let position = Position::empty();
-        let sides = [Side::White, Side::Black];
 
-        assert_eq!(position.sides.len(), sides.len());
-        for side in sides {
-            assert_eq!(position.sides[side as usize], Bitboard(0));
-        }
+        assert_eq!(position.sides.len(), 2);
+        assert_eq!(position.sides[side as usize], Bitboard(0));
     }
 
     #[test]
