@@ -9,13 +9,7 @@ fn main() -> iced::Result {
     tracing::info!("ChessVault started");
 
     iced::application(
-        move || ChessVault {
-            logs: logs.clone(),
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
-        },
+        move || ChessVault::boot(logs.clone()),
         ChessVault::update,
         ChessVault::view,
     )
@@ -44,6 +38,16 @@ enum Message {
 }
 
 impl ChessVault {
+    fn boot(logs: logs::Logs) -> Self {
+        Self {
+            logs,
+            console_open: false,
+            log_text: String::new(),
+            log_content: text_editor::Content::new(),
+            sources_open: false,
+        }
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ToggleConsole => {
