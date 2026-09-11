@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use iced::keyboard::{self, Key, key::Named};
 use iced::widget::{
     Space, button, checkbox, column, container, row, scrollable, text, text_editor,
@@ -39,12 +40,33 @@ enum Message {
 
 impl ChessVault {
     fn boot(logs: logs::Logs) -> Self {
-        Self {
+        let mut app = Self {
             logs,
             console_open: false,
             log_text: String::new(),
             log_content: text_editor::Content::new(),
             sources_open: false,
+        };
+
+        if let Err(err) = app.initialize() {
+            tracing::error!(error = ?err, "Application initialization failed");
+            std::process::exit(1);
+        }
+
+        app
+    }
+
+    fn initialize(&mut self) -> Result<()> {
+        match application_runtime::fs::application_state_dir()
+            .context("Failed to resolve application state directory")
+        {
+            Ok(path) => fs::create_dir_all(&path).with_context(|| {
+                format!(
+                    "Failed to create application state directory: {}",
+                    path.display()
+                )
+            }),
+            Err(err) => Err(err),
         }
     }
 
@@ -171,4 +193,5 @@ impl ChessVault {
 mod board;
 mod logs;
 
+use std::fs;
 use std::time::Duration;

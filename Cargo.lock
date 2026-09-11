@@ -449,6 +449,8 @@ dependencies = [
 name = "chessvault"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "application-runtime",
  "iced",
  "log",
  "rstest",
