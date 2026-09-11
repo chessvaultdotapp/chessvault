@@ -1,0 +1,8 @@
+[package]
+name = "application-runtime"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+"platform-dirs" = { path = "../platform-dirs" }

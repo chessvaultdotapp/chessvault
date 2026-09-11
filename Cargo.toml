@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["apps/chessvault", "crates/chess-core", "crates/platform-dirs"]
+members = ["apps/chessvault", "crates/application-runtime", "crates/chess-core", "crates/platform-dirs"]
 
 [workspace.dependencies]
 anyhow = "1.0.104"
