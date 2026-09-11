@@ -457,6 +457,7 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "zerocopy",
 ]
 
 [[package]]

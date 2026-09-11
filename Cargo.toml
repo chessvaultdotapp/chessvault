@@ -5,3 +5,4 @@ members = ["apps/chessvault", "crates/application-runtime", "crates/chess-core",
 [workspace.dependencies]
 anyhow = "1.0.104"
 rstest = "0.27.0"
+zerocopy = "0.8.57"

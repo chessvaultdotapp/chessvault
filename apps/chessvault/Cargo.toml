@@ -10,6 +10,7 @@ iced = { version = "0.14.0", features = ["tokio"] }
 tracing = "0.1.44"
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+zerocopy.workspace = true
 
 [dev-dependencies]
 log = "0.4.34"
