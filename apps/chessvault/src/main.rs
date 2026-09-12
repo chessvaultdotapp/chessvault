@@ -1,13 +1,31 @@
+use std::{io::Write, time::Duration};
+
 use anyhow::{Context, Result};
-use iced::keyboard::{self, Key, key::Named};
-use iced::widget::{
-    Space, button, checkbox, column, container, row, scrollable, text, text_editor,
+use iced::{
+    Element, Fill, Font, Size, Subscription, Task,
+    keyboard::{self, Key, key::Named},
+    widget::{Space, button, checkbox, column, container, row, scrollable, text, text_editor},
+    window,
 };
-use iced::{Element, Fill, Font, Subscription, Task};
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error, info};
+
+mod board;
+mod fs;
+mod logs;
 
 fn main() -> iced::Result {
     let logs = logs::Logs::init();
-    tracing::info!("ChessVault started");
+    info!("ChessVault started");
+
+    let mut window_settings = window::Settings::default();
+    match WindowRecreateInfo::load() {
+        Ok(Some(info)) => window_settings.size = Size::new(info.width, info.height),
+        Ok(None) => {
+            info!("No saved window size found; using default size");
+        }
+        Err(err) => error!(error = ?err, "Failed to restore window size; using default size"),
+    }
 
     iced::application(
         move || ChessVault::boot(logs.clone()),
@@ -15,6 +33,8 @@ fn main() -> iced::Result {
         ChessVault::view,
     )
     .title("ChessVault")
+    .window(window_settings)
+    .exit_on_close_request(false)
     .subscription(ChessVault::subscription)
     .run()
 }
@@ -27,6 +47,109 @@ struct ChessVault {
     sources_open: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct WindowRecreateInfo {
+    width: f32,
+    height: f32,
+}
+
+impl WindowRecreateInfo {
+    fn load() -> Result<Option<Self>> {
+        let path = fs::window_recreate_info_filepath()
+            .context("Failed to resolve window recreate info filepath")?;
+
+        let json = match std::fs::read_to_string(&path) {
+            Ok(json) => json,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => {
+                return Err(err).with_context(|| format!("Failed to read {}", path.display()));
+            }
+        };
+
+        Self::from_json(&json)
+            .with_context(|| {
+                format!(
+                    "Failed to load window recreate info from {}",
+                    path.display()
+                )
+            })
+            .map(Some)
+    }
+
+    fn from_json(json: &str) -> Result<Self> {
+        let info: Self =
+            serde_json::from_str(json).context("Failed to deserialize window recreate info")?;
+        anyhow::ensure!(
+            info.width.is_finite()
+                && info.height.is_finite()
+                && info.width > 0.0
+                && info.height > 0.0,
+            "Saved window dimensions must be finite and positive"
+        );
+        Ok(info)
+    }
+
+    fn save(&self) -> Result<()> {
+        let path = fs::window_recreate_info_filepath()
+            .context("Failed to resolve window recreate info filepath")?;
+
+        let json =
+            serde_json::to_string(self).context("Failed to serialize window recreate info")?;
+
+        let mut file = std::fs::File::create(&path)
+            .with_context(|| format!("Failed to create or truncate {}", path.display()))?;
+
+        file.write_all(json.as_bytes()).with_context(|| {
+            format!("Failed to write window recreate info to {}", path.display())
+        })?;
+
+        Ok(())
+    }
+}
+
+impl From<Size<f32>> for WindowRecreateInfo {
+    fn from(value: Size<f32>) -> Self {
+        Self {
+            width: value.width,
+            height: value.height,
+        }
+    }
+}
+
+#[cfg(test)]
+mod window_recreate_tests {
+    use super::*;
+
+    #[test]
+    fn saved_dimensions_round_trip() {
+        let json =
+            serde_json::to_string(&WindowRecreateInfo::from(Size::new(820.5, 620.0))).unwrap();
+        let info = WindowRecreateInfo::from_json(&json).unwrap();
+        assert_eq!(info.width, 820.5);
+        assert_eq!(info.height, 620.0);
+    }
+
+    #[test]
+    fn invalid_json_retains_deserialization_error() {
+        let err = WindowRecreateInfo::from_json("{invalid}").unwrap_err();
+        assert!(err.downcast_ref::<serde_json::Error>().is_some());
+    }
+
+    #[test]
+    fn invalid_dimensions_are_rejected() {
+        for json in [
+            r#"{"width":0,"height":620}"#,
+            r#"{"width":820,"height":-1}"#,
+            r#"{"width":1e100,"height":620}"#,
+            r#"{"width":820,"height":1e100}"#,
+            r#"{"width":null,"height":620}"#,
+            r#"{"width":820}"#,
+        ] {
+            assert!(WindowRecreateInfo::from_json(json).is_err(), "{json}");
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Message {
     ToggleConsole,
@@ -36,6 +159,7 @@ enum Message {
     CopyLogs,
     ToggleSources,
     SetSourceEnabled(String, bool),
+    WindowCloseRequested(window::Id),
 }
 
 impl ChessVault {
@@ -49,7 +173,7 @@ impl ChessVault {
         };
 
         if let Err(err) = app.initialize() {
-            tracing::error!(error = ?err, "Application initialization failed");
+            error!(error = ?err, "Application initialization failed");
             std::process::exit(1);
         }
 
@@ -60,7 +184,7 @@ impl ChessVault {
         match application_runtime::fs::application_state_dir()
             .context("Failed to resolve application state directory")
         {
-            Ok(path) => fs::create_dir_all(&path).with_context(|| {
+            Ok(path) => std::fs::create_dir_all(&path).with_context(|| {
                 format!(
                     "Failed to create application state directory: {}",
                     path.display()
@@ -74,7 +198,7 @@ impl ChessVault {
         match message {
             Message::ToggleConsole => {
                 self.console_open = !self.console_open;
-                tracing::debug!(open = self.console_open, "Developer console toggled");
+                debug!(open = self.console_open, "Developer console toggled");
                 self.refresh_logs();
             }
             Message::ClearLogs => {
@@ -100,6 +224,15 @@ impl ChessVault {
                 self.logs.set_source_enabled(source, enabled);
                 self.refresh_logs();
             }
+            Message::WindowCloseRequested(id) => {
+                return window::size(id).then(move |size| {
+                    if let Err(err) = WindowRecreateInfo::from(size).save() {
+                        error!(error = ?err, "Failed to save window recreate info");
+                    }
+
+                    window::close(id)
+                });
+            }
         }
         Task::none()
     }
@@ -124,13 +257,16 @@ impl ChessVault {
             _ => None,
         });
 
+        let close_requests = window::close_requests().map(Message::WindowCloseRequested);
+
         if self.console_open {
             Subscription::batch([
                 keyboard,
+                close_requests,
                 iced::time::every(Duration::from_millis(250)).map(|_| Message::RefreshLogs),
             ])
         } else {
-            keyboard
+            Subscription::batch([keyboard, close_requests])
         }
     }
 
@@ -190,8 +326,3 @@ impl ChessVault {
         content.push(console).into()
     }
 }
-mod board;
-mod logs;
-
-use std::fs;
-use std::time::Duration;
