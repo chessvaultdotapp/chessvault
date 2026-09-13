@@ -3,6 +3,11 @@ name = "platform-dirs"
 version = "0.0.0"
 edition = "2024"
 
+[features]
+default = ["development"]
+# Use a working-directory-local state path in debug builds.
+development = []
+
 [dependencies]
 anyhow.workspace = true
 

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
+#[cfg(not(all(debug_assertions, feature = "development")))]
 pub(crate) fn user_state_dir() -> Result<PathBuf> {
     resolve_user_state_dir(std::env::var_os("XDG_STATE_HOME"), std::env::home_dir)
 }

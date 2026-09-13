@@ -27,7 +27,7 @@
 - `crates/chess-core/src/lib.rs` contains private primitives and inline tests, not yet a public API. Tests pin `Side`, `Piece`, and `CastlingRights` to one-byte representations and their current discriminants; castling rights are OR-combinable `u8` masks.
 - `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, never valid array indices.
 - Use `Bitboard::empty()` for explicit zero-bit construction (`Default` delegates to it). `Position::empty()` zeroes bitboards, castling rights, and both move counts, and sets `Side::Empty` to move; it is not the starting chess position, and `Position` has no `Default`.
-- `platform-dirs::user_state_dir()` resolves a path without creating directories. Only Linux is implemented; other platforms return an error. Accept only absolute `XDG_STATE_HOME`, otherwise fall back to an absolute home directory plus `.local/state`; preserve non-Unicode paths.
+- `platform-dirs::user_state_dir()` resolves a path without creating directories. With the default-enabled `development` feature, debug builds (`debug_assertions`) return `<cwd>/.local/state` on every platform, or an error if the current directory cannot be read. Consumers can opt out with `default-features = false`. Release builds and builds without `development` implement only Linux; other platforms return an error. The Linux resolver accepts only absolute `XDG_STATE_HOME`, otherwise falling back to an absolute home directory plus `.local/state`; preserve non-Unicode paths.
 - Platform-directory tests inject environment values and a home-directory lookup into `resolve_user_state_dir` in `crates/platform-dirs/src/linux.rs`; follow this pattern instead of mutating process-wide environment variables.
 
 ## App wiring
