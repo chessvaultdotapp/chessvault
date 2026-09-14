@@ -18,13 +18,13 @@
 - CI replaces the test step with `cargo nextest run --workspace --locked`, then `cargo test --workspace --doc --locked` (nextest excludes doctests). Local installation: `cargo install cargo-nextest --locked`; CI uses `.github/actions/setup-nextest`.
 - Focus build/test/clippy by replacing `--workspace` with `-p chessvault`, `-p chess-core`, or `-p platform-dirs`; use workspace checks for shared configuration or cross-package changes.
 - Single GUI-package test: `cargo test -p chessvault --bin chessvault --locked logs::tests::bridged_logs_follow_the_original_source_when_log_is_disabled -- --exact`.
-- Single library test: `cargo test -p chess-core --lib --locked tests::side_uses_one_byte -- --exact`; platform-dirs tests use the `linux::tests::` prefix and run only on Linux.
+- Single library test: `cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact`; platform-dirs tests use the `linux::tests::` prefix and run only on Linux.
 
 ## Package boundaries
 
 - The workspace has three independent packages: `apps/chessvault`, `crates/chess-core`, and `crates/platform-dirs`. The binary-only GUI starts in `apps/chessvault/src/main.rs` and depends on neither library; its tests are in `src/logs.rs`.
 - `apps/chessvault/src/board.rs` renders a responsive empty board, with no game state or core integration yet.
-- `crates/chess-core/src/lib.rs` contains private primitives and inline tests, not yet a public API. Tests pin `Side`, `Piece`, and `CastlingRights` to one-byte representations and their current discriminants; castling rights are OR-combinable `u8` masks.
+- `crates/chess-core/src/lib.rs` wires up private `square`, `side`, `piece`, `castling_rights`, `bitboard`, and `position` modules, with inline tests beside each implementation; there is not yet a public API. Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their current discriminants; castling rights are OR-combinable `u8` masks.
 - `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, never valid array indices.
 - Use `Bitboard::empty()` for explicit zero-bit construction (`Default` delegates to it). `Position::empty()` zeroes bitboards, castling rights, and both move counts, and sets `Side::Empty` to move; it is not the starting chess position, and `Position` has no `Default`.
 - `platform-dirs::user_state_dir()` resolves a path without creating directories. With the default-enabled `development` feature, debug builds (`debug_assertions`) return `<cwd>/.local/state` on every platform, or an error if the current directory cannot be read. Consumers can opt out with `default-features = false`. Release builds and builds without `development` implement only Linux; other platforms return an error. The Linux resolver accepts only absolute `XDG_STATE_HOME`, otherwise falling back to an absolute home directory plus `.local/state`; preserve non-Unicode paths.
