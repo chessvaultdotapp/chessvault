@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 /// A chessboard square, named by file (A–H) and rank (1–8), or a no-square sentinel.
 ///
 /// Stored as one byte. The 64 board squares have discriminants 0 through 63:
@@ -6,7 +8,7 @@
 /// numbered 0–7.
 /// [`Square::None`] has discriminant 64 and is not a valid bit index in a
 /// [`crate::bitboard::Bitboard`].
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 #[rustfmt::skip]
 pub(crate) enum Square {
@@ -21,6 +23,12 @@ pub(crate) enum Square {
 
     /// No square; a sentinel outside the 64 board squares.
     None,
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// An index outside the 64 board squares, including the no-square sentinel.

@@ -1,5 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 
+use anyhow::{Context, Result};
+
 use crate::square::Square;
 
 /// A set of chessboard squares stored as 64 bits in a `u64`.
@@ -58,6 +60,13 @@ impl Bitboard {
     pub(crate) fn empty() -> Self {
         Self(0)
     }
+
+    /// Sets a square's bit, preserving all other bits; rejects `Square::None`.
+    pub(crate) fn set(&mut self, square: Square) -> Result<()> {
+        *self |= Bitboard::try_from(square)
+            .with_context(|| format!("Failed to convert square {square} to bitboard"))?;
+        Ok(())
+    }
 }
 
 /// Defaults to a zero-valued bitboard via [`Bitboard::empty`].
@@ -69,6 +78,14 @@ impl Default for Bitboard {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct InvalidSquare;
+
+impl std::fmt::Display for InvalidSquare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("the no-square sentinel cannot be converted to a bitboard")
+    }
+}
+
+impl std::error::Error for InvalidSquare {}
 
 impl TryFrom<Square> for Bitboard {
     type Error = InvalidSquare;
@@ -116,6 +133,27 @@ mod tests {
     #[test]
     fn bitboard_rejects_no_square() {
         assert_eq!(Bitboard::try_from(Square::None), Err(InvalidSquare));
+    }
+
+    #[test]
+    fn bitboard_set_preserves_existing_bits_and_is_idempotent() {
+        let mut board = Bitboard::empty();
+        board.set(Square::A1).unwrap();
+        board.set(Square::H8).unwrap();
+        board.set(Square::A1).unwrap();
+        assert_eq!(board, Bitboard(1 | (1_u64 << 63)));
+    }
+
+    #[test]
+    fn bitboard_set_rejects_no_square_without_changing_bits() {
+        let mut board = Bitboard(0b1010);
+        let error = board.set(Square::None).unwrap_err();
+        assert_eq!(board, Bitboard(0b1010));
+        assert_eq!(error.downcast_ref::<InvalidSquare>(), Some(&InvalidSquare));
+        assert_eq!(
+            error.to_string(),
+            "Failed to convert square None to bitboard"
+        );
     }
 
     #[test]
