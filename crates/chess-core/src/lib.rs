@@ -6,6 +6,8 @@
 //! [`Square::None`] represents the absence of a square and is not a valid
 //! bit index in a [`Bitboard`].
 
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
+
 /// A chessboard square, named by file (A–H) and rank (1–8), or a no-square sentinel.
 ///
 /// Stored as one byte. The 64 board squares have discriminants 0 through 63:
@@ -134,6 +136,48 @@ enum CastlingRights {
 /// equivalent to [`Bitboard::empty`].
 #[derive(Debug, PartialEq)]
 struct Bitboard(u64);
+
+impl BitAnd for Bitboard {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl BitAndAssign for Bitboard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl BitOr for Bitboard {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for Bitboard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl BitXor for Bitboard {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl BitXorAssign for Bitboard {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
 
 impl Bitboard {
     /// Creates a zero-valued bitboard with no squares in its set.
@@ -321,6 +365,33 @@ mod tests {
         let bitboard = Bitboard::default();
         assert_eq!(bitboard, Bitboard(0));
         assert_eq!(bitboard, Bitboard::empty());
+    }
+
+    #[test]
+    fn bitboard_bitand_keeps_shared_squares() {
+        assert_eq!(Bitboard(0b1100) & Bitboard(0b1010), Bitboard(0b1000));
+
+        let mut board = Bitboard(0b1100);
+        board &= Bitboard(0b1010);
+        assert_eq!(board, Bitboard(0b1000));
+    }
+
+    #[test]
+    fn bitboard_bitor_combines_squares() {
+        assert_eq!(Bitboard(0b1100) | Bitboard(0b1010), Bitboard(0b1110));
+
+        let mut board = Bitboard(0b1100);
+        board |= Bitboard(0b1010);
+        assert_eq!(board, Bitboard(0b1110));
+    }
+
+    #[test]
+    fn bitboard_bitxor_keeps_unshared_squares() {
+        assert_eq!(Bitboard(0b1100) ^ Bitboard(0b1010), Bitboard(0b0110));
+
+        let mut board = Bitboard(0b1100);
+        board ^= Bitboard(0b1010);
+        assert_eq!(board, Bitboard(0b0110));
     }
 
     #[rstest]
