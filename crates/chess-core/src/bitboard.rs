@@ -1,5 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 
+use crate::square::Square;
+
 /// A set of chessboard squares stored as 64 bits in a `u64`.
 ///
 /// Each set bit marks a square in the set. The default is an empty set,
@@ -65,6 +67,20 @@ impl Default for Bitboard {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct InvalidSquare;
+
+impl TryFrom<Square> for Bitboard {
+    type Error = InvalidSquare;
+
+    fn try_from(value: Square) -> Result<Self, Self::Error> {
+        match value {
+            Square::None => Err(InvalidSquare),
+            square => Ok(Self(1_u64 << square as u8)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,6 +91,31 @@ mod tests {
         let bitboard = Bitboard::default();
         assert_eq!(bitboard, Bitboard(0));
         assert_eq!(bitboard, Bitboard::empty());
+    }
+
+    #[rstest]
+    fn bitboard_converts_every_square_to_its_bit(
+        #[values(
+            Square::A1, Square::B1, Square::C1, Square::D1, Square::E1, Square::F1, Square::G1,
+            Square::H1, Square::A2, Square::B2, Square::C2, Square::D2, Square::E2, Square::F2,
+            Square::G2, Square::H2, Square::A3, Square::B3, Square::C3, Square::D3, Square::E3,
+            Square::F3, Square::G3, Square::H3, Square::A4, Square::B4, Square::C4, Square::D4,
+            Square::E4, Square::F4, Square::G4, Square::H4, Square::A5, Square::B5, Square::C5,
+            Square::D5, Square::E5, Square::F5, Square::G5, Square::H5, Square::A6, Square::B6,
+            Square::C6, Square::D6, Square::E6, Square::F6, Square::G6, Square::H6, Square::A7,
+            Square::B7, Square::C7, Square::D7, Square::E7, Square::F7, Square::G7, Square::H7,
+            Square::A8, Square::B8, Square::C8, Square::D8, Square::E8, Square::F8, Square::G8,
+            Square::H8
+        )]
+        square: Square,
+    ) {
+        let bit = square as u8;
+        assert_eq!(Bitboard::try_from(square), Ok(Bitboard(1_u64 << bit)));
+    }
+
+    #[test]
+    fn bitboard_rejects_no_square() {
+        assert_eq!(Bitboard::try_from(Square::None), Err(InvalidSquare));
     }
 
     #[test]
