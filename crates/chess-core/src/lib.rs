@@ -11,76 +11,23 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
 /// A chessboard square, named by file (A–H) and rank (1–8), or a no-square sentinel.
 ///
 /// Stored as one byte. The 64 board squares have discriminants 0 through 63:
-/// A1 through H1 come first (0–7), followed by ranks 2 through 8 of each
-/// file in turn, from A2 through A8 (8–14) to H2 through H8 (57–63).
+/// Squares are ordered by rank, from A1 through H1 (0–7) to A8 through H8
+/// (56–63). Each square's index is `8 * (rank - 1) + file`, with files A–H
+/// numbered 0–7.
 /// [`Square::None`] has discriminant 64 and is not a valid bit index in a
 /// [`Bitboard`].
 #[repr(u8)]
+#[rustfmt::skip]
 enum Square {
-    A1,
-    B1,
-    C1,
-    D1,
-    E1,
-    F1,
-    G1,
-    H1,
-    A2,
-    A3,
-    A4,
-    A5,
-    A6,
-    A7,
-    A8,
-    B2,
-    B3,
-    B4,
-    B5,
-    B6,
-    B7,
-    B8,
-    C2,
-    C3,
-    C4,
-    C5,
-    C6,
-    C7,
-    C8,
-    D2,
-    D3,
-    D4,
-    D5,
-    D6,
-    D7,
-    D8,
-    E2,
-    E3,
-    E4,
-    E5,
-    E6,
-    E7,
-    E8,
-    F2,
-    F3,
-    F4,
-    F5,
-    F6,
-    F7,
-    F8,
-    G2,
-    G3,
-    G4,
-    G5,
-    G6,
-    G7,
-    G8,
-    H2,
-    H3,
-    H4,
-    H5,
-    H6,
-    H7,
-    H8,
+    A1,B1,C1,D1,E1,F1,G1,H1,
+    A2,B2,C2,D2,E2,F2,G2,H2,
+    A3,B3,C3,D3,E3,F3,G3,H3,
+    A4,B4,C4,D4,E4,F4,G4,H4,
+    A5,B5,C5,D5,E5,F5,G5,H5,
+    A6,B6,C6,D6,E6,F6,G6,H6,
+    A7,B7,C7,D7,E7,F7,G7,H7,
+    A8,B8,C8,D8,E8,F8,G8,H8,
+
     /// No square; a sentinel outside the 64 board squares.
     None,
 }
@@ -256,60 +203,60 @@ mod tests {
     #[case::g1(Square::G1, 6)]
     #[case::h1(Square::H1, 7)]
     #[case::a2(Square::A2, 8)]
-    #[case::a3(Square::A3, 9)]
-    #[case::a4(Square::A4, 10)]
-    #[case::a5(Square::A5, 11)]
-    #[case::a6(Square::A6, 12)]
-    #[case::a7(Square::A7, 13)]
-    #[case::a8(Square::A8, 14)]
-    #[case::b2(Square::B2, 15)]
-    #[case::b3(Square::B3, 16)]
-    #[case::b4(Square::B4, 17)]
-    #[case::b5(Square::B5, 18)]
-    #[case::b6(Square::B6, 19)]
-    #[case::b7(Square::B7, 20)]
-    #[case::b8(Square::B8, 21)]
-    #[case::c2(Square::C2, 22)]
-    #[case::c3(Square::C3, 23)]
-    #[case::c4(Square::C4, 24)]
-    #[case::c5(Square::C5, 25)]
-    #[case::c6(Square::C6, 26)]
-    #[case::c7(Square::C7, 27)]
-    #[case::c8(Square::C8, 28)]
-    #[case::d2(Square::D2, 29)]
-    #[case::d3(Square::D3, 30)]
-    #[case::d4(Square::D4, 31)]
-    #[case::d5(Square::D5, 32)]
-    #[case::d6(Square::D6, 33)]
-    #[case::d7(Square::D7, 34)]
-    #[case::d8(Square::D8, 35)]
-    #[case::e2(Square::E2, 36)]
-    #[case::e3(Square::E3, 37)]
-    #[case::e4(Square::E4, 38)]
-    #[case::e5(Square::E5, 39)]
-    #[case::e6(Square::E6, 40)]
-    #[case::e7(Square::E7, 41)]
-    #[case::e8(Square::E8, 42)]
-    #[case::f2(Square::F2, 43)]
-    #[case::f3(Square::F3, 44)]
-    #[case::f4(Square::F4, 45)]
-    #[case::f5(Square::F5, 46)]
-    #[case::f6(Square::F6, 47)]
-    #[case::f7(Square::F7, 48)]
-    #[case::f8(Square::F8, 49)]
-    #[case::g2(Square::G2, 50)]
-    #[case::g3(Square::G3, 51)]
-    #[case::g4(Square::G4, 52)]
-    #[case::g5(Square::G5, 53)]
-    #[case::g6(Square::G6, 54)]
-    #[case::g7(Square::G7, 55)]
-    #[case::g8(Square::G8, 56)]
-    #[case::h2(Square::H2, 57)]
-    #[case::h3(Square::H3, 58)]
-    #[case::h4(Square::H4, 59)]
-    #[case::h5(Square::H5, 60)]
-    #[case::h6(Square::H6, 61)]
-    #[case::h7(Square::H7, 62)]
+    #[case::b2(Square::B2, 9)]
+    #[case::c2(Square::C2, 10)]
+    #[case::d2(Square::D2, 11)]
+    #[case::e2(Square::E2, 12)]
+    #[case::f2(Square::F2, 13)]
+    #[case::g2(Square::G2, 14)]
+    #[case::h2(Square::H2, 15)]
+    #[case::a3(Square::A3, 16)]
+    #[case::b3(Square::B3, 17)]
+    #[case::c3(Square::C3, 18)]
+    #[case::d3(Square::D3, 19)]
+    #[case::e3(Square::E3, 20)]
+    #[case::f3(Square::F3, 21)]
+    #[case::g3(Square::G3, 22)]
+    #[case::h3(Square::H3, 23)]
+    #[case::a4(Square::A4, 24)]
+    #[case::b4(Square::B4, 25)]
+    #[case::c4(Square::C4, 26)]
+    #[case::d4(Square::D4, 27)]
+    #[case::e4(Square::E4, 28)]
+    #[case::f4(Square::F4, 29)]
+    #[case::g4(Square::G4, 30)]
+    #[case::h4(Square::H4, 31)]
+    #[case::a5(Square::A5, 32)]
+    #[case::b5(Square::B5, 33)]
+    #[case::c5(Square::C5, 34)]
+    #[case::d5(Square::D5, 35)]
+    #[case::e5(Square::E5, 36)]
+    #[case::f5(Square::F5, 37)]
+    #[case::g5(Square::G5, 38)]
+    #[case::h5(Square::H5, 39)]
+    #[case::a6(Square::A6, 40)]
+    #[case::b6(Square::B6, 41)]
+    #[case::c6(Square::C6, 42)]
+    #[case::d6(Square::D6, 43)]
+    #[case::e6(Square::E6, 44)]
+    #[case::f6(Square::F6, 45)]
+    #[case::g6(Square::G6, 46)]
+    #[case::h6(Square::H6, 47)]
+    #[case::a7(Square::A7, 48)]
+    #[case::b7(Square::B7, 49)]
+    #[case::c7(Square::C7, 50)]
+    #[case::d7(Square::D7, 51)]
+    #[case::e7(Square::E7, 52)]
+    #[case::f7(Square::F7, 53)]
+    #[case::g7(Square::G7, 54)]
+    #[case::h7(Square::H7, 55)]
+    #[case::a8(Square::A8, 56)]
+    #[case::b8(Square::B8, 57)]
+    #[case::c8(Square::C8, 58)]
+    #[case::d8(Square::D8, 59)]
+    #[case::e8(Square::E8, 60)]
+    #[case::f8(Square::F8, 61)]
+    #[case::g8(Square::G8, 62)]
     #[case::h8(Square::H8, 63)]
     #[case::none(Square::None, 64)]
     fn square_variants_have_expected_values(#[case] variant: Square, #[case] expected: u8) {
