@@ -23,6 +23,87 @@ pub(crate) enum Square {
     None,
 }
 
+/// An index outside the 64 board squares, including the no-square sentinel.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct InvalidSquareIndex;
+
+impl TryFrom<u8> for Square {
+    type Error = InvalidSquareIndex;
+
+    /// Converts a board index in `0..=63`; sentinel index 64 is rejected.
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use crate::square::Square::*;
+
+        Ok(match value {
+            0 => A1,
+            1 => B1,
+            2 => C1,
+            3 => D1,
+            4 => E1,
+            5 => F1,
+            6 => G1,
+            7 => H1,
+            8 => A2,
+            9 => B2,
+            10 => C2,
+            11 => D2,
+            12 => E2,
+            13 => F2,
+            14 => G2,
+            15 => H2,
+            16 => A3,
+            17 => B3,
+            18 => C3,
+            19 => D3,
+            20 => E3,
+            21 => F3,
+            22 => G3,
+            23 => H3,
+            24 => A4,
+            25 => B4,
+            26 => C4,
+            27 => D4,
+            28 => E4,
+            29 => F4,
+            30 => G4,
+            31 => H4,
+            32 => A5,
+            33 => B5,
+            34 => C5,
+            35 => D5,
+            36 => E5,
+            37 => F5,
+            38 => G5,
+            39 => H5,
+            40 => A6,
+            41 => B6,
+            42 => C6,
+            43 => D6,
+            44 => E6,
+            45 => F6,
+            46 => G6,
+            47 => H6,
+            48 => A7,
+            49 => B7,
+            50 => C7,
+            51 => D7,
+            52 => E7,
+            53 => F7,
+            54 => G7,
+            55 => H7,
+            56 => A8,
+            57 => B8,
+            58 => C8,
+            59 => D8,
+            60 => E8,
+            61 => F8,
+            62 => G8,
+            63 => H8,
+            _ => return Err(InvalidSquareIndex),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,6 +112,27 @@ mod tests {
     #[test]
     fn square_uses_one_byte() {
         assert_eq!(size_of::<Square>(), size_of::<u8>());
+    }
+
+    #[test]
+    fn square_converts_every_valid_index() {
+        for index in 0_u8..64 {
+            assert_eq!(
+                Square::try_from(index).map(|square| square as u8),
+                Ok(index)
+            );
+        }
+    }
+
+    #[test]
+    fn square_rejects_every_invalid_index() {
+        for index in 64..=u8::MAX {
+            assert_eq!(
+                Square::try_from(index).map(|square| square as u8),
+                Err(InvalidSquareIndex),
+                "index {index} should be rejected"
+            );
+        }
     }
 
     #[rstest]
