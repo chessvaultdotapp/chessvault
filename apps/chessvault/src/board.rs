@@ -1,8 +1,8 @@
 use iced::widget::{Space, column, container, responsive, row, text};
 use iced::{Color, Element, Fill};
 
-const LIGHT: Color = Color::from_rgb8(240, 217, 181);
-const DARK: Color = Color::from_rgb8(181, 136, 99);
+const LIGHT: Color = Color::from_rgb8(230, 230, 230);
+const DARK: Color = Color::from_rgb8(26, 26, 26);
 
 pub fn view<'a, Message: 'a>() -> Element<'a, Message> {
     responsive(|size| {
