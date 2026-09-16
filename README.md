@@ -2,10 +2,20 @@
 
 This is the monorepository for the Chessvault project.
 
+## Documentation
+
+General project documentation is available in [docs](docs/index.md), including
+architecture and component guides.
+
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workspace layout, development
-checks, and commit message conventions.
+See the [development documentation](docs/development/index.md) for setup,
+building, running, and testing.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow and commit
+message conventions.
 
 ## Acknowledgements
 
