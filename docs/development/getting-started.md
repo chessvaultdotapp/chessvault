@@ -1,26 +1,28 @@
 # Getting started
 
-## Install Git
+Commands follow our [shell command conventions](../reference.md#shell-commands).
+
+## Development tools
+
+### Install Git
 
 Install **Git** to clone the repository and work with its source history. Follow
 the [official Git installation instructions](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 for your operating system.
 
-Open a new terminal and verify the installation
-(see [shell command conventions](../reference.md#shell-commands)):
+Open a new terminal and verify the installation:
 
 ```console
 $ git --version
 ```
 
-## Install Rust
+### Install Rust
 
 Follow the [official Rust installation instructions](https://www.rust-lang.org/tools/install)
 to install Rust through **rustup**. Rustup manages Rust toolchains and includes
 Cargo, Rust's build tool and package manager.
 
-After installation, open a new terminal and verify that the tools are available
-(see [shell command conventions](../reference.md#shell-commands)):
+After installation, open a new terminal and verify that the tools are available:
 
 ```console
 $ rustup --version
@@ -32,7 +34,7 @@ Chessvault pins its Rust toolchain in
 repository, rustup selects that toolchain automatically and installs it if
 needed. You do not need to change your global default toolchain.
 
-## Install cargo-nextest
+### Install cargo-nextest
 
 **cargo-nextest** is our preferred test runner and is used in CI. Our preferred
 installation method is through Cargo:
@@ -77,3 +79,29 @@ $ cd chessvault
 ```
 
 Run subsequent Cargo commands from this workspace root.
+
+## Build and run
+
+Build all workspace packages and targets:
+
+```console
+$ cargo build --workspace --all-targets --locked
+```
+
+The first build downloads and compiles dependencies, so it may take some time.
+The `--locked` flag keeps dependency resolution consistent with the repository's
+`Cargo.lock`.
+
+After the build succeeds, launch the desktop application:
+
+```console
+$ cargo run -p chessvault --locked
+```
+
+Run the app in a graphical desktop session. You should see a chessboard with the
+standard starting position; playing moves is not supported yet. Press **F12**
+to open the developer console.
+
+Default debug builds store local state under `.local/state/chessvault/` relative
+to the workspace root when launched from there. The app saves its window size
+when closed and restores it on the next launch.
