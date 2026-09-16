@@ -62,14 +62,14 @@ For example, a desktop console fix and its regression test belong in one
 
 ## Checks
 
-Before submitting changes, build first, then run tests, formatting, and linting
-in that order. CI follows the same rule: a failed build or test run skips
-formatting and linting.
+Follow the [testing guide](docs/development/testing.md) for ordered checks,
+package and single-test selection, platform variants, and desktop interaction
+verification. Stop on failure and fix the failing check before continuing.
 
-CI uses `cargo nextest run --workspace --locked` for tests, followed by
-`cargo test --workspace --doc --locked` because nextest does not run doctests.
-To use the same runner locally, install it with
-`cargo install cargo-nextest --locked`.
+Include a brief description of what changed and how it was verified in the pull
+request; screenshots are useful for UI changes.
+
+## GitHub Actions
 
 The local action at `.github/actions/setup-nextest` installs official prebuilt
 binaries directly from `get.nexte.st`. It supports x64 and ARM64 runners on
@@ -84,23 +84,6 @@ workflows can use it with:
 
 The optional `version` input defaults to `latest` and also accepts a release
 series such as `0.9` or an exact release version.
-
-```sh
-cargo build --workspace --all-targets --locked
-cargo test --workspace --locked
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked --no-deps
-```
-
-For package-local changes, replace `--workspace` with `-p chessvault` or
-`-p chess-core`. Use workspace-wide checks for changes affecting both packages
-or shared configuration.
-
-For visible desktop changes, also launch the app and exercise the affected
-interaction. Include a brief description of what changed and how it was
-verified in the pull request; screenshots are useful for UI changes.
-
-## GitHub Actions
 
 CI caches Cargo registry downloads, Git dependency data, and `target` build
 artifacts. Cache keys include the runner OS and architecture, pinned toolchain,
