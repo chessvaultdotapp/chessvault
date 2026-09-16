@@ -9,7 +9,7 @@ Chessvault is an early-stage chess desktop application built with Rust and Iced.
 
 ## Understanding the project
 
-- [Architecture](architecture.md) — package responsibilities, dependencies, and
+- [Architecture](architecture/index.md) — package responsibilities, dependencies, and
   how the pieces fit together.
 
 ## Component guides

@@ -1,7 +1,5 @@
 # Architecture
 
-[Documentation index](index.md)
-
 This page describes the current implementation, rather than a target design.
 Chessvault is a Rust workspace with an Iced desktop application and three
 supporting libraries. The app displays the standard chess starting position,
@@ -22,10 +20,10 @@ are omitted.
 
 | Package | Responsibility | Entry point |
 | --- | --- | --- |
-| `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../apps/chessvault/src/main.rs) |
-| `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../crates/chess-core/src/lib.rs) |
-| `application-runtime` | Application-specific runtime helpers; currently the Chessvault state-directory path | [`crates/application-runtime/src/lib.rs`](../crates/application-runtime/src/lib.rs) |
-| `platform-dirs` | Platform-specific user state-directory resolution | [`crates/platform-dirs/src/lib.rs`](../crates/platform-dirs/src/lib.rs) |
+| `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../../apps/chessvault/src/main.rs) |
+| `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
+| `application-runtime` | Application-specific runtime helpers; currently the Chessvault state-directory path | [`crates/application-runtime/src/lib.rs`](../../crates/application-runtime/src/lib.rs) |
+| `platform-dirs` | Platform-specific user state-directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
 
 The chess core has no dependency on the GUI or runtime libraries. Platform
 resolution does not know the application name; `application-runtime` adds that
@@ -58,7 +56,7 @@ size, attempts to save it, and then closes the window even if saving fails.
 
 ### Board rendering
 
-[`board.rs`](../apps/chessvault/src/board.rs) takes an immutable `Position` and
+[`board.rs`](../../apps/chessvault/src/board.rs) takes an immutable `Position` and
 queries `Position::piece_at` for each square. It does not own a separate copy of
 the chess state or implement chess rules.
 
@@ -73,7 +71,7 @@ There are currently no board-interaction messages or move-making operations.
 `chess-core` publicly exports `Position`, `Piece`, `Side`, `Square`, and
 `InvalidSquareIndex`; its implementation modules remain private.
 
-A [`Position`](../crates/chess-core/src/position.rs) stores:
+A [`Position`](../../crates/chess-core/src/position.rs) stores:
 
 - Six piece-type bitboards, one each for pawn through king.
 - Two side bitboards, one each for White and Black.
@@ -134,7 +132,7 @@ layer.
 
 ## Logging and developer console
 
-[`logs.rs`](../apps/chessvault/src/logs.rs) installs a tracing subscriber and
+[`logs.rs`](../../apps/chessvault/src/logs.rs) installs a tracing subscriber and
 captures formatted events in a shared `Arc<Mutex<LogStore>>`. The store retains
 the latest 2,000 complete events, not 2,000 lines. Each event is collected before
 being published so concurrent writers cannot interleave fragments.
@@ -163,6 +161,6 @@ and path resolution. Filesystem resolver tests inject inputs rather than
 mutating process-wide environment variables; logging tests use scoped
 subscribers instead of installing the application's global subscriber.
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, ordered checks, and manual
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for setup, ordered checks, and manual
 verification expectations. API contracts belong in Rustdoc beside the code;
 this page covers ownership and interactions across modules and packages.
