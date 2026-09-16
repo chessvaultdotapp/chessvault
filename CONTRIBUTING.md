@@ -14,27 +14,9 @@ The desktop app does not yet depend on `chess-core`.
 
 ## Commit messages
 
-Prefix the commit subject with the tags for the packages or CI configuration it
-changes:
-
-- `[desktop]` for changes to the desktop app.
-- `[chess-core]` for changes to the chess core.
-- `[desktop][chess-core]` for a commit that changes both.
-- `[ci]` for CI workflow changes and CI-specific documentation. Combine it with
-  package tags when a commit also changes a package.
-
-Use a short, imperative description after the tags:
-
-```text
-[desktop] Preserve console selection during refresh
-[chess-core] Add empty position construction
-[desktop][chess-core] Display core positions in the desktop app
-[ci] Run tests before formatting and linting
-```
-
-Package-specific documentation and tests use the same package tag. Changes
-limited to shared documentation or workspace infrastructure do not require
-either package tag; use `[ci]` when those changes are CI-specific.
+Use the appropriate tags and a short, imperative commit subject. Follow the
+[commit message conventions](docs/conventions/commit-messages.md) for tag rules
+and examples.
 
 ### Small, atomic, focused commits
 
