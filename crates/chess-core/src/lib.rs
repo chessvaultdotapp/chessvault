@@ -12,3 +12,5 @@ mod piece;
 mod position;
 mod side;
 mod square;
+
+pub use position::Position;

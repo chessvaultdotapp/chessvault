@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// Occupancy bitboards, side to move, castling rights, and move counts.
-pub(crate) struct Position {
+pub struct Position {
     /// Six piece-type bitboards, indexed by Pawn through King.
     /// The [`Piece::Empty`](crate::piece::Piece::Empty) sentinel has no entry and is not a valid index.
     pieces: [Bitboard; NUM_PIECES],
@@ -46,7 +46,7 @@ impl Position {
     ///
     /// Both sides have all castling rights, the halfmove clock is zero,
     /// and the fullmove number is one.
-    pub(crate) fn standard() -> Self {
+    pub fn standard() -> Self {
         use Square::*;
 
         let mut position = Self::empty();
