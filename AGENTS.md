@@ -16,23 +16,29 @@
 - Launch the desktop GUI: `cargo run -p chessvault`.
 - Checks must run in order, stopping on failure: `cargo build --workspace --all-targets --locked` → `cargo test --workspace --locked` → `cargo fmt --all -- --check` → `cargo clippy --workspace --all-targets --locked --no-deps`.
 - CI replaces the test step with `cargo nextest run --workspace --locked`, then `cargo test --workspace --doc --locked` (nextest excludes doctests). Local installation: `cargo install cargo-nextest --locked`; CI uses `.github/actions/setup-nextest`.
-- Focus build/test/clippy by replacing `--workspace` with `-p chessvault`, `-p chess-core`, or `-p platform-dirs`; use workspace checks for shared configuration or cross-package changes.
-- Single GUI-package test: `cargo test -p chessvault --bin chessvault --locked logs::tests::bridged_logs_follow_the_original_source_when_log_is_disabled -- --exact`.
-- Single library test: `cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact`; platform-dirs tests use the `linux::tests::` prefix and run only on Linux.
+- Focus build/test/clippy by replacing `--workspace` with `-p chessvault`, `-p chess-core`, `-p application-runtime`, or `-p platform-dirs`; use workspace checks for shared configuration or cross-package changes.
+- Single GUI test: `cargo test -p chessvault --bin chessvault --locked window_recreate_tests::saved_dimensions_round_trip -- --exact`.
+- Single library test: `cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact`. For parameterized `rstest` tests, omit `--exact` to select all generated cases by function name.
 
 ## Package boundaries
 
-- The workspace has three independent packages: `apps/chessvault`, `crates/chess-core`, and `crates/platform-dirs`. The binary-only GUI starts in `apps/chessvault/src/main.rs` and depends on neither library; its tests are in `src/logs.rs`.
-- `apps/chessvault/src/board.rs` renders a responsive empty board, with no game state or core integration yet.
-- `crates/chess-core/src/lib.rs` wires up private `square`, `side`, `piece`, `castling_rights`, `bitboard`, and `position` modules, with inline tests beside each implementation; there is not yet a public API. Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their current discriminants; castling rights are OR-combinable `u8` masks.
-- `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are sentinels, never valid array indices.
-- Use `Bitboard::empty()` for explicit zero-bit construction (`Default` delegates to it). `Position::empty()` zeroes bitboards, castling rights, and both move counts, and sets `Side::Empty` to move; it is not the starting chess position, and `Position` has no `Default`.
-- `platform-dirs::user_state_dir()` resolves a path without creating directories. With the default-enabled `development` feature, debug builds (`debug_assertions`) return `<cwd>/.local/state` on every platform, or an error if the current directory cannot be read. Consumers can opt out with `default-features = false`. Release builds and builds without `development` implement only Linux; other platforms return an error. The Linux resolver accepts only absolute `XDG_STATE_HOME`, otherwise falling back to an absolute home directory plus `.local/state`; preserve non-Unicode paths.
-- Platform-directory tests inject environment values and a home-directory lookup into `resolve_user_state_dir` in `crates/platform-dirs/src/linux.rs`; follow this pattern instead of mutating process-wide environment variables.
+- Four packages: the binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; the runtime depends on `crates/platform-dirs`. The workspace layout in `CONTRIBUTING.md` is incomplete; manifests are authoritative.
+- `crates/chess-core/src/lib.rs` keeps modules private and re-exports `Piece`, `Position`, `Side`, `Square`, and `InvalidSquareIndex`; bitboards and castling rights remain internal. Tests live beside implementations.
+- Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their discriminants; castling rights are OR-combinable `u8` masks.
+- `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are never valid array indices. Squares are rank-major (`A1 = 0`, `H8 = 63`); `Square::None` is not a valid bit index.
+- Use `Bitboard::empty()` for zero-bit construction (`Default` delegates to it). Crate-private `Position::empty()` zeroes boards, rights, and counts, with `Side::Empty` to move; public `Position::standard()` sets up the starting position. `Position` has no `Default`.
+
+## State paths
+
+- `platform_dirs::user_state_dir()` only resolves paths. Default-enabled `development` plus debug assertions selects `<cwd>/.local/state` on every platform; release builds or `default-features = false` use OS resolution, currently Linux-only (other platforms error).
+- Linux accepts only absolute `XDG_STATE_HOME`, falling back to an absolute home directory plus `.local/state`. Preserve non-Unicode paths; resolver tests inject environment values and home lookup instead of mutating process-wide environment. Linux tests use `linux::tests::` and are Linux-only.
+- `application_runtime::fs::application_state_dir()` appends `chessvault`; desktop initialization creates the directory. Window dimensions are JSON in `recreate` (no extension), normally `.local/state/chessvault/recreate` in development.
 
 ## App wiring
 
 - `apps/chessvault/src/main.rs` uses Iced **0.14**'s `iced::application` builder with `ChessVault::{update, view, subscription}`. Follow this API rather than older Iced `Application` trait examples.
+- `ChessVault` owns a `Position::standard()`; `board.rs` renders via `Position::piece_at`. Piece SVGs are embedded with `include_bytes!` and cached in `LazyLock` handles; preserve working-directory-independent rendering and handle reuse.
+- `.exit_on_close_request(false)` lets the close subscription query and save window size before `window::close`. Restore failures use defaults; save failures still close the window.
 - Iced's `tokio` feature enables the console's timer subscription. **F12** opens the developer console; its 250 ms refresh subscription runs only while open.
 - The console uses a read-only `text_editor`: reject editing actions and preserve the selection during periodic refresh so copying remains usable.
 
