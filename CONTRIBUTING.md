@@ -2,15 +2,8 @@
 
 ## Development setup
 
-Install Rust through [rustup](https://rustup.rs/). The repository pins Rust
-1.98.0 in `rust-toolchain.toml`; rustup selects that toolchain automatically.
-Run Cargo commands from the workspace root.
-
-Launch the desktop app:
-
-```sh
-cargo run -p chessvault
-```
+Follow the [getting-started guide](docs/development/getting-started.md) to install
+development tools, clone the repository, and build and run the desktop app.
 
 ## Workspace layout
 
