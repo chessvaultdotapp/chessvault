@@ -48,6 +48,25 @@ See the [official cargo-nextest documentation](https://nexte.st/docs/installatio
 for installation details and alternative methods. Nextest does not run doctests; those are
 run separately with `cargo test --doc`.
 
+## Additional tools (optional)
+
+### GitHub CLI
+
+[GitHub CLI](https://cli.github.com/) (`gh`) lets you manage pull requests,
+issues, and GitHub Actions runs from your terminal. It is useful for contributing,
+but is not required to build or run Chessvault.
+
+Follow the [official installation instructions](https://github.com/cli/cli#installation),
+then verify the installation and sign in to GitHub:
+
+```console
+$ gh --version
+$ gh auth login
+```
+
+See the [GitHub CLI manual](https://cli.github.com/manual/) for available commands
+and authentication options.
+
 ## Clone the repository
 
 Choose one of the following methods to clone the repository from GitHub.
