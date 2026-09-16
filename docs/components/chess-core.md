@@ -1,7 +1,5 @@
 # Chess core
 
-[Documentation index](index.md) · [Architecture](architecture.md)
-
 `chess-core` contains chess primitives and bitboard-based position storage. It
 is independent of Iced, application runtime helpers, and filesystem policy.
 It currently supports constructing the standard position and looking up pieces,
@@ -9,7 +7,7 @@ not playing or validating moves.
 
 ## Public API
 
-[`lib.rs`](../crates/chess-core/src/lib.rs) re-exports `Position`, `Piece`, `Side`,
+[`lib.rs`](../../crates/chess-core/src/lib.rs) re-exports `Position`, `Piece`, `Side`,
 `Square`, and `InvalidSquareIndex`. The underlying modules are private;
 `Bitboard` and `CastlingRights` are internal implementation details.
 
@@ -31,9 +29,9 @@ getter API, arbitrary-position loader, or `Default` implementation for `Position
 
 | Type | Representation | Sentinel |
 | --- | --- | --- |
-| [`Square`](../crates/chess-core/src/square.rs) | One byte; A1–H1 are 0–7, continuing through A8–H8 at 56–63 | `None = 64` |
-| [`Piece`](../crates/chess-core/src/piece.rs) | One byte; Pawn, Knight, Bishop, Rook, Queen, King are 0–5 | `Empty = 6` |
-| [`Side`](../crates/chess-core/src/side.rs) | One byte; White = 0, Black = 1 | `Empty = 2` |
+| [`Square`](../../crates/chess-core/src/square.rs) | One byte; A1–H1 are 0–7, continuing through A8–H8 at 56–63 | `None = 64` |
+| [`Piece`](../../crates/chess-core/src/piece.rs) | One byte; Pawn, Knight, Bishop, Rook, Queen, King are 0–5 | `Empty = 6` |
+| [`Side`](../../crates/chess-core/src/side.rs) | One byte; White = 0, Black = 1 | `Empty = 2` |
 
 For zero-based rank and file coordinates, the square index is `rank * 8 + file`.
 `Square::try_from(u8)` accepts only 0–63; even the sentinel index 64 returns
@@ -48,7 +46,7 @@ storage and consumers such as the desktop artwork table.
 
 ## Bitboards
 
-[`Bitboard`](../crates/chess-core/src/bitboard.rs) wraps a private `u64`. Bit zero
+[`Bitboard`](../../crates/chess-core/src/bitboard.rs) wraps a private `u64`. Bit zero
 corresponds to A1 and bit 63 to H8. A set bit means a square belongs to the set.
 
 Internal operations include:
@@ -66,7 +64,7 @@ comes from its location in a `Position`.
 
 ## Position storage and consistency
 
-[`Position`](../crates/chess-core/src/position.rs) stores six piece-type
+[`Position`](../../crates/chess-core/src/position.rs) stores six piece-type
 bitboards and two side bitboards, rather than a separate object per occupied
 square. A white pawn, for example, contributes a bit to both the pawn board and
 the White board.
@@ -117,7 +115,7 @@ Tests live beside each implementation. They cover representation sizes and
 values, square conversion, bit operations, empty construction, starting-position
 masks and metadata, and square lookup across piece/side combinations.
 
-Follow [CONTRIBUTING.md](../CONTRIBUTING.md) for ordered checks, using
+Follow [Testing](../development/testing.md) for ordered checks, using
 `-p chess-core` for core-only changes. Use workspace checks when a public API
 change also changes the desktop consumer. Markdown examples are illustrative;
 place examples that need continuous doctest coverage in Rustdoc.

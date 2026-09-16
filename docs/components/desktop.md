@@ -1,7 +1,5 @@
 # Desktop application
 
-[Documentation index](index.md) · [Architecture](architecture.md)
-
 The `chessvault` package is a binary-only Iced 0.14 application. It currently
 renders the standard starting position, provides a developer console, and saves
 window dimensions. The board is not yet interactive.
@@ -10,10 +8,10 @@ window dimensions. The board is not yet interactive.
 
 | File | Responsibility |
 | --- | --- |
-| [`main.rs`](../apps/chessvault/src/main.rs) | Startup, `ChessVault` state, messages, subscriptions, views, and window-state serialization |
-| [`board.rs`](../apps/chessvault/src/board.rs) | Responsive board layout and embedded piece artwork |
-| [`logs.rs`](../apps/chessvault/src/logs.rs) | Tracing setup, shared event storage, and source-filtered snapshots |
-| [`fs.rs`](../apps/chessvault/src/fs.rs) | Saved window-state file path |
+| [`main.rs`](../../apps/chessvault/src/main.rs) | Startup, `ChessVault` state, messages, subscriptions, views, and window-state serialization |
+| [`board.rs`](../../apps/chessvault/src/board.rs) | Responsive board layout and embedded piece artwork |
+| [`logs.rs`](../../apps/chessvault/src/logs.rs) | Tracing setup, shared event storage, and source-filtered snapshots |
+| [`fs.rs`](../../apps/chessvault/src/fs.rs) | Saved window-state file path |
 
 ## Application state and messages
 
@@ -47,13 +45,13 @@ bottom. Rank labels occupy the left edge and file labels the bottom edge; a1 is
 dark.
 
 Piece SVGs live in
-[`assets/rhosgfx-outline`](../apps/chessvault/assets/rhosgfx-outline). They are
+[`assets/rhosgfx-outline`](../../apps/chessvault/assets/rhosgfx-outline). They are
 embedded with `include_bytes!` and converted into cached handles through
 `LazyLock`. This avoids runtime asset-path dependencies and reuses renderer
 cache entries. The handle table follows `Side` and `Piece` discriminants;
 checked indexing excludes their empty sentinels.
 
-See the [README acknowledgements](../README.md#acknowledgements) for artwork
+See the [README acknowledgements](../../README.md#acknowledgements) for artwork
 attribution and licensing.
 
 ## Developer console
@@ -61,8 +59,8 @@ attribution and licensing.
 Press **F12** to open or close the console. To capture app debug messages, run
 from the workspace root:
 
-```sh
-RUST_LOG=chessvault=debug cargo run -p chessvault
+```console
+$ RUST_LOG=chessvault=debug cargo run -p chessvault --locked
 ```
 
 `RUST_LOG` filters capture, not just display. A message excluded at this stage
@@ -100,12 +98,14 @@ The app disables automatic exit on close requests. It first queries the window
 size, attempts to save it, and then closes even if saving failed. In contrast,
 failure to create the application state directory during boot is fatal.
 
-See [Runtime and storage](runtime-and-storage.md) for path policy, platform
-limitations, and storage troubleshooting.
+Saving directly truncates the `recreate` file; writes are not atomic. To reset
+window state, remove that file while the app is closed. See
+[Application runtime](application-runtime.md) for application paths and
+[Platform directories](platform-dirs.md) for platform policy and limitations.
 
 ## Verification
 
-Follow the ordered checks in [CONTRIBUTING.md](../CONTRIBUTING.md), selecting
+Follow the ordered checks in [Testing](../development/testing.md), selecting
 `-p chessvault` for desktop-only changes. Inline tests cover logs, file-path
 composition, and saved-dimension parsing; they do not replace GUI verification.
 

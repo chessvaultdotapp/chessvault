@@ -117,7 +117,7 @@ Stop on failure here too. Linux resolver tests are compiled only on Linux and
 use the `linux::tests::` prefix. Passing tests on another OS does not verify
 Linux resolution. Native state-directory resolution currently supports only
 Linux; the development path working elsewhere is not evidence of release app
-support. See [Runtime and storage](../runtime-and-storage.md) for the path policy.
+support. See [Platform directories](../components/platform-dirs.md) for the path policy.
 
 ## Desktop interaction checks
 
@@ -130,7 +130,7 @@ $ cargo run -p chessvault --locked
 Exercise the affected interaction in a graphical desktop session. Depending on
 the change, verify board resizing and orientation, F12 console toggling, source
 filtering, copying selected logs during refresh, or saving and restoring window
-size. See [Desktop application](../desktop.md#verification) for more guidance.
+size. See [Desktop application](../components/desktop.md#verification) for more guidance.
 
 Include a brief description of what changed and how it was verified in the pull
 request. Screenshots are useful for UI changes. Report any checks you could not
