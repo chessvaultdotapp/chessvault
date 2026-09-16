@@ -10,6 +10,8 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
+use chess_core::Position;
+
 mod board;
 mod fs;
 mod logs;
@@ -45,6 +47,7 @@ struct ChessVault {
     log_text: String,
     log_content: text_editor::Content,
     sources_open: bool,
+    position: Position,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -170,6 +173,7 @@ impl ChessVault {
             log_text: String::new(),
             log_content: text_editor::Content::new(),
             sources_open: false,
+            position: Position::standard(),
         };
 
         if let Err(err) = app.initialize() {
@@ -272,7 +276,7 @@ impl ChessVault {
 
     fn view(&self) -> Element<'_, Message> {
         let content = column![
-            container(board::view())
+            container(board::view(&self.position))
                 .padding(24)
                 .width(Fill)
                 .height(Fill)
