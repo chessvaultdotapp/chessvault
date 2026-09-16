@@ -25,6 +25,26 @@ pub struct Position {
 }
 
 impl Position {
+    /// Returns the piece type and side occupying a square.
+    ///
+    /// Empty squares and [`Square::None`] return `None`.
+    pub fn piece_at(&self, square: Square) -> Option<(Piece, Side)> {
+        let side = [Side::White, Side::Black]
+            .into_iter()
+            .find(|side| self.sides[*side as usize].contains(square))?;
+        let piece = [
+            Piece::Pawn,
+            Piece::Knight,
+            Piece::Bishop,
+            Piece::Rook,
+            Piece::Queen,
+            Piece::King,
+        ]
+        .into_iter()
+        .find(|piece| self.pieces[*piece as usize].contains(square))?;
+        Some((piece, side))
+    }
+
     /// Creates an empty position with no pieces, side to move, or castling rights.
     ///
     /// All six piece-type bitboards and both side bitboards are initialized
@@ -98,6 +118,82 @@ mod tests {
     use super::*;
     use crate::piece::Piece;
     use rstest::{fixture, rstest};
+
+    #[test]
+    fn square_lookup_matches_the_entire_starting_position() {
+        let position = Position::standard();
+        let back_rank = [
+            Piece::Rook,
+            Piece::Knight,
+            Piece::Bishop,
+            Piece::Queen,
+            Piece::King,
+            Piece::Bishop,
+            Piece::Knight,
+            Piece::Rook,
+        ];
+        for index in 0_u8..64 {
+            let expected = match index / 8 {
+                0 => Some((back_rank[index as usize % 8], Side::White)),
+                1 => Some((Piece::Pawn, Side::White)),
+                6 => Some((Piece::Pawn, Side::Black)),
+                7 => Some((back_rank[index as usize % 8], Side::Black)),
+                _ => None,
+            };
+            assert_eq!(
+                position.piece_at(Square::try_from(index).unwrap()),
+                expected
+            );
+        }
+        assert_eq!(position.piece_at(Square::None), None);
+    }
+
+    #[test]
+    fn square_lookup_returns_none_for_an_empty_position() {
+        let position = Position::empty();
+        for index in 0_u8..64 {
+            let square = Square::try_from(index).unwrap();
+            assert_eq!(position.piece_at(square), None, "queried {square}");
+        }
+        assert_eq!(position.piece_at(Square::None), None);
+    }
+
+    #[rstest]
+    fn square_lookup_reads_occupancy_instead_of_starting_layout(
+        #[values(
+            Piece::Pawn,
+            Piece::Knight,
+            Piece::Bishop,
+            Piece::Rook,
+            Piece::Queen,
+            Piece::King
+        )]
+        piece: Piece,
+        #[values(Side::White, Side::Black)] side: Side,
+    ) {
+        for occupied_index in 0_u8..64 {
+            let occupied_square = Square::try_from(occupied_index).unwrap();
+            let mut position = Position::empty();
+            position.pieces[piece as usize]
+                .set(occupied_square)
+                .unwrap();
+            position.sides[side as usize].set(occupied_square).unwrap();
+            for query_index in 0_u8..64 {
+                let square = Square::try_from(query_index).unwrap();
+                let expected = if query_index == occupied_index {
+                    Some((piece, side))
+                } else {
+                    None
+                };
+                assert_eq!(
+                    position.piece_at(square),
+                    expected,
+                    "{side:?} {piece:?} on {occupied_square}, queried {square}"
+                );
+            }
+            assert_eq!(position.piece_at(Square::None), None);
+        }
+    }
 
     fn bitboard_from_mask(mask: u64) -> Bitboard {
         let mut board = Bitboard::empty();

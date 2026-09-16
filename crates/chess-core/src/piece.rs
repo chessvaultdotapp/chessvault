@@ -4,7 +4,8 @@
 /// bitboard array in [`crate::position::Position`].
 /// [`Piece::Empty`] is not a valid index into that array.
 #[repr(u8)]
-pub(crate) enum Piece {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Piece {
     Pawn,
     Knight,
     Bishop,

@@ -4,7 +4,8 @@
 /// array in [`crate::position::Position`].
 /// [`Side::Empty`] is not a valid index into that array.
 #[repr(u8)]
-pub(crate) enum Side {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Side {
     White,
     Black,
     /// No side, including no side to move in an empty position.

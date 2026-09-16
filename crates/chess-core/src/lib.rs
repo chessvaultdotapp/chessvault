@@ -13,4 +13,7 @@ mod position;
 mod side;
 mod square;
 
+pub use piece::Piece;
 pub use position::Position;
+pub use side::Side;
+pub use square::{InvalidSquareIndex, Square};

@@ -54,6 +54,11 @@ impl BitXorAssign for Bitboard {
 }
 
 impl Bitboard {
+    /// Whether a square belongs to this set; the no-square sentinel never does.
+    pub(crate) fn contains(&self, square: Square) -> bool {
+        (square as u8) < 64 && self.0 & (1_u64 << square as u8) != 0
+    }
+
     /// Creates a zero-valued bitboard with no squares in its set.
     ///
     /// This is also the value returned by [`Default::default`].
@@ -102,6 +107,40 @@ impl TryFrom<Square> for Bitboard {
 mod tests {
     use super::*;
     use rstest::rstest;
+
+    #[test]
+    fn bitboard_contains_only_the_set_square() {
+        for set_index in 0_u8..64 {
+            let board = Bitboard(1_u64 << set_index);
+            for query_index in 0_u8..64 {
+                let square = Square::try_from(query_index).unwrap();
+                assert_eq!(
+                    board.contains(square),
+                    query_index == set_index,
+                    "set bit {set_index}, queried {square}"
+                );
+            }
+        }
+    }
+
+    #[rstest]
+    #[case::empty(0, false)]
+    #[case::full(u64::MAX, true)]
+    fn bitboard_contains_handles_empty_and_full_boards(#[case] mask: u64, #[case] expected: bool) {
+        let board = Bitboard(mask);
+        for index in 0_u8..64 {
+            let square = Square::try_from(index).unwrap();
+            assert_eq!(board.contains(square), expected, "queried {square}");
+        }
+    }
+
+    #[rstest]
+    #[case::empty(0)]
+    #[case::full(u64::MAX)]
+    #[case::highest_bit(1_u64 << 63)]
+    fn bitboard_never_contains_no_square(#[case] mask: u64) {
+        assert!(!Bitboard(mask).contains(Square::None));
+    }
 
     #[test]
     fn bitboard_initializes_with_value_zero() {
