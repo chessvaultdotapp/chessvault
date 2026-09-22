@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and maintenance proposals
+    url: https://github.com/chessvaultdotapp/chessvault/discussions
+    about: Ask about building or contributing, or propose refactoring and routine dependency maintenance. Actual build failures belong in bug reports.
