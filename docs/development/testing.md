@@ -119,6 +119,29 @@ Linux resolution. Native state-directory resolution currently supports only
 Linux; the development path working elsewhere is not evidence of release app
 support. See [Platform directories](../components/platform-dirs.md) for the path policy.
 
+## Documentation checks
+
+Use [rumdl](getting-started.md#rumdl) for optional local Markdown linting,
+separate from the ordered Cargo checks. From the workspace root, check the
+shared documentation:
+
+```console
+$ rumdl check README.md CONTRIBUTING.md AGENTS.md docs
+```
+
+For a focused check, pass only the files you changed:
+
+```console
+$ rumdl check docs/development/getting-started.md docs/development/testing.md
+```
+
+`rumdl check` reports issues without modifying files and exits unsuccessfully
+when lint issues are found. It is not currently run in CI. Existing documentation
+may report warnings, including conflicts between rumdl defaults and our
+[`$` shell-prompt convention](../reference.md#shell-commands). Rule configuration
+and cleanup are follow-up work; do not treat the current documentation as a
+clean lint baseline or change repository conventions solely to silence warnings.
+
 ## Desktop interaction checks
 
 Automated tests do not replace launching the app for visible desktop changes:

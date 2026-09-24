@@ -85,6 +85,24 @@ runs manually; it is not part of the Cargo build or CI checks. See the
 [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
 for usage and visual verification.
 
+### rumdl
+
+[rumdl](https://github.com/rvben/rumdl) checks Markdown documentation for lint
+issues. It is an optional local tool, not required to build or run Chessvault
+and not currently part of CI.
+
+Install it through Cargo and verify the installation:
+
+```console
+$ cargo install rumdl --locked
+$ rumdl --version
+```
+
+See the [rumdl documentation](https://github.com/rvben/rumdl#readme) for
+alternative installation methods and the
+[documentation checks](testing.md#documentation-checks) for usage in this
+repository.
+
 ### GitHub CLI
 
 [GitHub CLI](https://cli.github.com/) (`gh`) lets you manage pull requests,
