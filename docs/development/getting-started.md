@@ -1,6 +1,8 @@
 # Getting started
 
 Commands follow our [shell command conventions](../reference.md#shell-commands).
+Example output is abbreviated; versions, timings, paths, and interactive prompts
+vary by installation. `...` marks omitted output.
 
 ## Development tools
 
@@ -14,6 +16,7 @@ Open a new terminal and verify the installation:
 
 ```console
 $ git --version
+git version 2.55.0
 ```
 
 ### Install Rust
@@ -26,7 +29,10 @@ After installation, open a new terminal and verify that the tools are available:
 
 ```console
 $ rustup --version
+rustup 1.29.1 (d95a37b6a 2026-08-13)
+...
 $ cargo --version
+cargo 1.98.0 (797e8a9bc 2026-08-05)
 ```
 
 Chessvault pins its Rust toolchain in
@@ -41,7 +47,11 @@ installation method is through Cargo:
 
 ```console
 $ cargo install cargo-nextest --locked
+    Updating crates.io index
+...
 $ cargo nextest --version
+cargo-nextest 0.9.143 (60fa45f63 2026-08-04)
+...
 ```
 
 See the [official cargo-nextest documentation](https://nexte.st/docs/installation/)
@@ -67,7 +77,9 @@ Verify Node.js and pnpm:
 
 ```console
 $ node --version
+v24.18.0
 $ pnpm --version
+12.5.1
 ```
 
 After cloning the repository, install the locked dependencies from the workspace
@@ -76,7 +88,11 @@ root:
 ```console
 $ cd apps/chessvault
 $ pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+...
 $ pnpm exec svgo --help
+Usage: svgo [options] [INPUT...]
+...
 $ cd ../..
 ```
 
@@ -95,7 +111,10 @@ Install it through Cargo and verify the installation:
 
 ```console
 $ cargo install rumdl --locked
+    Updating crates.io index
+...
 $ rumdl --version
+rumdl 0.2.73
 ```
 
 See the [rumdl documentation](https://github.com/rvben/rumdl#readme) for
@@ -114,7 +133,13 @@ then verify the installation and sign in to GitHub:
 
 ```console
 $ gh --version
+gh version 2.98.0 (2026-08-21)
+https://github.com/cli/cli/releases/tag/v2.98.0
 $ gh auth login
+? Where do you use GitHub?  [Use arrows to move, type to filter]
+> GitHub.com
+  Other
+...
 ```
 
 See the [GitHub CLI manual](https://cli.github.com/manual/) for available commands
@@ -132,6 +157,8 @@ to create an SSH key and add its public key to your GitHub account. Then clone:
 
 ```console
 $ git clone git@github.com:chessvaultdotapp/chessvault.git
+Cloning into 'chessvault'...
+...
 ```
 
 ### HTTPS
@@ -140,6 +167,8 @@ If you do not want to configure an SSH key, clone over HTTPS instead:
 
 ```console
 $ git clone https://github.com/chessvaultdotapp/chessvault.git
+Cloning into 'chessvault'...
+...
 ```
 
 ### Enter the workspace
@@ -158,6 +187,8 @@ Build all workspace packages and targets:
 
 ```console
 $ cargo build --workspace --all-targets --locked
+...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
 The first build downloads and compiles dependencies, so it may take some time.
@@ -168,6 +199,9 @@ After the build succeeds, launch the desktop application:
 
 ```console
 $ cargo run -p chessvault --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running `target/debug/chessvault`
+...
 ```
 
 Run the app in a graphical desktop session. You should see a chessboard with the
