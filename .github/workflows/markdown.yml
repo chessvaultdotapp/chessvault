@@ -1,0 +1,28 @@
+name: Markdown
+
+on:
+  push:
+    paths:
+      - '**/*.md'
+  pull_request:
+    paths:
+      - '**/*.md'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install rumdl
+        run: |
+          python3 -m venv "$RUNNER_TEMP/rumdl"
+          "$RUNNER_TEMP/rumdl/bin/python" -m pip install --only-binary=:all: rumdl==0.2.73
+          echo "$RUNNER_TEMP/rumdl/bin" >> "$GITHUB_PATH"
+
+      - name: Check tracked Markdown files
+        run: git ls-files -z '*.md' | xargs -0 -r rumdl check

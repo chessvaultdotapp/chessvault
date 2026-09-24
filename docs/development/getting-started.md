@@ -104,8 +104,8 @@ for usage and visual verification.
 ### rumdl
 
 [rumdl](https://github.com/rvben/rumdl) checks Markdown documentation for lint
-issues. It is an optional local tool, not required to build or run Chessvault
-and not currently part of CI.
+issues. Local installation is optional and is not required to build or run
+Chessvault. The Markdown CI workflow runs rumdl when Markdown files change.
 
 Install it through Cargo and verify the installation:
 

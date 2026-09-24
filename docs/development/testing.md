@@ -29,7 +29,10 @@ $ cargo clippy --workspace --all-targets --locked --no-deps
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
-This is the sequence used by [CI](../../.github/workflows/ci.yml). Nextest is our
+This is the sequence used by [CI](../../.github/workflows/ci.yml). Pushes and pull
+requests trigger it only when Rust source, desktop assets, Cargo manifests or
+lockfiles, `rust-toolchain.toml`, or `.cargo` configuration changes. Markdown-only
+changes do not trigger Rust builds. Nextest is our
 preferred test runner, but it does not execute doctests, so the separate
 `cargo test --doc` step is required. Formatting checks do not modify files.
 Clippy's `--no-deps` excludes dependency linting, though dependencies may still
@@ -173,7 +176,11 @@ Success: No issues found in 2 files (10ms)
 ```
 
 `rumdl check` reports issues without modifying files and exits unsuccessfully
-when lint issues are found. It is not currently run in CI. The repository's
+when lint issues are found. The [Markdown workflow](../../.github/workflows/markdown.yml)
+runs on pushes and pull requests that change `*.md` files, including nested and
+hidden directories. It installs rumdl 0.2.73 and checks all tracked Markdown
+files, not just changed files. Configuration-only or workflow-only changes do
+not trigger it; run the checks locally when changing those files. The repository's
 [rumdl configuration](../../.rumdl.toml) sets the line-length limit to 120 characters.
 Preserve our [`$` shell-prompt convention](../reference.md#shell-commands) and
 include representative command output where applicable. Commands that are silent

@@ -2,7 +2,15 @@ name: CI
 
 on:
   push:
+    paths: &rust-paths
+      - '**/*.rs'
+      - 'apps/chessvault/assets/**'
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.cargo/**'
   pull_request:
+    paths: *rust-paths
 
 permissions:
   contents: read
