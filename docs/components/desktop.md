@@ -54,6 +54,38 @@ checked indexing excludes their empty sentinels.
 See the [README acknowledgements](../../README.md#acknowledgements) for artwork
 attribution and licensing.
 
+### Optimizing SVG artwork
+
+Use the optional [Node.js, pnpm, and SVGO tooling](../development/getting-started.md#nodejs-pnpm-and-svgo)
+when adding or changing piece artwork. SVGO is declared in
+[`package.json`](../../apps/chessvault/package.json), with dependency versions
+recorded in [`pnpm-lock.yaml`](../../apps/chessvault/pnpm-lock.yaml). It is not
+invoked automatically by Cargo or CI.
+
+From the workspace root, optimize a changed SVG (here, the white pawn):
+
+```console
+$ cd apps/chessvault
+$ pnpm install --frozen-lockfile
+$ pnpm exec svgo --input assets/rhosgfx-outline/wP.svg --output assets/rhosgfx-outline/wP.svg
+$ cd ../..
+$ git diff -- apps/chessvault/assets/rhosgfx-outline/wP.svg
+```
+
+This overwrites the input file; run it only on artwork you intend to update.
+Review the diff and preserve artwork attribution and licensing. Then rebuild
+and launch the app in a graphical session:
+
+```console
+$ cargo run -p chessvault --locked
+```
+
+Compare the affected pieces before and after optimization, including at different
+window sizes. Check that shapes, colors, outlines, and scaling are unchanged.
+The SVGs are embedded at compile time, so a running app will not pick up asset
+edits until rebuilt. Commit the optimized SVGs with any intentional dependency
+changes; do not commit `node_modules`.
+
 ## Developer console
 
 Press **F12** to open or close the console. To capture app debug messages, run
