@@ -62,12 +62,20 @@ when adding or changing piece artwork. SVGO is declared in
 recorded in [`pnpm-lock.yaml`](../../apps/chessvault/pnpm-lock.yaml). It is not
 invoked automatically by Cargo or CI.
 
-From the workspace root, optimize a changed SVG (here, the white pawn):
+From the workspace root, optimize a changed SVG (here, the white pawn). The
+following output examples are abbreviated; timings, sizes, and build messages
+vary. An already optimized SVG may show no size reduction or diff.
 
 ```console
 $ cd apps/chessvault
 $ pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Already up to date
+...
 $ pnpm exec svgo --input assets/rhosgfx-outline/wP.svg --output assets/rhosgfx-outline/wP.svg
+wP.svg:
+Done in 23 ms!
+1.282 KiB - 0% = 1.282 KiB
 $ cd ../..
 $ git diff -- apps/chessvault/assets/rhosgfx-outline/wP.svg
 ```
@@ -78,6 +86,9 @@ and launch the app in a graphical session:
 
 ```console
 $ cargo run -p chessvault --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running `target/debug/chessvault`
+...
 ```
 
 Compare the affected pieces before and after optimization, including at different
@@ -89,10 +100,13 @@ changes; do not commit `node_modules`.
 ## Developer console
 
 Press **F12** to open or close the console. To capture app debug messages, run
-from the workspace root:
+from the workspace root (example output abbreviated):
 
 ```console
 $ RUST_LOG=chessvault=debug cargo run -p chessvault --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running `target/debug/chessvault`
+...
 ```
 
 `RUST_LOG` filters capture, not just display. A message excluded at this stage
