@@ -5,6 +5,10 @@ Run them from the workspace root using the toolchain selected by
 [`rust-toolchain.toml`](../../rust-toolchain.toml). See
 [Getting started](getting-started.md#install-cargo-nextest) for runner installation.
 
+Output examples below are abbreviated and illustrative, not verification results.
+Timings, test counts, and build messages vary; `...` marks omitted output.
+`cargo fmt --all -- --check` produces no output when formatting passes.
+
 ## Ordered checks
 
 Run these checks in order, stopping if a command fails. Fix the failure before
@@ -12,10 +16,17 @@ continuing:
 
 ```console
 $ cargo build --workspace --all-targets --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 $ cargo nextest run --workspace --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo test --workspace --doc --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo fmt --all -- --check
 $ cargo clippy --workspace --all-targets --locked --no-deps
+...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
 This is the sequence used by [CI](../../.github/workflows/ci.yml). Nextest is our
@@ -45,10 +56,17 @@ For example, the core-only sequence is:
 
 ```console
 $ cargo build -p chess-core --all-targets --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 $ cargo nextest run -p chess-core --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo test -p chess-core --doc --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo fmt --all -- --check
 $ cargo clippy -p chess-core --all-targets --locked --no-deps
+...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
 ### A single test
@@ -58,18 +76,28 @@ its exact name:
 
 ```console
 $ cargo nextest run -p chess-core --locked -E 'test(=side::tests::side_uses_one_byte)'
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 ```
 
 The equivalent Cargo test command explicitly selects the library target:
 
 ```console
 $ cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact
+...
+running 1 test
+test side::tests::side_uses_one_byte ... ok
+...
 ```
 
 The desktop is binary-only. For example, to test saved window dimensions:
 
 ```console
 $ cargo test -p chessvault --bin chessvault --locked window_recreate_tests::saved_dimensions_round_trip -- --exact
+...
+running 1 test
+test window_recreate_tests::saved_dimensions_round_trip ... ok
+...
 ```
 
 Focused tests shorten iteration; they do not replace the relevant full check
@@ -107,10 +135,17 @@ For changes to that policy, also run:
 
 ```console
 $ cargo build -p platform-dirs --all-targets --locked --no-default-features
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 $ cargo nextest run -p platform-dirs --locked --no-default-features
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo test -p platform-dirs --doc --locked --no-default-features
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+...
 $ cargo fmt --all -- --check
 $ cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-features
+...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
 Stop on failure here too. Linux resolver tests are compiled only on Linux and
@@ -127,20 +162,22 @@ shared documentation:
 
 ```console
 $ rumdl check README.md CONTRIBUTING.md AGENTS.md docs
+Success: No issues found in 14 files (10ms)
 ```
 
 For a focused check, pass only the files you changed:
 
 ```console
 $ rumdl check docs/development/getting-started.md docs/development/testing.md
+Success: No issues found in 2 files (10ms)
 ```
 
 `rumdl check` reports issues without modifying files and exits unsuccessfully
-when lint issues are found. It is not currently run in CI. Existing documentation
-may report warnings, including conflicts between rumdl defaults and our
-[`$` shell-prompt convention](../reference.md#shell-commands). Rule configuration
-and cleanup are follow-up work; do not treat the current documentation as a
-clean lint baseline or change repository conventions solely to silence warnings.
+when lint issues are found. It is not currently run in CI. The repository's
+[rumdl configuration](../../.rumdl.toml) sets the line-length limit to 120 characters.
+Preserve our [`$` shell-prompt convention](../reference.md#shell-commands) and
+include representative command output where applicable. Commands that are silent
+on success do not need invented output.
 
 ## Desktop interaction checks
 
@@ -148,6 +185,9 @@ Automated tests do not replace launching the app for visible desktop changes:
 
 ```console
 $ cargo run -p chessvault --locked
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running `target/debug/chessvault`
+...
 ```
 
 Exercise the affected interaction in a graphical desktop session. Depending on
