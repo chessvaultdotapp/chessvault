@@ -11,6 +11,11 @@ Timings, test counts, and build messages vary; `...` marks omitted output.
 
 ## Ordered checks
 
+With the optional [just task runner](getting-started.md#just), `just check` runs
+this sequence. Use `just check-package <package>` for focused checks or
+`just check-platform-native` for the additional no-default-features checks.
+These recipes require cargo-nextest; the manual fallback is described below.
+
 Run these checks in order, stopping if a command fails. Fix the failure before
 continuing:
 
