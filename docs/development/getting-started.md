@@ -117,8 +117,8 @@ $ rumdl --version
 rumdl 0.2.73
 ```
 
-See the [rumdl documentation](https://github.com/rvben/rumdl#readme) for
-alternative installation methods and the
+See the [official rumdl installation guide](https://rumdl.dev/getting-started/installation/) for
+installation details and alternative methods and the
 [documentation checks](testing.md#documentation-checks) for usage in this
 repository.
 
