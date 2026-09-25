@@ -101,6 +101,19 @@ runs manually; it is not part of the Cargo build or CI checks. See the
 [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
 for usage and visual verification.
 
+### Tombi
+
+[Tombi](https://tombi-toml.github.io/tombi/) provides a TOML language server (LSP),
+formatter, and linter. Use it for editor support and for formatting and checking
+TOML files such as Cargo manifests and tool configuration.
+
+Follow the official Tombi documentation for installation and editor setup.
+Local installation is optional and is not required to build, test, or run
+Chessvault. The TOML CI workflow uses Tombi to check formatting and lint TOML
+files. Our [Tombi configuration](../../tombi.toml) sets a 120-character line
+width and four-space indentation, matching [EditorConfig](../../.editorconfig).
+See the [TOML checks](testing.md#toml-checks) for local usage.
+
 ### rumdl
 
 [rumdl](https://github.com/rvben/rumdl) checks Markdown documentation for lint

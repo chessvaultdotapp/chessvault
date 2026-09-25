@@ -1,0 +1,28 @@
+name: TOML
+
+on:
+  push:
+    paths:
+      - '**/*.toml'
+  pull_request:
+    paths:
+      - '**/*.toml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check TOML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Tombi
+        uses: ./.github/actions/setup-tombi
+
+      - name: Check formatting of tracked TOML files
+        run: git ls-files -z '*.toml' | xargs -0 -r tombi format --check
+
+      - name: Lint tracked TOML files
+        run: git ls-files -z '*.toml' | xargs -0 -r tombi lint --error-on-warnings

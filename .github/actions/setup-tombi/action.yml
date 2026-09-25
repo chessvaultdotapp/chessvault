@@ -1,0 +1,17 @@
+name: Setup Tombi
+description: Install official Tombi prebuilt binaries on Linux, Windows, and macOS
+
+inputs:
+  version:
+    description: Exact Tombi release version, without the v prefix
+    default: '1.5.5'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install Tombi
+      shell: bash
+      env:
+        TOMBI_VERSION: ${{ inputs.version }}
+        SETUP_TOMBI_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_TOMBI_ACTION_PATH/install.sh"

@@ -188,6 +188,34 @@ Preserve our [`$` shell-prompt convention](../reference.md#shell-commands) and
 include representative command output where applicable. Commands that are silent
 on success do not need invented output.
 
+## TOML checks
+
+Use [Tombi](getting-started.md#tombi) to check formatting and lint all tracked
+TOML files from the workspace root, including nested and hidden files:
+
+```console
+$ git ls-files -z '*.toml' | xargs -0 -r tombi format --check
+9 files did not need formatting
+$ git ls-files -z '*.toml' | xargs -0 -r tombi lint --error-on-warnings
+9 files linted successfully
+```
+
+Pass individual paths to check new files before they are tracked. To apply
+formatting, run `tombi format` with the paths you want to update. The shared
+[configuration](../../tombi.toml) uses a 120-character line width and four-space
+indentation. Lint warnings fail the check as well as errors.
+
+The [TOML workflow](../../.github/workflows/toml.yml) mirrors the Markdown
+workflow: pushes and pull requests changing `*.toml` files trigger checks of
+all tracked TOML files. Workflow-only or installer-only changes do not trigger
+it; run checks locally when changing those files.
+
+The local [`setup-tombi` action](../../.github/actions/setup-tombi/action.yml)
+downloads official binaries from [Tombi GitHub Releases](https://github.com/tombi-toml/tombi/releases).
+It defaults to version `1.5.5`; its optional `version` input accepts an exact
+release version without the `v` prefix. It supports Linux, macOS, and Windows
+on x64 and ARM64, using Bash (Git Bash on Windows).
+
 ## Desktop interaction checks
 
 Automated tests do not replace launching the app for visible desktop changes:
