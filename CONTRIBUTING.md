@@ -60,6 +60,13 @@ workflows can use it with:
 The optional `version` input defaults to `latest` and also accepts a release
 series such as `0.9` or an exact release version.
 
+The Markdown workflow uses `.github/actions/setup-rumdl` to download an official
+rumdl release binary from GitHub Releases, following the
+[upstream binary installation guide](https://rumdl.dev/getting-started/installation/#download-binary).
+The action defaults to version `0.2.75`; its optional `version` input accepts an
+exact release version without the `v` prefix. It supports Linux and macOS on x64
+and ARM64, and Windows on x64, using Bash (Git Bash on Windows).
+
 CI caches Cargo registry downloads, Git dependency data, and `target` build
 artifacts. Cache keys include the runner OS and architecture, pinned toolchain,
 manifests, lockfile, and commit. Restore prefixes reuse compatible caches from

@@ -1,0 +1,17 @@
+name: Setup rumdl
+description: Install official rumdl prebuilt binaries on Linux, Windows, and macOS
+
+inputs:
+  version:
+    description: Exact rumdl release version, without the v prefix
+    default: '0.2.75'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install rumdl
+      shell: bash
+      env:
+        RUMDL_VERSION: ${{ inputs.version }}
+        SETUP_RUMDL_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_RUMDL_ACTION_PATH/install.sh"
