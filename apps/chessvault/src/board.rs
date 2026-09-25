@@ -69,21 +69,16 @@ pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
                         text(file_label).size(label_size).color(foreground),
                     ],
                 ];
-                let square = Square::try_from((rank * 8 + file) as u8)
-                    .expect("board coordinates are valid squares");
+                let square = Square::try_from((rank * 8 + file) as u8).expect("board coordinates are valid squares");
                 let mut layers = stack![];
                 if let Some(handle) = position
                     .piece_at(square)
                     .and_then(|(piece, side)| piece_handle(piece, side))
                 {
                     layers = layers.push(
-                        container(
-                            svg(handle)
-                                .width(square_size * 0.8)
-                                .height(square_size * 0.8),
-                        )
-                        .center_x(Fill)
-                        .center_y(Fill),
+                        container(svg(handle).width(square_size * 0.8).height(square_size * 0.8))
+                            .center_x(Fill)
+                            .center_y(Fill),
                     );
                 }
                 layers = layers.push(container(labels).padding(padding).width(Fill).height(Fill));

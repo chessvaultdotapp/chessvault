@@ -49,9 +49,7 @@ impl Logs {
         let terminal = tracing_subscriber::fmt::writer::BoxMakeWriter::new(io::sink);
 
         tracing_subscriber::fmt()
-            .with_env_filter(
-                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-            )
+            .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
             .with_ansi(false)
             .event_format(LogFormatter(logs.clone()))
             .with_writer(terminal)
@@ -111,11 +109,9 @@ where
         event: &tracing::Event<'_>,
     ) -> std::fmt::Result {
         let mut text = String::new();
-        format::format().with_ansi(false).format_event(
-            ctx,
-            format::Writer::new(&mut text),
-            event,
-        )?;
+        format::format()
+            .with_ansi(false)
+            .format_event(ctx, format::Writer::new(&mut text), event)?;
 
         // Bridged records store the original target in event fields; their
         // static tracing metadata only reports "log".
@@ -213,10 +209,7 @@ mod tests {
     #[case::iced_winit("iced_winit::window", "iced_winit")]
     #[case::iced_wgpu("iced_wgpu", "iced_wgpu")]
     #[case::calloop("calloop", "calloop")]
-    fn bridged_logs_follow_the_original_source_when_log_is_disabled(
-        #[case] target: &str,
-        #[case] source: &str,
-    ) {
+    fn bridged_logs_follow_the_original_source_when_log_is_disabled(#[case] target: &str, #[case] source: &str) {
         let logs = Logs::default();
         let subscriber = tracing_subscriber::fmt()
             .event_format(LogFormatter(logs.clone()))

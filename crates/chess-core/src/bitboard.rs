@@ -68,8 +68,8 @@ impl Bitboard {
 
     /// Sets a square's bit, preserving all other bits; rejects `Square::None`.
     pub(crate) fn set(&mut self, square: Square) -> Result<()> {
-        *self |= Bitboard::try_from(square)
-            .with_context(|| format!("Failed to convert square {square} to bitboard"))?;
+        *self |=
+            Bitboard::try_from(square).with_context(|| format!("Failed to convert square {square} to bitboard"))?;
         Ok(())
     }
 }
@@ -152,16 +152,15 @@ mod tests {
     #[rstest]
     fn bitboard_converts_every_square_to_its_bit(
         #[values(
-            Square::A1, Square::B1, Square::C1, Square::D1, Square::E1, Square::F1, Square::G1,
-            Square::H1, Square::A2, Square::B2, Square::C2, Square::D2, Square::E2, Square::F2,
-            Square::G2, Square::H2, Square::A3, Square::B3, Square::C3, Square::D3, Square::E3,
-            Square::F3, Square::G3, Square::H3, Square::A4, Square::B4, Square::C4, Square::D4,
-            Square::E4, Square::F4, Square::G4, Square::H4, Square::A5, Square::B5, Square::C5,
-            Square::D5, Square::E5, Square::F5, Square::G5, Square::H5, Square::A6, Square::B6,
-            Square::C6, Square::D6, Square::E6, Square::F6, Square::G6, Square::H6, Square::A7,
-            Square::B7, Square::C7, Square::D7, Square::E7, Square::F7, Square::G7, Square::H7,
-            Square::A8, Square::B8, Square::C8, Square::D8, Square::E8, Square::F8, Square::G8,
-            Square::H8
+            #[rustfmt::skip]
+            Square::A1, Square::B1, Square::C1, Square::D1, Square::E1, Square::F1, Square::G1, Square::H1,
+            Square::A2, Square::B2, Square::C2, Square::D2, Square::E2, Square::F2, Square::G2, Square::H2,
+            Square::A3, Square::B3, Square::C3, Square::D3, Square::E3, Square::F3, Square::G3, Square::H3,
+            Square::A4, Square::B4, Square::C4, Square::D4, Square::E4, Square::F4, Square::G4, Square::H4,
+            Square::A5, Square::B5, Square::C5, Square::D5, Square::E5, Square::F5, Square::G5, Square::H5,
+            Square::A6, Square::B6, Square::C6, Square::D6, Square::E6, Square::F6, Square::G6, Square::H6,
+            Square::A7, Square::B7, Square::C7, Square::D7, Square::E7, Square::F7, Square::G7, Square::H7,
+            Square::A8, Square::B8, Square::C8, Square::D8, Square::E8, Square::F8, Square::G8, Square::H8,
         )]
         square: Square,
     ) {
@@ -189,10 +188,7 @@ mod tests {
         let error = board.set(Square::None).unwrap_err();
         assert_eq!(board, Bitboard(0b1010));
         assert_eq!(error.downcast_ref::<InvalidSquare>(), Some(&InvalidSquare));
-        assert_eq!(
-            error.to_string(),
-            "Failed to convert square None to bitboard"
-        );
+        assert_eq!(error.to_string(), "Failed to convert square None to bitboard");
     }
 
     #[test]
@@ -225,9 +221,9 @@ mod tests {
     #[rstest]
     fn bitboard_preserves_each_square_bit(
         #[values(
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
-            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+            29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+            56, 57, 58, 59, 60, 61, 62, 63
         )]
         square: u32,
     ) {
@@ -247,9 +243,9 @@ mod tests {
     #[rstest]
     fn bitboard_equality_compares_all_square_bits(
         #[values(
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
-            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+            29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+            56, 57, 58, 59, 60, 61, 62, 63
         )]
         square: u32,
     ) {

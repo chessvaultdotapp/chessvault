@@ -140,10 +140,7 @@ mod tests {
                 7 => Some((back_rank[index as usize % 8], Side::Black)),
                 _ => None,
             };
-            assert_eq!(
-                position.piece_at(Square::try_from(index).unwrap()),
-                expected
-            );
+            assert_eq!(position.piece_at(Square::try_from(index).unwrap()), expected);
         }
         assert_eq!(position.piece_at(Square::None), None);
     }
@@ -160,23 +157,13 @@ mod tests {
 
     #[rstest]
     fn square_lookup_reads_occupancy_instead_of_starting_layout(
-        #[values(
-            Piece::Pawn,
-            Piece::Knight,
-            Piece::Bishop,
-            Piece::Rook,
-            Piece::Queen,
-            Piece::King
-        )]
-        piece: Piece,
+        #[values(Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King)] piece: Piece,
         #[values(Side::White, Side::Black)] side: Side,
     ) {
         for occupied_index in 0_u8..64 {
             let occupied_square = Square::try_from(occupied_index).unwrap();
             let mut position = Position::empty();
-            position.pieces[piece as usize]
-                .set(occupied_square)
-                .unwrap();
+            position.pieces[piece as usize].set(occupied_square).unwrap();
             position.sides[side as usize].set(occupied_square).unwrap();
             for query_index in 0_u8..64 {
                 let square = Square::try_from(query_index).unwrap();

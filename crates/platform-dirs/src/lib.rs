@@ -2,10 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-#[cfg(all(
-    target_os = "linux",
-    any(not(all(debug_assertions, feature = "development")), test)
-))]
+#[cfg(all(target_os = "linux", any(not(all(debug_assertions, feature = "development")), test)))]
 mod linux;
 
 /// Returns the user state directory.
@@ -25,25 +22,17 @@ pub fn user_state_dir() -> Result<PathBuf> {
         use anyhow::Context;
 
         Ok(std::env::current_dir()
-            .context(
-                "Cannot resolve user state directory: current working directory is unavailable",
-            )?
+            .context("Cannot resolve user state directory: current working directory is unavailable")?
             .join(".local")
             .join("state"))
     }
 
-    #[cfg(all(
-        not(all(debug_assertions, feature = "development")),
-        target_os = "linux"
-    ))]
+    #[cfg(all(not(all(debug_assertions, feature = "development")), target_os = "linux"))]
     {
         linux::user_state_dir()
     }
 
-    #[cfg(all(
-        not(all(debug_assertions, feature = "development")),
-        not(target_os = "linux")
-    ))]
+    #[cfg(all(not(all(debug_assertions, feature = "development")), not(target_os = "linux")))]
     {
         anyhow::bail!("User state directory is unsupported on this platform")
     }

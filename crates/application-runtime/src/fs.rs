@@ -47,9 +47,7 @@ mod tests {
 
         assert_eq!(
             path,
-            PathBuf::from(OsString::from_vec(
-                b"/srv/user-\xff/state/chessvault".to_vec()
-            ))
+            PathBuf::from(OsString::from_vec(b"/srv/user-\xff/state/chessvault".to_vec()))
         );
     }
 }

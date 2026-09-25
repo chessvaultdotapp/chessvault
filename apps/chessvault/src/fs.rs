@@ -29,10 +29,7 @@ mod tests {
         let source = std::io::Error::new(std::io::ErrorKind::NotFound, "no state directory");
         let error = resolve_window_recreate_info_filepath(Err(source.into())).unwrap_err();
 
-        assert_eq!(
-            error.to_string(),
-            "Failed to resolve application state directory"
-        );
+        assert_eq!(error.to_string(), "Failed to resolve application state directory");
         let source = error.downcast_ref::<std::io::Error>().unwrap();
         assert_eq!(source.kind(), std::io::ErrorKind::NotFound);
         assert_eq!(source.to_string(), "no state directory");
@@ -44,16 +41,12 @@ mod tests {
         use std::ffi::OsString;
         use std::os::unix::ffi::OsStringExt;
 
-        let state_dir = PathBuf::from(OsString::from_vec(
-            b"/srv/user-\xff/state/chessvault".to_vec(),
-        ));
+        let state_dir = PathBuf::from(OsString::from_vec(b"/srv/user-\xff/state/chessvault".to_vec()));
         let path = resolve_window_recreate_info_filepath(Ok(state_dir)).unwrap();
 
         assert_eq!(
             path,
-            PathBuf::from(OsString::from_vec(
-                b"/srv/user-\xff/state/chessvault/recreate".to_vec()
-            ))
+            PathBuf::from(OsString::from_vec(b"/srv/user-\xff/state/chessvault/recreate".to_vec()))
         );
     }
 }

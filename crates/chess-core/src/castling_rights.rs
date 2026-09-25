@@ -26,10 +26,7 @@ mod tests {
     #[case::black_kingside(CastlingRights::BlackKingside, 4)]
     #[case::black_queenside(CastlingRights::BlackQueenside, 8)]
     #[case::all(CastlingRights::All, 15)]
-    fn castling_rights_variants_have_expected_values(
-        #[case] variant: CastlingRights,
-        #[case] expected: u8,
-    ) {
+    fn castling_rights_variants_have_expected_values(#[case] variant: CastlingRights, #[case] expected: u8) {
         assert_eq!(variant as u8, expected);
     }
 

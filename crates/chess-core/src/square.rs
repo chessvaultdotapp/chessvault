@@ -125,10 +125,7 @@ mod tests {
     #[test]
     fn square_converts_every_valid_index() {
         for index in 0_u8..64 {
-            assert_eq!(
-                Square::try_from(index).map(|square| square as u8),
-                Ok(index)
-            );
+            assert_eq!(Square::try_from(index).map(|square| square as u8), Ok(index));
         }
     }
 

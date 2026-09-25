@@ -58,8 +58,7 @@ struct WindowRecreateInfo {
 
 impl WindowRecreateInfo {
     fn load() -> Result<Option<Self>> {
-        let path = fs::window_recreate_info_filepath()
-            .context("Failed to resolve window recreate info filepath")?;
+        let path = fs::window_recreate_info_filepath().context("Failed to resolve window recreate info filepath")?;
 
         let json = match std::fs::read_to_string(&path) {
             Ok(json) => json,
@@ -70,41 +69,29 @@ impl WindowRecreateInfo {
         };
 
         Self::from_json(&json)
-            .with_context(|| {
-                format!(
-                    "Failed to load window recreate info from {}",
-                    path.display()
-                )
-            })
+            .with_context(|| format!("Failed to load window recreate info from {}", path.display()))
             .map(Some)
     }
 
     fn from_json(json: &str) -> Result<Self> {
-        let info: Self =
-            serde_json::from_str(json).context("Failed to deserialize window recreate info")?;
+        let info: Self = serde_json::from_str(json).context("Failed to deserialize window recreate info")?;
         anyhow::ensure!(
-            info.width.is_finite()
-                && info.height.is_finite()
-                && info.width > 0.0
-                && info.height > 0.0,
+            info.width.is_finite() && info.height.is_finite() && info.width > 0.0 && info.height > 0.0,
             "Saved window dimensions must be finite and positive"
         );
         Ok(info)
     }
 
     fn save(&self) -> Result<()> {
-        let path = fs::window_recreate_info_filepath()
-            .context("Failed to resolve window recreate info filepath")?;
+        let path = fs::window_recreate_info_filepath().context("Failed to resolve window recreate info filepath")?;
 
-        let json =
-            serde_json::to_string(self).context("Failed to serialize window recreate info")?;
+        let json = serde_json::to_string(self).context("Failed to serialize window recreate info")?;
 
-        let mut file = std::fs::File::create(&path)
-            .with_context(|| format!("Failed to create or truncate {}", path.display()))?;
+        let mut file =
+            std::fs::File::create(&path).with_context(|| format!("Failed to create or truncate {}", path.display()))?;
 
-        file.write_all(json.as_bytes()).with_context(|| {
-            format!("Failed to write window recreate info to {}", path.display())
-        })?;
+        file.write_all(json.as_bytes())
+            .with_context(|| format!("Failed to write window recreate info to {}", path.display()))?;
 
         Ok(())
     }
@@ -125,8 +112,7 @@ mod window_recreate_tests {
 
     #[test]
     fn saved_dimensions_round_trip() {
-        let json =
-            serde_json::to_string(&WindowRecreateInfo::from(Size::new(820.5, 620.0))).unwrap();
+        let json = serde_json::to_string(&WindowRecreateInfo::from(Size::new(820.5, 620.0))).unwrap();
         let info = WindowRecreateInfo::from_json(&json).unwrap();
         assert_eq!(info.width, 820.5);
         assert_eq!(info.height, 620.0);
@@ -185,15 +171,10 @@ impl ChessVault {
     }
 
     fn initialize(&mut self) -> Result<()> {
-        match application_runtime::fs::application_state_dir()
-            .context("Failed to resolve application state directory")
+        match application_runtime::fs::application_state_dir().context("Failed to resolve application state directory")
         {
-            Ok(path) => std::fs::create_dir_all(&path).with_context(|| {
-                format!(
-                    "Failed to create application state directory: {}",
-                    path.display()
-                )
-            }),
+            Ok(path) => std::fs::create_dir_all(&path)
+                .with_context(|| format!("Failed to create application state directory: {}", path.display())),
             Err(err) => Err(err),
         }
     }
@@ -289,12 +270,7 @@ impl ChessVault {
         let header = row![
             text("Developer console").size(18),
             Space::new().width(Fill),
-            button(if self.sources_open {
-                "Hide sources"
-            } else {
-                "Sources"
-            })
-            .on_press(Message::ToggleSources),
+            button(if self.sources_open { "Hide sources" } else { "Sources" }).on_press(Message::ToggleSources),
             button("Copy all").on_press(Message::CopyLogs),
             button("Clear").on_press(Message::ClearLogs),
             button("Close (F12)").on_press(Message::ToggleConsole),
@@ -313,10 +289,11 @@ impl ChessVault {
         if self.sources_open {
             let mut sources = column![text("Log sources").size(16)].spacing(8);
             for (source, enabled) in self.logs.sources() {
-                sources =
-                    sources.push(checkbox(enabled).label(source.clone()).on_toggle(
-                        move |enabled| Message::SetSourceEnabled(source.clone(), enabled),
-                    ));
+                sources = sources.push(
+                    checkbox(enabled)
+                        .label(source.clone())
+                        .on_toggle(move |enabled| Message::SetSourceEnabled(source.clone(), enabled)),
+                );
             }
             body = body.push(scrollable(sources).width(200).height(Fill));
         }

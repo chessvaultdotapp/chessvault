@@ -8,10 +8,7 @@ pub(crate) fn user_state_dir() -> Result<PathBuf> {
     resolve_user_state_dir(std::env::var_os("XDG_STATE_HOME"), std::env::home_dir)
 }
 
-fn resolve_user_state_dir(
-    xdg_state_home: Option<OsString>,
-    home: impl FnOnce() -> Option<PathBuf>,
-) -> Result<PathBuf> {
+fn resolve_user_state_dir(xdg_state_home: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
     match xdg_state_home.map(PathBuf::from) {
         Some(path) if path.is_absolute() => Ok(path),
         _ => {
@@ -44,10 +41,7 @@ mod tests {
     #[case::empty(Some(""))]
     #[case::relative(Some("relative/state"))]
     fn missing_or_invalid_xdg_state_home_falls_back_to_home(#[case] xdg: Option<&str>) {
-        let path = resolve_user_state_dir(xdg.map(OsString::from), || {
-            Some(PathBuf::from("/srv/users/alice"))
-        })
-        .unwrap();
+        let path = resolve_user_state_dir(xdg.map(OsString::from), || Some(PathBuf::from("/srv/users/alice"))).unwrap();
 
         assert_eq!(path, PathBuf::from("/srv/users/alice/.local/state"));
     }
@@ -57,8 +51,7 @@ mod tests {
         #[values(None, Some(""), Some("relative/state"))] xdg: Option<&str>,
         #[values(None, Some(""), Some("relative/home"))] home: Option<&str>,
     ) {
-        let error = resolve_user_state_dir(xdg.map(OsString::from), || home.map(PathBuf::from))
-            .unwrap_err();
+        let error = resolve_user_state_dir(xdg.map(OsString::from), || home.map(PathBuf::from)).unwrap_err();
 
         assert!(
             error
@@ -75,11 +68,10 @@ mod tests {
         #[case] home: Option<&[u8]>,
         #[case] expected: &[u8],
     ) {
-        let path =
-            resolve_user_state_dir(xdg.map(|bytes| OsString::from_vec(bytes.to_vec())), || {
-                home.map(|bytes| PathBuf::from(OsString::from_vec(bytes.to_vec())))
-            })
-            .unwrap();
+        let path = resolve_user_state_dir(xdg.map(|bytes| OsString::from_vec(bytes.to_vec())), || {
+            home.map(|bytes| PathBuf::from(OsString::from_vec(bytes.to_vec())))
+        })
+        .unwrap();
 
         assert_eq!(path, PathBuf::from(OsString::from_vec(expected.to_vec())));
     }
