@@ -16,3 +16,7 @@ trim_trailing_whitespace = false
 [*.{rs,toml}]
 indent_size = 4
 tab_width = 4
+
+[justfile]
+indent_size = 4
+tab_width = 4
