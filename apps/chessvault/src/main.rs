@@ -10,7 +10,7 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
-use chess_core::Position;
+use chess_core::{Position, Square};
 
 mod board;
 mod fs;
@@ -48,6 +48,7 @@ struct ChessVault {
     log_content: text_editor::Content,
     sources_open: bool,
     position: Position,
+    selected_square: Option<Square>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -141,6 +142,7 @@ mod window_recreate_tests {
 
 #[derive(Debug, Clone)]
 enum Message {
+    SelectSquare(Square),
     ToggleConsole,
     ClearLogs,
     RefreshLogs,
@@ -160,6 +162,7 @@ impl ChessVault {
             log_content: text_editor::Content::new(),
             sources_open: false,
             position: Position::standard(),
+            selected_square: None,
         };
 
         if let Err(err) = app.initialize() {
@@ -181,6 +184,9 @@ impl ChessVault {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::SelectSquare(square) => {
+                self.selected_square = board::select(&self.position, self.selected_square, square);
+            }
             Message::ToggleConsole => {
                 self.console_open = !self.console_open;
                 debug!(open = self.console_open, "Developer console toggled");
@@ -257,7 +263,7 @@ impl ChessVault {
 
     fn view(&self) -> Element<'_, Message> {
         let content = column![
-            container(board::view(&self.position))
+            container(board::view(&self.position, self.selected_square, Message::SelectSquare))
                 .padding(24)
                 .width(Fill)
                 .height(Fill)

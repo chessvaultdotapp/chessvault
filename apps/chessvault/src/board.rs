@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use chess_core::{Piece, Position, Side, Square};
-use iced::widget::{Space, column, container, responsive, row, stack, svg, text};
+use iced::widget::{Space, column, container, mouse_area, responsive, row, stack, svg, text};
 use iced::{Color, Element, Fill};
 
 const LIGHT: Color = Color::from_rgb8(230, 230, 230);
@@ -35,7 +35,15 @@ fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
     PIECES.get(side as usize)?.get(piece as usize).cloned()
 }
 
-pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
+pub fn select(position: &Position, selected: Option<Square>, square: Square) -> Option<Square> {
+    (selected.map(|s| s as u8) != Some(square as u8) && position.piece_at(square).is_some()).then_some(square)
+}
+
+pub fn view<'a, Message: Clone + 'a>(
+    position: &'a Position,
+    selected: Option<Square>,
+    on_select: impl Fn(Square) -> Message + 'a,
+) -> Element<'a, Message> {
     responsive(move |size| {
         let side = size.width.min(size.height);
         let square_size = side / 8.0;
@@ -48,7 +56,14 @@ pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
             for file in 0..8 {
                 // a1 is dark; White's home rank is at the bottom.
                 let is_light = (rank + file) % 2 != 0;
-                let background = if is_light { LIGHT } else { DARK };
+                let square = Square::try_from((rank * 8 + file) as u8).expect("board coordinates are valid squares");
+                let background = if selected.map(|s| s as u8) == Some(square as u8) {
+                    Color::from_rgb8(155, 176, 130)
+                } else if is_light {
+                    LIGHT
+                } else {
+                    DARK
+                };
                 let foreground = if is_light { DARK } else { LIGHT };
                 let rank_label = if file == 0 {
                     (rank + 1).to_string()
@@ -69,7 +84,6 @@ pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
                         text(file_label).size(label_size).color(foreground),
                     ],
                 ];
-                let square = Square::try_from((rank * 8 + file) as u8).expect("board coordinates are valid squares");
                 let mut layers = stack![];
                 if let Some(handle) = position
                     .piece_at(square)
@@ -83,10 +97,13 @@ pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
                 }
                 layers = layers.push(container(labels).padding(padding).width(Fill).height(Fill));
                 squares = squares.push(
-                    container(layers)
-                        .width(square_size)
-                        .height(square_size)
-                        .style(move |_| container::Style::default().background(background)),
+                    mouse_area(
+                        container(layers)
+                            .width(square_size)
+                            .height(square_size)
+                            .style(move |_| container::Style::default().background(background)),
+                    )
+                    .on_press(on_select(square)),
                 );
             }
             board = board.push(squares);
@@ -95,4 +112,21 @@ pub fn view<'a, Message: 'a>(position: &'a Position) -> Element<'a, Message> {
         container(board).center_x(Fill).center_y(Fill).into()
     })
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_requires_a_piece_and_can_switch_or_clear() {
+        let position = Position::standard();
+        let selected = select(&position, None, Square::E2);
+        assert_eq!(selected.map(|s| s as u8), Some(Square::E2 as u8));
+        let switched = select(&position, selected, Square::D7);
+        assert_eq!(switched.map(|s| s as u8), Some(Square::D7 as u8));
+        assert!(select(&position, switched, Square::D7).is_none());
+        assert!(select(&position, selected, Square::E4).is_none());
+        assert!(select(&position, None, Square::E4).is_none());
+    }
 }
