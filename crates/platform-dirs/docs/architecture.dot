@@ -1,0 +1,20 @@
+digraph architecture {
+    graph [bgcolor="transparent", pad="0.2"];
+    node [shape=plain, fontname="sans-serif"];
+
+    package [label=<
+        <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14" COLOR="#475569" BGCOLOR="#ffffff">
+            <TR><TD COLSPAN="3" BGCOLOR="#dbeafe"><B>platform-dirs</B></TD></TR>
+            <TR><TD COLSPAN="3">Public API: user_state_dir()</TD></TR>
+            <TR>
+                <TD BGCOLOR="#f1f5f9"><B>Development override</B><BR/>Debug assertions +<BR/>development feature</TD>
+                <TD COLSPAN="2" BGCOLOR="#f1f5f9"><B>Native platform resolution</B><BR/>Otherwise</TD>
+            </TR>
+            <TR>
+                <TD><B>All platforms</B><BR/><BR/>Working directory<BR/>+ .local/state</TD>
+                <TD><B>Linux</B><BR/><BR/>XDG state directory<BR/>or home fallback</TD>
+                <TD><B>Other OSes</B><BR/><BR/>Unsupported error</TD>
+            </TR>
+        </TABLE>
+    >];
+}
