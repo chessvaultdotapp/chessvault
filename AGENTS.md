@@ -13,8 +13,8 @@
 ## Commands and toolchain
 
 - Run Cargo commands from the workspace root with the Rust **1.98.0** toolchain pinned in `rust-toolchain.toml`.
-- Launch the desktop GUI: `cargo run -p chessvault --locked`.
-- Local and CI checks run in order, stopping on failure:
+- Launch the desktop GUI: `just run` or `cargo run -p chessvault --locked`; `just run-debug` enables app debug logs.
+- `just check` runs the local/CI sequence below, stopping on failure:
 
   ```sh
   cargo build --workspace --all-targets --locked
@@ -26,28 +26,34 @@
 
 - Nextest excludes doctests. Install with `cargo install cargo-nextest --locked`; if unavailable, replace both test
   steps with `cargo test --workspace --locked`. CI installs via `.github/actions/setup-nextest`.
-- Focus build/test/clippy by replacing `--workspace` with `-p chessvault`, `-p chess-core`, `-p application-runtime`, or
-  `-p platform-dirs`; keep formatting workspace-wide. Use workspace checks for shared configuration, cross-package
-  changes, or APIs affecting consumers.
+- Focus checks with `just check-package <package>` (`chessvault`, `chess-core`, `application-runtime`, `platform-dirs`).
+  It keeps formatting workspace-wide and skips doctests for the binary-only desktop. Use workspace checks for shared
+  configuration, cross-package changes, or APIs affecting consumers.
 - Single GUI test:
   `cargo test -p chessvault --bin chessvault --locked window_recreate_tests::saved_dimensions_round_trip -- --exact`.
 - Single library test: `cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact`. For
   parameterized `rstest` tests, omit `--exact` to select all generated cases by function name.
+- Markdown: `rumdl check <changed-files>` (120-column limit). TOML: `tombi format --check <changed-files>`, then
+  `tombi lint --error-on-warnings <changed-files>`. CI checks all tracked files of each type; see the testing guide.
+  Workflow-only edits do not trigger these workflows or Rust CI; run relevant checks locally.
+- SVG optimization: install dependencies with `pnpm install --frozen-lockfile` in `apps/chessvault`, then run
+  `just optimize-assets` from the root. Node/pnpm tooling is for artwork, not the desktop runtime.
 
 ## Package boundaries
 
 - Four packages: the binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; the
   runtime depends on `crates/platform-dirs`. `CONTRIBUTING.md`'s workspace section is stale (including its claim that
   desktop does not depend on core); trust manifests.
-- `crates/chess-core/src/lib.rs` keeps modules private and re-exports `Piece`, `Position`, `Side`, `Square`, and
-  `InvalidSquareIndex`; bitboards and castling rights remain internal. Tests live beside implementations.
+- `crates/chess-core/src/lib.rs` exposes types through re-exports (including `Move`); bitboards and castling rights
+  remain internal. Tests live beside implementations.
 - Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their discriminants;
   castling rights are OR-combinable `u8` masks.
 - `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are never valid array
   indices. Squares are rank-major (`A1 = 0`, `H8 = 63`); `Square::None` is not a valid bit index.
-- Use `Bitboard::empty()` for zero-bit construction (`Default` delegates to it). Crate-private `Position::empty()`
-  zeroes boards, rights, and counts, with `Side::Empty` to move; public `Position::standard()` sets up the starting
-  position. `Position` has no `Default`.
+- `Position::standard()` is the public constructor; `Position::empty()` is crate-private and there is no `Default`.
+- `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
+  mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
+  all four promotions; desktop `board::click` currently chooses a queen.
 
 ## State paths
 
@@ -57,9 +63,8 @@
 - Linux accepts only absolute `XDG_STATE_HOME`, falling back to an absolute home directory plus `.local/state`. Preserve
   non-Unicode paths; resolver tests inject environment values and home lookup instead of mutating process-wide
   environment. Linux tests use `linux::tests::` and are Linux-only.
-- Path-policy changes also require the `-p platform-dirs` check sequence with `--no-default-features` on
-  build/test/clippy; see `docs/development/testing.md#platform-and-feature-variants`. Default debug checks alone do not
-  exercise native resolution through the public entrypoint.
+- Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
+  `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
 - `application_runtime::fs::application_state_dir()` appends `chessvault`; desktop initialization creates the directory.
   Window dimensions are JSON in `recreate` (no extension), normally `.local/state/chessvault/recreate` in development.
 
@@ -67,8 +72,8 @@
 
 - `apps/chessvault/src/main.rs` uses Iced **0.14**'s `iced::application` builder with
   `ChessVault::{update, view, subscription}`. Follow this API rather than older Iced `Application` trait examples.
-- `ChessVault` owns a `Position::standard()`; `board.rs` renders via `Position::piece_at`. Piece SVGs are embedded with
-  `include_bytes!` and cached in `LazyLock` handles; preserve working-directory-independent rendering and handle reuse.
+- `ChessVault` owns the position and selection; `board.rs` handles clicks and legal-destination hints via core APIs.
+  Piece SVGs use `include_bytes!` and cached `LazyLock` handles; preserve directory-independent rendering and handle reuse.
 - `.exit_on_close_request(false)` lets the close subscription query and save window size before `window::close`. Restore
   failures use defaults; save failures still close the window.
 - Iced's `tokio` feature enables the console's timer subscription. **F12** opens the developer console; its 250 ms
