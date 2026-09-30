@@ -38,7 +38,7 @@ run-debug:
 optimize-assets:
     @command -v node >/dev/null 2>&1 || { echo "Node.js is required: https://nodejs.org/en/download" >&2; exit 1; }
     @command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required: https://pnpm.io/installation" >&2; exit 1; }
-    cd apps/chessvault && pnpm exec svgo --folder assets --recursive
+    pnpm exec svgo --folder apps/chessvault/assets --recursive
 
 # Apply workspace-wide Rust formatting.
 fmt:

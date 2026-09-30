@@ -58,8 +58,8 @@ attribution and licensing.
 
 Use the optional [Node.js, pnpm, and SVGO tooling](../development/getting-started.md#nodejs-pnpm-and-svgo)
 when adding or changing piece artwork. SVGO is declared in
-[`package.json`](../../apps/chessvault/package.json), with dependency versions
-recorded in [`pnpm-lock.yaml`](../../apps/chessvault/pnpm-lock.yaml). It is not
+the root [`package.json`](../../package.json), with dependency versions
+recorded in [`pnpm-lock.yaml`](../../pnpm-lock.yaml). It is not
 invoked automatically by Cargo or CI.
 
 From the workspace root, optimize a changed SVG (here, the white pawn). The
@@ -67,16 +67,14 @@ following output examples are abbreviated; timings, sizes, and build messages
 vary. An already optimized SVG may show no size reduction or diff.
 
 ```console
-$ cd apps/chessvault
 $ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
 Already up to date
 ...
-$ pnpm exec svgo --input assets/rhosgfx-outline/wP.svg --output assets/rhosgfx-outline/wP.svg
+$ pnpm exec svgo --input apps/chessvault/assets/rhosgfx-outline/wP.svg --output apps/chessvault/assets/rhosgfx-outline/wP.svg
 wP.svg:
 Done in 23 ms!
 1.282 KiB - 0% = 1.282 KiB
-$ cd ../..
 $ git diff -- apps/chessvault/assets/rhosgfx-outline/wP.svg
 ```
 

@@ -1,4 +1,5 @@
 {
+  "private": true,
   "devDependencies": {
     "svgo": "^4.1.0"
   }

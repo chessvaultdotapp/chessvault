@@ -36,8 +36,8 @@
 - Markdown: `rumdl check <changed-files>` (120-column limit). TOML: `tombi format --check <changed-files>`, then
   `tombi lint --error-on-warnings <changed-files>`. CI checks all tracked files of each type; see the testing guide.
   Workflow-only edits do not trigger these workflows or Rust CI; run relevant checks locally.
-- SVG optimization: install dependencies with `pnpm install --frozen-lockfile` in `apps/chessvault`, then run
-  `just optimize-assets` from the root. Node/pnpm tooling is for artwork, not the desktop runtime.
+- SVG optimization: install dependencies with `pnpm install --frozen-lockfile` at the workspace root, then run
+  `just optimize-assets` from the root. Node/pnpm tooling is shared by artwork and documentation, not the desktop runtime.
 
 ## Package boundaries
 

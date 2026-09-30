@@ -29,8 +29,8 @@ Run these tasks from `crates/platform-dirs` using the crate's [justfile](../just
 - `just check`: run the workspace-defined checks for this package.
 - `just check-native`: check with default features disabled.
 - `just diagram`: regenerate the architecture SVG with Graphviz and optimize it
-  with SVGO. Requires Graphviz, Node.js, pnpm, and the artwork dependencies
-  installed with `pnpm install --frozen-lockfile` in `apps/chessvault`.
+  with SVGO. Requires Graphviz, Node.js, pnpm, and the shared tooling dependencies
+  installed with `pnpm install --frozen-lockfile` at the workspace root.
 
 Rust commands are delegated to the workspace root. Both check tasks require
 cargo-nextest.

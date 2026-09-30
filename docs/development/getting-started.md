@@ -111,7 +111,7 @@ review the diff and follow the [visual verification workflow](../components/desk
 
 ### Node.js, pnpm, and SVGO
 
-These tools are only needed when optimizing the desktop app's SVG artwork.
+These tools are only needed when optimizing SVG artwork or documentation diagrams.
 They are not required to build, test, or run Chessvault: Cargo embeds the
 existing SVG files directly.
 
@@ -120,7 +120,7 @@ existing SVG files directly.
 - [pnpm](https://pnpm.io/installation) manages the asset-tooling dependencies.
   Follow its installation instructions for your Node.js version.
 - [SVGO](https://svgo.dev/) optimizes SVG files. It is a local development
-  dependency in `apps/chessvault/package.json`, not a global installation.
+  dependency in the root `package.json`, not a global installation.
 
 Verify Node.js and pnpm:
 
@@ -135,14 +135,12 @@ After cloning the repository, install the locked dependencies from the workspace
 root:
 
 ```console
-$ cd apps/chessvault
 $ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
 ...
 $ pnpm exec svgo --help
 Usage: svgo [options] [INPUT...]
 ...
-$ cd ../..
 ```
 
 The committed `pnpm-lock.yaml` keeps dependency resolution reproducible. SVGO

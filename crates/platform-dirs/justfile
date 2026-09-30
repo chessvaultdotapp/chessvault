@@ -10,7 +10,7 @@ check:
 check-native:
     just --justfile ../../justfile check-platform-native
 
-# Regenerate and optimize the architecture SVG (requires Graphviz and desktop artwork dependencies).
+# Regenerate and optimize the architecture SVG (requires Graphviz and root pnpm dependencies).
 diagram:
     dot -Tsvg docs/architecture.dot -o docs/architecture.svg
-    cd ../../apps/chessvault && pnpm exec svgo --input ../../crates/platform-dirs/docs/architecture.svg --output ../../crates/platform-dirs/docs/architecture.svg
+    cd ../.. && pnpm exec svgo --input crates/platform-dirs/docs/architecture.svg --output crates/platform-dirs/docs/architecture.svg
