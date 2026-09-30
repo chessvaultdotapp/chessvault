@@ -1,0 +1,15 @@
+# List available tasks.
+default:
+    @just --list
+
+# Verify this package using the workspace check sequence.
+check:
+    just --justfile ../../justfile check-package platform-dirs
+
+# Verify native path resolution with the development feature disabled.
+check-native:
+    just --justfile ../../justfile check-platform-native
+
+# Regenerate the architecture SVG (requires Graphviz).
+diagram:
+    dot -Tsvg docs/architecture.dot -o docs/architecture.svg

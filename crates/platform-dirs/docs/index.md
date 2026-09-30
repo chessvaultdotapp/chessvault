@@ -22,6 +22,17 @@ beneath an absolute home directory. Other platforms return an error.
 Resolution preserves non-Unicode paths and does not check whether the directory
 exists or is writable.
 
+## Development tasks
+
+Run these tasks from `crates/platform-dirs` using the crate's [justfile](../justfile):
+
+- `just check`: run the workspace-defined checks for this package.
+- `just check-native`: check with default features disabled.
+- `just diagram`: regenerate the architecture SVG (requires Graphviz).
+
+Rust commands are delegated to the workspace root. Both check tasks require
+cargo-nextest.
+
 ## Further reading
 
 - [Architecture](architecture.md): boundaries, module structure, resolution flow,
