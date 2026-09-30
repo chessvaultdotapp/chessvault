@@ -2,14 +2,10 @@
 
 ![Public API, development override, and native platform support in platform-dirs](architecture.svg)
 
-The diagram is generated from [Graphviz source](architecture.dot). To regenerate
-it from the workspace root with Graphviz installed:
-
-<!-- rumdl-disable MD014 -->
-```console
-$ dot -Tsvg crates/platform-dirs/docs/architecture.dot -o crates/platform-dirs/docs/architecture.svg
-```
-<!-- rumdl-enable MD014 -->
+The diagram is generated from [Graphviz source](architecture.dot) and optimized
+with SVGO. Run `just diagram` from `crates/platform-dirs` to regenerate it, or
+`just --justfile crates/platform-dirs/justfile diagram` from the workspace root.
+See [Development tasks](index.md#development-tasks) for prerequisites.
 
 ## Responsibility and boundaries
 
