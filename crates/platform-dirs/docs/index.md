@@ -31,6 +31,10 @@ Run these tasks from `crates/platform-dirs` using the crate's [justfile](../just
 - `just diagram`: regenerate the architecture SVG with Graphviz and optimize it
   with SVGO. Requires Graphviz, Node.js, pnpm, and the shared tooling dependencies
   installed with `pnpm install --frozen-lockfile` at the workspace root.
+- `just diagram-generate`: generate the SVG without optimizing it.
+- `just diagram-optimize`: optimize the existing SVG without regenerating it.
+
+The `diagram` task runs `diagram-generate` followed by `diagram-optimize`.
 
 Rust commands are delegated to the workspace root. Both check tasks require
 cargo-nextest.
