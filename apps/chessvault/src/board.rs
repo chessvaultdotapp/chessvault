@@ -35,7 +35,24 @@ fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
     PIECES.get(side as usize)?.get(piece as usize).cloned()
 }
 
-pub fn select(position: &Position, selected: Option<Square>, square: Square) -> Option<Square> {
+/// Applies a legal destination click, otherwise retaining the selection behavior.
+/// Promotions default to a queen until a promotion chooser is available.
+pub fn click(position: &mut Position, selected: Option<Square>, square: Square) -> Option<Square> {
+    if let Some(from) = selected {
+        let mv = position
+            .legal_moves()
+            .into_iter()
+            .find(|mv| mv.from == from && mv.to == square && matches!(mv.promotion, None | Some(Piece::Queen)));
+        if let Some(mv) = mv
+            && position.play(mv)
+        {
+            return None;
+        }
+    }
+    select(position, selected, square)
+}
+
+fn select(position: &Position, selected: Option<Square>, square: Square) -> Option<Square> {
     (selected.map(|s| s as u8) != Some(square as u8) && position.piece_at(square).is_some()).then_some(square)
 }
 
@@ -189,6 +206,62 @@ mod tests {
             }));
         }
         assert!(destinations(&position, Some(A2)).is_empty());
+    }
+
+    fn play_clicks(position: &mut Position, from: Square, to: Square) {
+        let selected = click(position, None, from);
+        assert_eq!(selected, Some(from));
+        let side = position.side_to_move();
+        assert_eq!(click(position, selected, to), None);
+        assert_ne!(position.side_to_move(), side);
+        assert_eq!(position.piece_at(from), None);
+    }
+
+    #[test]
+    fn destination_clicks_play_moves_and_captures_for_both_sides() {
+        use Square::*;
+        let mut position = Position::standard();
+        play_clicks(&mut position, E2, E4);
+        assert_eq!(position.piece_at(E4), Some((Piece::Pawn, Side::White)));
+        assert!(destinations(&position, Some(E4)).is_empty());
+        assert_eq!(destinations(&position, Some(D7)), vec![D5, D6]);
+        play_clicks(&mut position, D7, D5);
+        play_clicks(&mut position, E4, D5);
+        assert_eq!(position.piece_at(D5), Some((Piece::Pawn, Side::White)));
+    }
+
+    #[test]
+    fn illegal_clicks_do_not_move_pieces_or_change_turn() {
+        use Square::*;
+        let mut position = Position::standard();
+        assert_eq!(click(&mut position, Some(E2), E5), Option::None);
+        assert_eq!(click(&mut position, Some(D7), D5), Option::None);
+        assert_eq!(click(&mut position, Some(E2), D2), Some(D2));
+        assert_eq!(click(&mut position, Some(E2), E2), Option::None);
+        assert_eq!(position.side_to_move(), Side::White);
+        assert_eq!(position.piece_at(E2), Some((Piece::Pawn, Side::White)));
+        assert_eq!(position.piece_at(D7), Some((Piece::Pawn, Side::Black)));
+        assert_eq!(position.legal_moves().len(), 20);
+    }
+
+    #[test]
+    fn promotion_click_defaults_to_queen() {
+        use Square::*;
+        let mut position = Position::standard();
+        for (from, to) in [
+            (A2, A4),
+            (H7, H5),
+            (A4, A5),
+            (H5, H4),
+            (A5, A6),
+            (H4, H3),
+            (A6, B7),
+            (H3, G2),
+            (B7, A8),
+        ] {
+            play_clicks(&mut position, from, to);
+        }
+        assert_eq!(position.piece_at(A8), Some((Piece::Queen, Side::White)));
     }
 
     #[test]

@@ -185,7 +185,7 @@ impl ChessVault {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectSquare(square) => {
-                self.selected_square = board::select(&self.position, self.selected_square, square);
+                self.selected_square = board::click(&mut self.position, self.selected_square, square);
             }
             Message::ToggleConsole => {
                 self.console_open = !self.console_open;
