@@ -8,7 +8,7 @@ use std::fmt::Display;
 /// numbered 0–7.
 /// [`Square::None`] has discriminant 64 and is not a valid bit index in a
 /// [`crate::bitboard::Bitboard`].
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 #[rustfmt::skip]
 pub enum Square {

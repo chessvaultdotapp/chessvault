@@ -6,6 +6,8 @@ use crate::{
     square::Square,
 };
 
+pub(crate) mod movegen;
+
 /// Occupancy bitboards, side to move, castling rights, and move counts.
 pub struct Position {
     /// Six piece-type bitboards, indexed by Pawn through King.
@@ -18,6 +20,8 @@ pub struct Position {
     side_to_move: Side,
     /// Bitwise OR of [`CastlingRights`] values cast to `u8`.
     castling_rights: u8,
+    /// Target square available for an en passant capture on this turn.
+    en_passant: Option<Square>,
     /// Number of halfmoves since the last pawn move or capture.
     halfmove_count: u8,
     /// Full move count, initialized to zero in an empty position.
@@ -57,6 +61,7 @@ impl Position {
             sides: std::array::from_fn(|_| Bitboard::empty()),
             side_to_move: Side::Empty,
             castling_rights: CastlingRights::NoCastling as u8,
+            en_passant: None,
             halfmove_count: 0,
             fullmove_count: 0,
         }

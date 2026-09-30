@@ -14,6 +14,6 @@ mod side;
 mod square;
 
 pub use piece::Piece;
-pub use position::Position;
+pub use position::{Position, movegen::Move};
 pub use side::Side;
 pub use square::{InvalidSquareIndex, Square};
