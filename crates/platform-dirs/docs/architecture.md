@@ -49,10 +49,12 @@ checked even when the public entry point uses the development override.
 
 ![Compile-time implementation selection and runtime state-directory resolution, including fallbacks and errors](resolution.svg)
 
-The [resolution diagram source](resolution.dot) separates compile-time selection
-from runtime lookups. Dashed edges identify the selected implementation; they
-are not runtime configuration checks. Home lookup checks for an absolute path
-value, not whether the directory exists on disk.
+The [resolution diagram source](resolution.dot) uses ovals for entry and return
+points, rectangles for actions, and diamonds for decisions. Blue decisions and
+dashed edges show compile-time selection, not runtime configuration checks.
+Home lookup checks for an absolute path value, not whether the directory exists
+on disk. After a successful return, callers may append an application name and
+create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`.
 

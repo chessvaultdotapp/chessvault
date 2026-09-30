@@ -1,49 +1,45 @@
 digraph resolution {
-    graph [bgcolor="white", pad="0.2", nodesep="0.4", ranksep="0.5"];
-    node [shape=box, style="rounded,filled", fillcolor="#f1f5f9", color="#475569", fontname="sans-serif"];
-    edge [color="#475569", fontname="sans-serif", fontsize=10];
+    graph [rankdir=TB, bgcolor="white", pad="0.3", nodesep="0.5", ranksep="0.55", splines=polyline];
+    node [shape=box, style=filled, fillcolor="#ffffff", color="#475569", fontname="sans-serif", fontsize=11, margin="0.16,0.10"];
+    edge [color="#475569", fontname="sans-serif", fontsize=10, arrowsize=0.7];
 
-    subgraph cluster_compile {
-        label="Compile time: select one implementation";
-        fontname="sans-serif";
-        color="#93c5fd";
-        style=rounded;
-        select [shape=diamond, label="Debug assertions +\ndevelopment feature?", fillcolor="#dbeafe"];
-        platform [shape=diamond, label="Target OS is Linux?", fillcolor="#dbeafe"];
-        select -> platform [label="No"];
-    }
+    start [shape=oval, label="user_state_dir()", fillcolor="#dbeafe"];
+    select [shape=diamond, label="Debug assertions +\ndevelopment feature?\n(compile time)", fillcolor="#dbeafe"];
+    platform [shape=diamond, label="Linux target?\n(compile time)", fillcolor="#dbeafe"];
 
-    subgraph cluster_runtime {
-        label="Runtime: user_state_dir()";
-        fontname="sans-serif";
-        color="#cbd5e1";
-        style=rounded;
-        cwd [label="Read current working directory"];
-        local [label="Append .local/state"];
-        xdg [shape=diamond, label="XDG_STATE_HOME\nis absolute?"];
-        use_xdg [label="Use XDG_STATE_HOME"];
-        home [label="Look up home directory"];
-        valid_home [shape=diamond, label="Home exists as a value\nand is absolute?"];
-        fallback [label="Append .local/state\nto home path"];
-        error [label="Return error", fillcolor="#fee2e2"];
-        result [label="Return PathBuf", fillcolor="#dcfce7"];
+    cwd [label="Read current\nworking directory"];
+    cwd_ok [shape=diamond, label="Lookup succeeded?"];
+    local [label="Append .local/state"];
 
-        cwd -> local [label="Success"];
-        cwd -> error [label="Failure"];
-        local -> result;
-        xdg -> use_xdg [label="Yes"];
-        xdg -> home [label="Unset, empty, or relative"];
-        use_xdg -> result;
-        home -> valid_home;
-        valid_home -> fallback [label="Yes"];
-        valid_home -> error [label="Missing or non-absolute"];
-        fallback -> result;
-    }
+    read_xdg [label="Read XDG_STATE_HOME"];
+    xdg [shape=diamond, label="Absolute path?"];
+    use_xdg [label="Use XDG_STATE_HOME"];
+    home [label="Look up home directory"];
+    valid_home [shape=diamond, label="Absolute home\npath available?"];
+    fallback [label="Append .local/state\nto home path"];
 
+    error [shape=oval, label="Return error", fillcolor="#fee2e2"];
+    result [shape=oval, label="Return PathBuf", fillcolor="#dcfce7"];
+
+    start -> select;
     select -> cwd [label="Yes", style=dashed];
-    platform -> xdg [label="Yes", style=dashed];
-    platform -> error [label="No: unsupported platform", style=dashed];
+    select -> platform [label="No", style=dashed];
+    platform -> read_xdg [label="Yes", style=dashed];
+    platform -> error [label="No: unsupported", style=dashed];
 
-    caller [label="Caller may append an application name\nand create directories as needed", fillcolor="#ffffff"];
-    result -> caller;
+    cwd -> cwd_ok;
+    cwd_ok -> local [label="Yes"];
+    cwd_ok -> error [label="No"];
+    local -> result;
+
+    read_xdg -> xdg;
+    xdg -> use_xdg [label="Yes"];
+    xdg -> home [label="No"];
+    use_xdg -> result;
+    home -> valid_home;
+    valid_home -> fallback [label="Yes"];
+    valid_home -> error [label="No"];
+    fallback -> result;
+
+    { rank=same; result; error; }
 }
