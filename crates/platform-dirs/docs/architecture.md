@@ -45,6 +45,17 @@ another dependency enabling `development` can re-enable the override.
 The Linux module also compiles during Linux tests, allowing its policy to be
 checked even when the public entry point uses the development override.
 
+## Resolution flow
+
+![Compile-time implementation selection and runtime state-directory resolution, including fallbacks and errors](resolution.svg)
+
+The [resolution diagram source](resolution.dot) separates compile-time selection
+from runtime lookups. Dashed edges identify the selected implementation; they
+are not runtime configuration checks. Home lookup checks for an absolute path
+value, not whether the directory exists on disk.
+
+Both diagrams are regenerated and optimized by `just diagram`.
+
 ## Linux resolution
 
 The native wrapper reads `XDG_STATE_HOME` with `std::env::var_os` and passes it,

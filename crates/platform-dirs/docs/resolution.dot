@@ -1,0 +1,49 @@
+digraph resolution {
+    graph [bgcolor="white", pad="0.2", nodesep="0.4", ranksep="0.5"];
+    node [shape=box, style="rounded,filled", fillcolor="#f1f5f9", color="#475569", fontname="sans-serif"];
+    edge [color="#475569", fontname="sans-serif", fontsize=10];
+
+    subgraph cluster_compile {
+        label="Compile time: select one implementation";
+        fontname="sans-serif";
+        color="#93c5fd";
+        style=rounded;
+        select [shape=diamond, label="Debug assertions +\ndevelopment feature?", fillcolor="#dbeafe"];
+        platform [shape=diamond, label="Target OS is Linux?", fillcolor="#dbeafe"];
+        select -> platform [label="No"];
+    }
+
+    subgraph cluster_runtime {
+        label="Runtime: user_state_dir()";
+        fontname="sans-serif";
+        color="#cbd5e1";
+        style=rounded;
+        cwd [label="Read current working directory"];
+        local [label="Append .local/state"];
+        xdg [shape=diamond, label="XDG_STATE_HOME\nis absolute?"];
+        use_xdg [label="Use XDG_STATE_HOME"];
+        home [label="Look up home directory"];
+        valid_home [shape=diamond, label="Home exists as a value\nand is absolute?"];
+        fallback [label="Append .local/state\nto home path"];
+        error [label="Return error", fillcolor="#fee2e2"];
+        result [label="Return PathBuf", fillcolor="#dcfce7"];
+
+        cwd -> local [label="Success"];
+        cwd -> error [label="Failure"];
+        local -> result;
+        xdg -> use_xdg [label="Yes"];
+        xdg -> home [label="Unset, empty, or relative"];
+        use_xdg -> result;
+        home -> valid_home;
+        valid_home -> fallback [label="Yes"];
+        valid_home -> error [label="Missing or non-absolute"];
+        fallback -> result;
+    }
+
+    select -> cwd [label="Yes", style=dashed];
+    platform -> xdg [label="Yes", style=dashed];
+    platform -> error [label="No: unsupported platform", style=dashed];
+
+    caller [label="Caller may append an application name\nand create directories as needed", fillcolor="#ffffff"];
+    result -> caller;
+}

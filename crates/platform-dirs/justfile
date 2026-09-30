@@ -10,13 +10,14 @@ check:
 check-native:
     just --justfile ../../justfile check-platform-native
 
-# Regenerate and optimize the architecture SVG.
+# Regenerate and optimize the documentation SVGs.
 diagram: diagram-generate diagram-optimize
 
-# Generate the architecture SVG (requires Graphviz).
+# Generate the documentation SVGs (requires Graphviz).
 diagram-generate:
     dot -Tsvg docs/architecture.dot -o docs/architecture.svg
+    dot -Tsvg docs/resolution.dot -o docs/resolution.svg
 
-# Optimize the existing architecture SVG (requires root pnpm dependencies).
+# Optimize the existing documentation SVGs (requires root pnpm dependencies).
 diagram-optimize:
-    cd ../.. && pnpm exec svgo --input crates/platform-dirs/docs/architecture.svg --output crates/platform-dirs/docs/architecture.svg
+    cd ../.. && pnpm exec svgo --folder crates/platform-dirs/docs
