@@ -1,13 +1,22 @@
+//! Linux user state directory resolution following the XDG base directory policy.
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
+/// Resolves the state directory using the process environment and OS home lookup.
 #[cfg(not(all(debug_assertions, feature = "development")))]
 pub(crate) fn user_state_dir() -> Result<PathBuf> {
     resolve_user_state_dir(std::env::var_os("XDG_STATE_HOME"), std::env::home_dir)
 }
 
+/// Prefers an absolute XDG state path, otherwise appends `.local/state` to home.
+///
+/// The home lookup is lazy and runs only when the XDG value is missing or not
+/// absolute. Returns an error if the fallback home is missing or not absolute.
+/// OS-native path values preserve non-Unicode names; injected inputs let tests
+/// exercise the policy without changing the process environment.
 fn resolve_user_state_dir(xdg_state_home: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
     match xdg_state_home.map(PathBuf::from) {
         Some(path) if path.is_absolute() => Ok(path),
