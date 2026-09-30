@@ -39,11 +39,23 @@ pub fn select(position: &Position, selected: Option<Square>, square: Square) -> 
     (selected.map(|s| s as u8) != Some(square as u8) && position.piece_at(square).is_some()).then_some(square)
 }
 
+// A mask also folds the four promotion choices into one destination hint.
+fn legal_destinations(position: &Position, selected: Option<Square>) -> [bool; 64] {
+    let mut destinations = [false; 64];
+    if let Some(selected) = selected {
+        for mv in position.legal_moves().into_iter().filter(|mv| mv.from == selected) {
+            destinations[mv.to as usize] = true;
+        }
+    }
+    destinations
+}
+
 pub fn view<'a, Message: Clone + 'a>(
     position: &'a Position,
     selected: Option<Square>,
     on_select: impl Fn(Square) -> Message + 'a,
 ) -> Element<'a, Message> {
+    let destinations = legal_destinations(position, selected);
     responsive(move |size| {
         let side = size.width.min(size.height);
         let square_size = side / 8.0;
@@ -95,6 +107,24 @@ pub fn view<'a, Message: Clone + 'a>(
                             .center_y(Fill),
                     );
                 }
+                if destinations[square as usize] {
+                    let capture = position.piece_at(square).is_some();
+                    let diameter = square_size * if capture { 0.9 } else { 0.25 };
+                    // Contrast with both board colors; capture rings leave the piece visible.
+                    let hint = Color { a: 0.4, ..foreground };
+                    let marker = container(Space::new())
+                        .width(diameter)
+                        .height(diameter)
+                        .style(move |_| {
+                            let style = container::Style::default().border(iced::Border {
+                                color: hint,
+                                width: if capture { square_size * 0.065 } else { 0.0 },
+                                radius: (diameter / 2.0).into(),
+                            });
+                            if capture { style } else { style.background(hint) }
+                        });
+                    layers = layers.push(container(marker).center_x(Fill).center_y(Fill));
+                }
                 layers = layers.push(container(labels).padding(padding).width(Fill).height(Fill));
                 squares = squares.push(
                     mouse_area(
@@ -117,6 +147,49 @@ pub fn view<'a, Message: Clone + 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn destinations(position: &Position, selected: Option<Square>) -> Vec<Square> {
+        legal_destinations(position, selected)
+            .into_iter()
+            .enumerate()
+            .filter(|&(_, legal)| legal)
+            .map(|(index, _)| Square::try_from(index as u8).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn hints_follow_selection_and_side_to_move() {
+        let position = Position::standard();
+        assert_eq!(destinations(&position, Some(Square::E2)), vec![Square::E3, Square::E4]);
+        assert_eq!(destinations(&position, Some(Square::B1)), vec![Square::A3, Square::C3]);
+        for selected in [None, Some(Square::D7), Some(Square::E4), Some(Square::A1)] {
+            assert!(destinations(&position, selected).is_empty());
+        }
+    }
+
+    #[test]
+    fn hints_include_captures_and_exclude_moves_that_ignore_check() {
+        use Square::*;
+        let mut position = Position::standard();
+        for (from, to) in [(E2, E4), (D7, D5)] {
+            assert!(position.play(chess_core::Move {
+                from,
+                to,
+                promotion: Option::None
+            }));
+        }
+        assert_eq!(destinations(&position, Some(E4)), vec![D5, E5]);
+
+        let mut position = Position::standard();
+        for (from, to) in [(F2, F3), (E7, E5), (G2, G4), (D8, H4)] {
+            assert!(position.play(chess_core::Move {
+                from,
+                to,
+                promotion: Option::None
+            }));
+        }
+        assert!(destinations(&position, Some(A2)).is_empty());
+    }
 
     #[test]
     fn selection_requires_a_piece_and_can_switch_or_clear() {
