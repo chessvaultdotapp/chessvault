@@ -148,6 +148,27 @@ runs manually; it is not part of the Cargo build or CI checks. See the
 [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
 for usage and visual verification.
 
+### uv
+
+[uv](https://docs.astral.sh/uv/) manages Python versions, project dependencies,
+virtual environments, and Python-based command-line tools. It can support
+Python-based documentation tooling; it is not required to build, test, or run
+Chessvault.
+
+Follow the [official installation instructions](https://docs.astral.sh/uv/getting-started/installation/)
+for your operating system. The standalone installer does not require an existing
+Python installation. Open a new terminal after installation and verify:
+
+```console
+$ uv --version
+uv 0.11.16 (x86_64-unknown-linux-gnu)
+```
+
+Use `uv tool run <tool>` to run a Python tool in an isolated environment, or
+`uv tool install <tool>` to make its commands available persistently. See the
+[tools guide](https://docs.astral.sh/uv/guides/tools/) for details. Repository-specific
+documentation-site setup will be documented when that tooling is added.
+
 ### Tombi
 
 [Tombi](https://tombi-toml.github.io/tombi/) provides a TOML language server (LSP),
