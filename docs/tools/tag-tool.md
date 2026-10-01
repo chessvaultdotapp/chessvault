@@ -137,7 +137,7 @@ metadata are ignored.
 
 The workflow builds an optimized Linux x86-64 binary on Ubuntu 24.04 using the
 pinned Rust toolchain and lockfile. It attaches `chessvault-<dev-tag>-linux-x86_64.tar.gz`
-containing the `chessvault` executable. Extract the archive and run `./chessvault`
+containing the `bin/chessvault` executable. Extract the archive and run `./bin/chessvault`
 in a graphical Linux session. This is a dynamically linked GNU/Linux build, not a
 self-contained bundle; compatible system libraries and graphics drivers are required.
 

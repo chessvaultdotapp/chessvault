@@ -50,9 +50,10 @@ jobs:
         if: steps.tag.outputs.development == 'true'
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist/package/bin
+          install -m 755 target/x86_64-unknown-linux-gnu/release/chessvault dist/package/bin/chessvault
           tar -czf "dist/chessvault-${TAG}-linux-x86_64.tar.gz" \
-            -C target/x86_64-unknown-linux-gnu/release chessvault
+            -C dist/package bin
 
       - name: Create prerelease
         if: steps.tag.outputs.development == 'true'
