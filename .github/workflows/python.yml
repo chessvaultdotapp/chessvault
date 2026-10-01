@@ -23,13 +23,15 @@ jobs:
       - name: Install uv
         uses: ./.github/actions/setup-uv
 
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
       - name: Install Python and development dependencies
+        env:
+          UV_PYTHON: '3.14.5'
         run: |
-          uv python install 3.14.5
-          uv venv --python 3.14.5 venvs/development
-          uv pip install --python venvs/development/bin/python --requirements venvs/development.requirements.txt
-          uv venv --python 3.14.5 venvs/tag-tool
-          uv pip install --python venvs/tag-tool/bin/python --requirements venvs/tag-tool.requirements.txt
+          uv python install "$UV_PYTHON"
+          just --justfile venvs/justfile development tag-tool
 
       - name: Lint tracked Python files
         run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check

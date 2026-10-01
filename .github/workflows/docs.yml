@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'venvs/justfile'
       - 'zensical.toml'
       - 'docs/**'
       - 'crates/platform-dirs/zensical.toml'
@@ -17,6 +18,7 @@ on:
       - '.github/actions/setup-just/**'
   pull_request:
     paths:
+      - 'venvs/justfile'
       - 'zensical.toml'
       - 'docs/**'
       - 'crates/platform-dirs/zensical.toml'
@@ -66,10 +68,11 @@ jobs:
         uses: ./.github/actions/setup-uv
 
       - name: Install Python and Zensical
+        env:
+          UV_PYTHON: '3.14.5'
         run: |
-          uv python install 3.14.5
-          uv venv --python 3.14.5 venvs/zensical
-          uv pip install --python venvs/zensical/bin/python --requirements venvs/zensical.requirements.txt
+          uv python install "$UV_PYTHON"
+          just --justfile venvs/justfile zensical
 
       # Cross-root documentation links are not yet staged into the site (issue #8).
       - name: Build documentation
