@@ -105,6 +105,27 @@ these suffixes distinguish tags, not version ordering.
 Development releases update and commit the manifest and lockfile just like
 explicit releases.
 
+### Publish on GitHub
+
+After reviewing the generated commit and tag, push the development tag explicitly:
+
+```console
+$ git push origin v1.2.3+26w40a
+...
+```
+
+The [development release workflow](../../.github/workflows/development-release.yml)
+creates a GitHub **prerelease** with generated release notes. It does not mark it
+as the latest release or build/upload binaries. Existing releases are left unchanged
+when a workflow is rerun. Stable tags and tags without trailing development week
+metadata are ignored.
+
+The workflow must be included in the tagged commit. It uses the built-in
+`GITHUB_TOKEN` with `contents: write`; no additional secret is needed. Push using
+your normal Git credentials: pushes made by another workflow's `GITHUB_TOKEN`
+do not trigger this workflow. Pushing the tag publishes its commit, but does not
+update the remote branch; push the branch separately if desired.
+
 ## Failures and recovery
 
 Commands stop on failure. The tool does not roll back modified files, staged
