@@ -14,43 +14,45 @@
 
 - Run Cargo commands from the workspace root with the Rust **1.98.0** toolchain pinned in `rust-toolchain.toml`.
 - Launch the desktop GUI: `just run` or `cargo run -p chessvault --locked`; `just run-debug` enables app debug logs.
-- `just check` runs the local/CI sequence below, stopping on failure:
-
-  ```sh
-  cargo build --workspace --all-targets --locked
-  cargo nextest run --workspace --locked
-  cargo test --workspace --doc --locked
-  cargo fmt --all -- --check
-  cargo clippy --workspace --all-targets --locked --no-deps
-  ```
-
-- Nextest excludes doctests. Install with `cargo install cargo-nextest --locked`; if unavailable, replace both test
-  steps with `cargo test --workspace --locked`. CI installs via `.github/actions/setup-nextest`.
+- `just check` runs build → nextest → doctests → formatting → Clippy, stopping on failure. Exact Cargo commands and
+  setup are in `justfile` and `docs/development/testing.md`; Clippy uses `--no-deps`.
+- Nextest excludes doctests. If unavailable, replace both test steps with `cargo test --workspace --locked`.
 - Focus checks with `just check-package <package>` (`chessvault`, `chess-core`, `application-runtime`, `platform-dirs`).
   It keeps formatting workspace-wide and skips doctests for the binary-only desktop. Use workspace checks for shared
   configuration, cross-package changes, or APIs affecting consumers.
-- Single GUI test:
+- Single desktop unit test (does not launch the GUI):
   `cargo test -p chessvault --bin chessvault --locked window_recreate_tests::saved_dimensions_round_trip -- --exact`.
 - Single library test: `cargo test -p chess-core --lib --locked side::tests::side_uses_one_byte -- --exact`. For
   parameterized `rstest` tests, omit `--exact` to select all generated cases by function name.
 - Markdown: `rumdl check <changed-files>` (120-column limit). TOML: `tombi format --check <changed-files>`, then
   `tombi lint --error-on-warnings <changed-files>`. CI checks all tracked files of each type; see the testing guide.
-  Workflow-only edits do not trigger these workflows or Rust CI; run relevant checks locally.
-- SVG optimization: install dependencies with `pnpm install --frozen-lockfile` at the workspace root, then run
-  `just optimize-assets` from the root. Node/pnpm tooling is shared by artwork and documentation, not the desktop runtime.
+  Workflow-only edits do not trigger Markdown/TOML checks or Rust CI; run relevant checks locally.
+
+## Documentation and auxiliary tools
+
+- Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
+  omit file arguments to check all workflows. `go.mod` pins this tool, not an application component. CI checks only
+  changed workflow YAML; composite actions and installer scripts are not validated by actionlint.
+- Desktop SVGs: `pnpm install --frozen-lockfile`, then `just optimize-assets`. For platform-dirs documentation diagrams,
+  edit the `.dot` sources and run `just --justfile crates/platform-dirs/justfile diagram` (Graphviz and root pnpm deps).
+- Documentation has two Zensical roots. Build both with `venvs/zensical/bin/zensical build --config-file zensical.toml`
+  and `venvs/zensical/bin/zensical build --config-file crates/platform-dirs/zensical.toml` after diagram generation.
+  `.github/workflows/docs.yml` defines setup using `venvs/zensical.requirements.txt`; cross-root links are not yet staged.
+- `tools/tag-tool/main.py` changes the desktop version, refreshes Cargo.lock offline, commits, and tags locally; it
+  requires a clean tree and cached Cargo dependencies. See `docs/tools/tag-tool.md` for setup and failure recovery.
+  Test it with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q` (dependencies: `venvs/tag-tool.requirements.txt`).
 
 ## Package boundaries
 
 - Four packages: the binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; the
   runtime depends on `crates/platform-dirs`. `CONTRIBUTING.md`'s workspace section is stale (including its claim that
   desktop does not depend on core); trust manifests.
-- `crates/chess-core/src/lib.rs` exposes types through re-exports (including `Move`); bitboards and castling rights
-  remain internal. Tests live beside implementations.
+- `chess-core` exposes types through `src/lib.rs` re-exports (including `Move`); bitboards and castling rights stay internal.
 - Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their discriminants;
   castling rights are OR-combinable `u8` masks.
 - `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are never valid array
   indices. Squares are rank-major (`A1 = 0`, `H8 = 63`); `Square::None` is not a valid bit index.
-- `Position::standard()` is the public constructor; `Position::empty()` is crate-private and there is no `Default`.
+- Construct public positions with `Position::standard()`; `Position::empty()` is crate-private and there is no `Default`.
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
   all four promotions; desktop `board::click` currently chooses a queen.
@@ -85,8 +87,7 @@
 
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
-- `RUST_LOG` controls capture (default `info`); use `RUST_LOG=chessvault=debug cargo run -p chessvault --locked` for app
-  debug events. Terminal output is enabled only with debug assertions, but in-app capture also works in release builds.
+- `RUST_LOG` controls capture (default `info`). Terminal output requires debug assertions; in-app capture works in release.
 - Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
   but preserves source settings. “Copy all” copies the filtered snapshot.
 - Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged
