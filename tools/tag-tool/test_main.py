@@ -175,7 +175,7 @@ def test_cli_updates_manifest_and_tags(
             text=True,
         ),
         call(
-            ["cargo", "metadata", "--offline", "--format-version", "1"],
+            ["cargo", "update", "--workspace", "--offline"],
             cwd=root,
             check=True,
             stdout=subprocess.DEVNULL,

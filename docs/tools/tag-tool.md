@@ -31,8 +31,9 @@ on Windows, run the uv commands manually with `Scripts/python.exe` instead of
 `bin/python`. Subsequent examples use `venvs/tag-tool/bin/python`; on Windows,
 use `venvs/tag-tool/Scripts/python.exe`.
 
-The tool refreshes `Cargo.lock` with `cargo metadata --offline --format-version 1`.
-Prepare the Cargo dependency cache beforehand if necessary:
+The tool refreshes `Cargo.lock` with `cargo update --workspace --offline`, keeping
+non-workspace dependencies locked without downloading their source archives.
+Prepare the Cargo dependency cache beforehand if offline resolution fails:
 
 ```console
 $ cargo fetch --locked

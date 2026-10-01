@@ -164,7 +164,7 @@ def main() -> None:
     print(f"Desktop version: {previous_version} -> {target_version}")
     # Resolve locally so the committed lockfile matches the new package version.
     subprocess.run(
-        ["cargo", "metadata", "--offline", "--format-version", "1"],
+        ["cargo", "update", "--workspace", "--offline"],
         cwd=CHESSVAULT_ROOT,
         check=True,
         stdout=subprocess.DEVNULL,
