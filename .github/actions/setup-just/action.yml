@@ -1,0 +1,17 @@
+name: Setup just
+description: Install official just prebuilt binaries on Linux, Windows, and macOS
+
+inputs:
+  version:
+    description: Exact just release version, without a v prefix
+    default: '1.58.0'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install just
+      shell: bash
+      env:
+        JUST_VERSION: ${{ inputs.version }}
+        SETUP_JUST_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_JUST_ACTION_PATH/install.sh"
