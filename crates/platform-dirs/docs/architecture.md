@@ -56,7 +56,12 @@ Home lookup checks for an absolute path value, not whether the directory exists
 on disk. After a successful return, callers may append an application name and
 create directories as needed.
 
-Both diagrams are regenerated and optimized by `just diagram`.
+Both diagrams are regenerated and optimized by `just diagram`. The package's
+documentation CI workflow also runs Graphviz followed by one SVGO pass before
+building the site. It uses the fresh SVGs without requiring byte-for-byte
+agreement with committed assets, since Graphviz versions can produce different
+layouts. Regenerate locally and commit the SVGs when changing diagram sources
+so repository previews stay current.
 
 ## Linux resolution
 

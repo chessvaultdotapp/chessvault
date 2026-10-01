@@ -144,7 +144,9 @@ Usage: svgo [options] [INPUT...]
 ```
 
 The committed `pnpm-lock.yaml` keeps dependency resolution reproducible. SVGO
-runs manually; it is not part of the Cargo build or CI checks. See the
+is not part of the Cargo build. Desktop artwork optimization is manual;
+the platform-dirs documentation workflow regenerates and optimizes its diagrams
+before building the site. See the
 [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
 for usage and visual verification.
 
