@@ -56,7 +56,7 @@ attribution and licensing.
 
 ### Optimizing SVG artwork
 
-Use the optional [Node.js, pnpm, and SVGO tooling](../development/getting-started.md#nodejs-pnpm-and-svgo)
+Use the optional [SVGO tooling](../tools/svgo.md)
 when adding or changing piece artwork. SVGO is declared in
 the root [`package.json`](../../package.json), with dependency versions
 recorded in [`pnpm-lock.yaml`](../../pnpm-lock.yaml). It is not

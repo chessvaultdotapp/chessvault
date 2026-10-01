@@ -6,6 +6,7 @@ Chessvault is an early-stage chess desktop application built with Rust and Iced.
 
 - [Project overview](../README.md) — current status and running the app.
 - [Contributing](../CONTRIBUTING.md) — setup, checks, and contribution workflow.
+- [Development tools](tools/index.md) — required and optional tool installation guides.
 
 ## Understanding the project
 

@@ -3,7 +3,7 @@
 Commands follow our [shell command conventions](../reference.md#shell-commands).
 Run them from the workspace root using the toolchain selected by
 [`rust-toolchain.toml`](../../rust-toolchain.toml). See
-[Getting started](getting-started.md#install-cargo-nextest) for runner installation.
+[cargo-nextest](../tools/cargo-nextest.md) for runner installation.
 
 Output examples below are abbreviated and illustrative, not verification results.
 Timings, test counts, and build messages vary; `...` marks omitted output.
@@ -11,7 +11,7 @@ Timings, test counts, and build messages vary; `...` marks omitted output.
 
 ## Ordered checks
 
-With the optional [just task runner](getting-started.md#just), `just check` runs
+With the optional [just task runner](../tools/just.md), `just check` runs
 this sequence. Use `just check-package <package>` for focused checks or
 `just check-platform-native` for the additional no-default-features checks.
 These recipes require cargo-nextest; the manual fallback is described below.
@@ -164,7 +164,7 @@ support. See [Platform directories](../components/platform-dirs.md) for the path
 
 ## Documentation checks
 
-Use [rumdl](getting-started.md#rumdl) for optional local Markdown linting,
+Use [rumdl](../tools/rumdl.md) for optional local Markdown linting,
 separate from the ordered Cargo checks. From the workspace root, check the
 shared documentation:
 
@@ -195,7 +195,7 @@ on success do not need invented output.
 
 ## TOML checks
 
-Use [Tombi](getting-started.md#tombi) to check formatting and lint all tracked
+Use [Tombi](../tools/tombi.md) to check formatting and lint all tracked
 TOML files from the workspace root, including nested and hidden files:
 
 ```console
