@@ -4,7 +4,7 @@ import argparse
 from datetime import UTC, datetime
 from pathlib import Path
 import subprocess
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 import tomli
@@ -120,7 +120,7 @@ def cli_environment(
     manifest.write_text('[package]\nname = "example"\nversion = "1.2.3"\n')
     monkeypatch.setattr(tag_tool, "DESKTOP_APP_ROOT", tmp_path)
     monkeypatch.setattr(tag_tool, "CHESSVAULT_ROOT", tmp_path)
-    git = Mock()
+    git = Mock(return_value=subprocess.CompletedProcess([], 0, stdout=""))
     monkeypatch.setattr(tag_tool.subprocess, "run", git)
     clock = Mock()
     clock.now.return_value = datetime(2026, 10, 1, tzinfo=UTC)
@@ -153,9 +153,50 @@ def test_cli_updates_manifest_and_tags(
     monkeypatch.setattr("sys.argv", ["tag-tool", *args])
     tag_tool.main()
     assert tomli.loads(manifest.read_text())["package"]["version"] == expected
-    git.assert_called_once_with(
-        ["git", "tag", f"v{expected}"], cwd=manifest.parent, check=True
-    )
+    root = manifest.parent
+    assert git.call_args_list == [
+        call(
+            [
+                "git",
+                "status",
+                "--porcelain",
+                "--untracked-files=all",
+                "--ignore-submodules=none",
+            ],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ),
+        call(
+            ["git", "tag", "--list", f"v{expected}"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ),
+        call(
+            ["cargo", "metadata", "--offline", "--format-version", "1"],
+            cwd=root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        ),
+        call(["git", "add", "--", "Cargo.toml", "Cargo.lock"], cwd=root, check=True),
+        call(
+            [
+                "git",
+                "commit",
+                "-m",
+                f"[desktop] Release v{expected}",
+                "--",
+                "Cargo.toml",
+                "Cargo.lock",
+            ],
+            cwd=root,
+            check=True,
+        ),
+        call(["git", "tag", f"v{expected}"], cwd=root, check=True),
+    ]
 
 
 @pytest.mark.parametrize("args", [[], ["bad"], ["--dev-rel", "v1.0.0"], ["--unknown"]])
@@ -174,14 +215,111 @@ def test_invalid_cli_does_not_write_or_tag(
     git.assert_not_called()
 
 
+@pytest.mark.parametrize("failure_index", range(6))
 def test_git_failure_propagates(
     cli_environment: tuple[Path, Mock],
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    failure_index: int,
 ) -> None:
     _, git = cli_environment
     monkeypatch.setattr("sys.argv", ["tag-tool", "v2.0.0"])
-    git.side_effect = subprocess.CalledProcessError(128, ["git", "tag", "v2.0.0"])
+    git.side_effect = [
+        *[subprocess.CompletedProcess([], 0, stdout="") for _ in range(failure_index)],
+        subprocess.CalledProcessError(128, ["release-command"]),
+    ]
     with pytest.raises(subprocess.CalledProcessError):
         tag_tool.main()
+    assert git.call_count == failure_index + 1
     assert "Created tag:" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "status", [" M Cargo.toml\n", "M  Cargo.toml\n", "?? new.txt\n"]
+)
+def test_dirty_tree_is_rejected(
+    cli_environment: tuple[Path, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+) -> None:
+    manifest, git = cli_environment
+    original = manifest.read_bytes()
+    git.return_value.stdout = status
+    monkeypatch.setattr("sys.argv", ["tag-tool", "v2.0.0"])
+    with pytest.raises(SystemExit) as error:
+        tag_tool.main()
+    assert error.value.code == 2
+    assert manifest.read_bytes() == original
+    assert git.call_count == 1
+
+
+def test_existing_tag_is_rejected(
+    cli_environment: tuple[Path, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest, git = cli_environment
+    original = manifest.read_bytes()
+    git.side_effect = [
+        subprocess.CompletedProcess([], 0, stdout=""),
+        subprocess.CompletedProcess([], 0, stdout="v2.0.0\n"),
+    ]
+    monkeypatch.setattr("sys.argv", ["tag-tool", "v2.0.0"])
+    with pytest.raises(SystemExit) as error:
+        tag_tool.main()
+    assert error.value.code == 2
+    assert manifest.read_bytes() == original
+    assert git.call_count == 2
+
+
+def test_tag_contains_committed_release_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise real Git in a temporary repository, substituting only Cargo."""
+    real_run = subprocess.run
+
+    def git(*args: str) -> str:
+        return real_run(
+            ["git", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    # Ignore user signing/hooks configuration for this disposable repository.
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "no-global-config"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "Tag Tool Test")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "tag-tool@example.invalid")
+    monkeypatch.setenv("GIT_COMMITTER_NAME", "Tag Tool Test")
+    monkeypatch.setenv("GIT_COMMITTER_EMAIL", "tag-tool@example.invalid")
+    git("init")
+    manifest = tmp_path / "apps" / "chessvault" / "Cargo.toml"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('[package]\nname = "chessvault"\nversion = "1.2.3"\n')
+    lockfile = tmp_path / "Cargo.lock"
+    lockfile.write_text(
+        'version = 4\n[[package]]\nname = "chessvault"\nversion = "1.2.3"\n'
+    )
+    git("add", ".")
+    git("commit", "-m", "Initial state")
+    original_head = git("rev-parse", "HEAD")
+
+    def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        if args[0] == "cargo":
+            lockfile.write_text(lockfile.read_text().replace('"1.2.3"', '"2.0.0"'))
+            return subprocess.CompletedProcess(args, 0)
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(tag_tool, "CHESSVAULT_ROOT", tmp_path)
+    monkeypatch.setattr(tag_tool, "DESKTOP_APP_ROOT", manifest.parent)
+    monkeypatch.setattr(tag_tool.subprocess, "run", run)
+    monkeypatch.setattr("sys.argv", ["tag-tool", "v2.0.0"])
+    tag_tool.main()
+
+    assert git("rev-parse", "HEAD") != original_head
+    assert git("rev-parse", "v2.0.0") == git("rev-parse", "HEAD")
+    assert git("status", "--porcelain") == ""
+    assert 'version = "2.0.0"' in git("show", "v2.0.0:apps/chessvault/Cargo.toml")
+    assert 'version = "2.0.0"' in git("show", "v2.0.0:Cargo.lock")

@@ -1,6 +1,6 @@
-"""Update the desktop manifest version and create a local Git tag at HEAD.
+"""Commit the desktop release version and tag that commit in a clean repository.
 
-Manifest changes are not committed, and tags are not pushed.
+Cargo refreshes the lockfile offline. Commits and tags are not pushed.
 """
 
 import argparse
@@ -81,11 +81,11 @@ def update_version(manifest_path: Path, version: str) -> str:
 
 
 def main() -> None:
-    """Update the manifest from an explicit tag or development metadata, then tag HEAD.
+    """Require a clean tree, update and commit release files, then tag the commit.
 
     Development releases append UTC ISO week-year/week metadata with an alphabetic
     suffix, or increment the suffix of existing trailing week metadata.
-    Git failures propagate; the preceding manifest update is not rolled back.
+    Command failures stop the release without rolling back files or commits.
     """
     parser = argparse.ArgumentParser(
         description="Set the desktop version from a SemVer tag."
@@ -103,6 +103,24 @@ def main() -> None:
         parser.error("--dev-rel cannot be combined with a version tag")
     if not args.dev_rel and args.tag is None:
         parser.error("provide a version tag or --dev-rel")
+
+    status = subprocess.run(
+        [
+            "git",
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "--ignore-submodules=none",
+        ],
+        cwd=CHESSVAULT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if status.stdout:
+        parser.error(
+            "release requires a clean working tree (including staged and untracked files)"
+        )
 
     manifest_path = DESKTOP_APP_ROOT / "Cargo.toml"
     if args.dev_rel:
@@ -126,10 +144,37 @@ def main() -> None:
     else:
         target_version = args.tag
 
+    tag = f"v{target_version}"
+    existing_tag = subprocess.run(
+        ["git", "tag", "--list", tag],
+        cwd=CHESSVAULT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if existing_tag.stdout:
+        parser.error(f"tag already exists: {tag}")
+
     previous_version = update_version(manifest_path, target_version)
     print(f"Desktop version: {previous_version} -> {target_version}")
-    tag = f"v{target_version}"
-    # Tag the current commit, not the uncommitted manifest contents.
+    # Resolve locally so the committed lockfile matches the new package version.
+    subprocess.run(
+        ["cargo", "metadata", "--offline", "--format-version", "1"],
+        cwd=CHESSVAULT_ROOT,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    release_files = [str(manifest_path.relative_to(CHESSVAULT_ROOT)), "Cargo.lock"]
+    subprocess.run(
+        ["git", "add", "--", *release_files],
+        cwd=CHESSVAULT_ROOT,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", f"[desktop] Release {tag}", "--", *release_files],
+        cwd=CHESSVAULT_ROOT,
+        check=True,
+    )
     subprocess.run(["git", "tag", tag], cwd=CHESSVAULT_ROOT, check=True)
     print(f"Created tag: {tag}")
 
