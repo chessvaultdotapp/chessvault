@@ -20,12 +20,17 @@ optional documentation and artwork tools.
 | [pnpm](pnpm.md) | Install shared SVG-tooling dependencies |
 | [SVGO](svgo.md) | Optimize SVG artwork and diagrams |
 | [uv](uv.md) | Manage Python installations, environments, and tools |
-| [Python](python.md) | Run Python-based documentation tooling |
+| [Python](python.md) | Run Python-based documentation and release tooling |
 | [Go](go.md) | Install and run Go-based tools |
 | [actionlint](actionlint.md) | Check GitHub Actions workflows |
 | [Tombi](tombi.md) | Format and lint TOML |
 | [rumdl](rumdl.md) | Lint Markdown |
 | [GitHub CLI](github-cli.md) | Manage pull requests, issues, and Actions runs |
+
+## Repository tools
+
+- [Release tag tool](tag-tool.md) — update and commit the desktop
+  version and lockfile, then create a local release tag.
 
 Commands follow the [shell command conventions](../reference.md#shell-commands).
 Example versions and output are illustrative, not additional version requirements
