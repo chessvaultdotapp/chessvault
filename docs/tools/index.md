@@ -25,7 +25,31 @@ optional documentation and artwork tools.
 | [actionlint](actionlint.md) | Check GitHub Actions workflows |
 | [Tombi](tombi.md) | Format and lint TOML |
 | [rumdl](rumdl.md) | Lint Markdown |
+| [Ruff](ruff.md) | Lint and format Python |
+| [ty](ty.md) | Check Python types |
 | [GitHub CLI](github-cli.md) | Manage pull requests, issues, and Actions runs |
+
+## Shared Python development environment
+
+[Ruff](ruff.md) and [ty](ty.md) are pinned in
+[`venvs/development.requirements.txt`](../../venvs/development.requirements.txt).
+Install them with [uv](uv.md) from the workspace root:
+
+```console
+$ uv venv --python 3.14 venvs/development
+Using CPython 3.14...
+Creating virtual environment at: venvs/development
+...
+$ uv pip install --python venvs/development/bin/python -r venvs/development.requirements.txt
+...
+```
+
+The environment is ignored by Git. Commands in these guides use its executables
+directly, without activation. On Windows, replace `venvs/development/bin/` with
+`venvs/development/Scripts/` and use the corresponding `.exe` executables.
+
+Keep application-specific dependencies in their separate environments, such as
+`venvs/tag-tool/`; the development environment holds the shared checkers.
 
 ## Repository tools
 
