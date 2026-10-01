@@ -19,5 +19,8 @@ uv 0.11.16 (x86_64-unknown-linux-gnu)
 
 Use `uv tool run <tool>` to run a Python tool in an isolated environment, or
 `uv tool install <tool>` to make its commands available persistently. See the
-[tools guide](https://docs.astral.sh/uv/guides/tools/) for details. Repository-specific
-documentation-site setup will be documented when that tooling is added.
+[tools guide](https://docs.astral.sh/uv/guides/tools/) for details.
+
+For this repository, use the [Python environment recipes](just.md#python-environments)
+in `venvs/justfile` to install the shared development tools, release tag tool,
+or Zensical documentation dependencies from their pinned requirements files.

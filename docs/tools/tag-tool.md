@@ -10,23 +10,26 @@ versions, and commit IDs vary.
 
 ## Setup
 
-Install [uv](uv.md), [Git](git.md), and the repository's pinned
+Install [uv](uv.md), [just](just.md), [Git](git.md), and the repository's pinned
 [Rust toolchain](rust.md). Configure your Git commit identity before
 creating a release.
 
 Create the dedicated environment and install its pinned dependencies:
 
 ```console
-$ uv venv --python 3.14 venvs/tag-tool
-Using CPython 3.14...
-Creating virtual environment at: venvs/tag-tool
+$ just --justfile venvs/justfile tag-tool
+uv venv tag-tool
 ...
-$ uv pip install --python venvs/tag-tool/bin/python -r venvs/tag-tool.requirements.txt
+uv pip install --python tag-tool/bin/python --requirements tag-tool.requirements.txt
 ...
 ```
 
-The environment is ignored by Git. These examples use the POSIX environment
-layout; on Windows, use `venvs/tag-tool/Scripts/python.exe` instead.
+The recipe runs inside `venvs/` and creates the Git-ignored `venvs/tag-tool/`
+environment. See [Python environment recipes](just.md#python-environments) for
+Python version selection. These recipes use the POSIX environment layout;
+on Windows, run the uv commands manually with `Scripts/python.exe` instead of
+`bin/python`. Subsequent examples use `venvs/tag-tool/bin/python`; on Windows,
+use `venvs/tag-tool/Scripts/python.exe`.
 
 The tool refreshes `Cargo.lock` with `cargo metadata --offline --format-version 1`.
 Prepare the Cargo dependency cache beforehand if necessary:

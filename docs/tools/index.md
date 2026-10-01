@@ -33,20 +33,25 @@ optional documentation and artwork tools.
 
 [Ruff](ruff.md) and [ty](ty.md) are pinned in
 [`venvs/development.requirements.txt`](../../venvs/development.requirements.txt).
-Install them with [uv](uv.md) from the workspace root:
+Install [uv](uv.md) and [just](just.md), then run the setup recipe from the workspace root:
 
 ```console
-$ uv venv --python 3.14 venvs/development
-Using CPython 3.14...
-Creating virtual environment at: venvs/development
+$ just --justfile venvs/justfile development
+uv venv development
 ...
-$ uv pip install --python venvs/development/bin/python -r venvs/development.requirements.txt
+uv pip install --python development/bin/python --requirements development.requirements.txt
 ...
 ```
 
+The recipe runs inside `venvs/`, creating `venvs/development/` and installing its
+pinned requirements. See [Python environment recipes](just.md#python-environments)
+for the other environments and Python version selection.
+
 The environment is ignored by Git. Commands in these guides use its executables
-directly, without activation. On Windows, replace `venvs/development/bin/` with
-`venvs/development/Scripts/` and use the corresponding `.exe` executables.
+directly, without activation. The setup recipes use POSIX `bin/python` paths;
+on Windows, run the uv commands manually with `Scripts/python.exe` instead.
+Likewise, replace `venvs/development/bin/` with `venvs/development/Scripts/` and
+use the corresponding `.exe` executables when running checks.
 
 Keep application-specific dependencies in their separate environments, such as
 `venvs/tag-tool/`; the development environment holds the shared checkers.

@@ -50,3 +50,48 @@ If nextest is unavailable, use the manual Cargo fallback described in the
 [asset-tooling dependencies](svgo.md) first; the recipe does not
 install them automatically. Optimization is manual and modifies SVGs in place;
 review the diff and follow the [visual verification workflow](../components/desktop.md#optimizing-svg-artwork).
+
+## Python environments
+
+The separate [`venvs/justfile`](../../venvs/justfile) uses [uv](uv.md) to create
+Python environments and install their pinned requirements. From the workspace
+root, select it explicitly:
+
+```console
+$ just --justfile venvs/justfile --list
+Available recipes:
+    default
+    development
+    tag-tool
+    venvs
+    zensical
+```
+
+| Command | Purpose |
+| --- | --- |
+| `just --justfile venvs/justfile development` | Set up Ruff and ty. |
+| `just --justfile venvs/justfile tag-tool` | Set up the release tag tool and pytest. |
+| `just --justfile venvs/justfile zensical` | Set up the documentation-site dependencies. |
+| `just --justfile venvs/justfile venvs` | Set up all three environments. |
+
+Recipes run relative to `venvs/`, not the calling shell's directory. Each runs
+`uv venv <name>` followed by installation from `<name>.requirements.txt`.
+They are setup recipes, not test commands, and may prompt before replacing an
+existing environment.
+
+The recipes do not pin a Python version. To select Python 3.14 explicitly, set
+uv's `UV_PYTHON` environment variable:
+
+```console
+$ UV_PYTHON=3.14 just --justfile venvs/justfile venvs
+uv venv development
+...
+```
+
+The current Python CI workflow uses Python 3.14.5. The tag tool requires
+Python 3.11 or newer for `datetime.UTC`; installed tools may have their own
+minimum versions. Recipes currently use POSIX `bin/python` paths. On Windows,
+run the equivalent uv commands with `Scripts/python.exe` instead.
+
+See the [shared development environment](index.md#shared-python-development-environment)
+and [tag tool setup](tag-tool.md#setup) for usage after installation.

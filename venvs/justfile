@@ -1,0 +1,16 @@
+default:
+    @just --list
+
+venvs: development tag-tool zensical
+
+development:
+    uv venv development
+    uv pip install --python development/bin/python --requirements development.requirements.txt
+
+tag-tool:
+    uv venv tag-tool
+    uv pip install --python tag-tool/bin/python --requirements tag-tool.requirements.txt
+
+zensical:
+    uv venv zensical
+    uv pip install --python zensical/bin/python --requirements zensical.requirements.txt
