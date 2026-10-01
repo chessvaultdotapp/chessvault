@@ -1,5 +1,6 @@
 [project]
 site_name = "Chessvault documentation"
+site_url = "https://chessvaultdotapp.github.io/chessvault/docs/"
 
 # Palette toggle for automatic mode
 [[project.theme.palette]]

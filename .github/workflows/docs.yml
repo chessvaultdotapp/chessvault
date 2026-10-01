@@ -2,25 +2,65 @@ name: Documentation
 
 on:
   push:
+    branches: [main]
     paths:
       - 'zensical.toml'
       - 'docs/**'
+      - 'crates/platform-dirs/zensical.toml'
+      - 'crates/platform-dirs/docs/**'
+      - 'crates/platform-dirs/justfile'
       - 'venvs/zensical.requirements.txt'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+      - '.github/actions/setup-uv/**'
+      - '.github/actions/setup-just/**'
   pull_request:
     paths:
       - 'zensical.toml'
       - 'docs/**'
+      - 'crates/platform-dirs/zensical.toml'
+      - 'crates/platform-dirs/docs/**'
+      - 'crates/platform-dirs/justfile'
       - 'venvs/zensical.requirements.txt'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+      - '.github/actions/setup-uv/**'
+      - '.github/actions/setup-just/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build general documentation
+    name: Build documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.18.0'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: '12.5.1'
+
+      - name: Install Graphviz and SVG tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes graphviz
+          pnpm install --frozen-lockfile
+
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
+      - name: Generate and optimize diagrams
+        run: just --justfile crates/platform-dirs/justfile diagram
 
       - name: Install uv
         uses: ./.github/actions/setup-uv
@@ -33,4 +73,49 @@ jobs:
 
       # Cross-root documentation links are not yet staged into the site (issue #8).
       - name: Build documentation
-        run: venvs/zensical/bin/zensical build --config-file zensical.toml
+        run: |
+          venvs/zensical/bin/zensical build --config-file zensical.toml
+          venvs/zensical/bin/zensical build --config-file crates/platform-dirs/zensical.toml
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site/docs
+          cp -a site/. _site/docs/
+          mkdir -p _site/docs/crates/platform-dirs
+          cp -a crates/platform-dirs/site/. _site/docs/crates/platform-dirs/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=docs/">
+              <title>Chessvault documentation</title>
+            </head>
+            <body><a href="docs/">Go to the documentation</a></body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

@@ -1,5 +1,6 @@
 [project]
 site_name = "Chessvault - platform-dirs documentation"
+site_url = "https://chessvaultdotapp.github.io/chessvault/docs/crates/platform-dirs/"
 
 # Palette toggle for automatic mode
 [[project.theme.palette]]
