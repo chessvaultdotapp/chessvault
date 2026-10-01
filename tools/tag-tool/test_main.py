@@ -101,6 +101,42 @@ def test_update_version_preserves_other_content(tmp_path: Path, newline: str) ->
     )
 
 
+@pytest.mark.parametrize(
+    ("now", "initial", "expected"),
+    [
+        (datetime(2026, 10, 5, tzinfo=UTC), "1.2.3+26w40z", "1.2.3+26w41a"),
+        (datetime(2027, 1, 4, tzinfo=UTC), "1.2.3+26w53b", "1.2.3+27w01a"),
+        (datetime(2027, 1, 1, tzinfo=UTC), "1.2.3+26w53b", "1.2.3+26w53c"),
+        (
+            datetime(2026, 10, 5, tzinfo=UTC),
+            "1.2.3-rc.1+build.01.26w40b",
+            "1.2.3-rc.1+build.01.26w41a",
+        ),
+    ],
+)
+def test_development_week_rollover(
+    cli_environment: tuple[Path, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    now: datetime,
+    initial: str,
+    expected: str,
+) -> None:
+    manifest, git = cli_environment
+    clock = Mock()
+    clock.now.return_value = now
+    monkeypatch.setattr(tag_tool, "datetime", clock)
+    manifest.write_text(f'[package]\nversion = "{initial}"\n')
+    monkeypatch.setattr("sys.argv", ["tag-tool", "--dev-rel"])
+
+    tag_tool.main()
+
+    clock.now.assert_called_once_with(tz=UTC)
+    assert tomli.loads(manifest.read_text())["package"]["version"] == expected
+    assert git.call_args == call(
+        ["git", "tag", f"v{expected}"], cwd=manifest.parent, check=True
+    )
+
+
 def test_invalid_manifest_is_not_written(tmp_path: Path) -> None:
     manifest = tmp_path / "Cargo.toml"
     original = b'[package]\nversion = "unfinished\n'

@@ -97,8 +97,12 @@ version and appends SemVer build metadata with a two-digit ISO week-year,
 `w`, a two-digit ISO week number, and a lowercase alphabetic suffix. New metadata
 uses the current date in UTC. For example, ISO week 40 of 2026 becomes `26w40a`.
 
-If trailing week metadata already exists, its week is retained and its suffix
-is incremented, even if the current week has changed:
+If trailing week metadata matches the current ISO week-year and week in UTC,
+its suffix is incremented. Otherwise, the marker is replaced with the current
+week and the suffix resets to `a`, including across ISO week-year boundaries.
+For example, `1.2.3+26w40z` becomes `1.2.3+26w41a` in week 41, and
+`1.2.3+26w53b` becomes `1.2.3+27w01a` in week 1 of 2027.
+The following examples assume the current ISO week is 40 of 2026:
 
 | Current version | Next development version |
 | --- | --- |

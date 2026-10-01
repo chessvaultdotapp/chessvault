@@ -129,14 +129,18 @@ def main() -> None:
         semver_tag(f"v{version}")
         year, week, _ = datetime.now(tz=UTC).date().isocalendar()
         week_metadata = f"{year % 100:02d}w{week:02d}"
-        # Reuse an existing week marker; only new metadata uses today's ISO week.
         existing_week = re.search(
-            r"(?P<prefix>[+.][0-9]{2}w[0-9]{2})(?P<suffix>[a-z]*)$", version
+            r"[+.](?P<week>[0-9]{2}w[0-9]{2})(?P<suffix>[a-z]*)$", version
         )
         if existing_week:
-            development_version = version[
-                : existing_week.start("suffix")
-            ] + next_suffix(existing_week.group("suffix"))
+            suffix = (
+                next_suffix(existing_week.group("suffix"))
+                if existing_week.group("week") == week_metadata
+                else "a"
+            )
+            development_version = (
+                version[: existing_week.start("week")] + week_metadata + suffix
+            )
         else:
             separator = "." if "+" in version else "+"
             development_version = f"{version}{separator}{week_metadata}a"
