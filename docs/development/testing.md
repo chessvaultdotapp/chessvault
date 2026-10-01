@@ -193,6 +193,30 @@ Preserve our [`$` shell-prompt convention](../reference.md#shell-commands) and
 include representative command output where applicable. Commands that are silent
 on success do not need invented output.
 
+## Python checks
+
+Install the [shared Python development environment](../tools/index.md#shared-python-development-environment)
+and the [tag tool dependencies](../tools/tag-tool.md#setup), then run:
+
+```console
+$ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check
+All checks passed!
+$ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff format --check
+2 files already formatted
+$ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool
+All checks passed!
+$ venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
+...
+63 passed in 0.12s
+```
+
+These commands mirror the [Python workflow](../../.github/workflows/python.yml),
+which runs only on pushes and pull requests changing `.py` or `.pyi` files,
+including nested files. Requirements, configuration, and workflow-only changes
+do not trigger it; run these checks locally when changing those files.
+Pass new, untracked Python files explicitly to Ruff and ty before staging them.
+See [Ruff](../tools/ruff.md) and [ty](../tools/ty.md) for usage details.
+
 ## TOML checks
 
 Use [Tombi](../tools/tombi.md) to check formatting and lint all tracked

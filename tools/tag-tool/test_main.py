@@ -1,15 +1,14 @@
 """Test version handling with temporary manifests, a fixed date, and mocked Git."""
 
 import argparse
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-import subprocess
 from unittest.mock import Mock, call
 
+import main as tag_tool
 import pytest
 import tomli
-
-import main as tag_tool
 
 
 @pytest.mark.parametrize(
@@ -306,11 +305,26 @@ def test_tag_contains_committed_release_files(
     git("commit", "-m", "Initial state")
     original_head = git("rev-parse", "HEAD")
 
-    def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+    def run(
+        args: list[str],
+        *,
+        cwd: Path,
+        check: bool,
+        capture_output: bool = False,
+        text: bool = False,
+        stdout: int | None = None,
+    ) -> subprocess.CompletedProcess:
         if args[0] == "cargo":
             lockfile.write_text(lockfile.read_text().replace('"1.2.3"', '"2.0.0"'))
             return subprocess.CompletedProcess(args, 0)
-        return real_run(args, **kwargs)
+        return real_run(
+            args,
+            cwd=cwd,
+            check=check,
+            capture_output=capture_output,
+            text=text,
+            stdout=stdout,
+        )
 
     monkeypatch.setattr(tag_tool, "CHESSVAULT_ROOT", tmp_path)
     monkeypatch.setattr(tag_tool, "DESKTOP_APP_ROOT", manifest.parent)

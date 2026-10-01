@@ -1,0 +1,44 @@
+name: Python
+
+on:
+  push:
+    paths:
+      - '**/*.py'
+      - '**/*.pyi'
+  pull_request:
+    paths:
+      - '**/*.py'
+      - '**/*.pyi'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install Python and development dependencies
+        run: |
+          uv python install 3.14.5
+          uv venv --python 3.14.5 venvs/development
+          uv pip install --python venvs/development/bin/python --requirements venvs/development.requirements.txt
+          uv venv --python 3.14.5 venvs/tag-tool
+          uv pip install --python venvs/tag-tool/bin/python --requirements venvs/tag-tool.requirements.txt
+
+      - name: Lint tracked Python files
+        run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check
+
+      - name: Check Python formatting
+        run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff format --check
+
+      - name: Check Python types
+        run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool
+
+      - name: Test tag tool
+        run: venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
