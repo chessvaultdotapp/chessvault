@@ -15,8 +15,8 @@ concurrency:
 jobs:
   release:
     name: Publish development prerelease
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -37,6 +37,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        if: steps.tag.outputs.development == 'true'
+        run: rustup show active-toolchain
+
+      - name: Build Linux binary
+        if: steps.tag.outputs.development == 'true'
+        run: cargo build -p chessvault --bin chessvault --release --locked --target x86_64-unknown-linux-gnu
+
+      - name: Package Linux binary
+        if: steps.tag.outputs.development == 'true'
+        shell: bash
+        run: |
+          mkdir -p dist
+          tar -czf "dist/chessvault-${TAG}-linux-x86_64.tar.gz" \
+            -C target/x86_64-unknown-linux-gnu/release chessvault
 
       - name: Create prerelease
         if: steps.tag.outputs.development == 'true'
@@ -59,3 +75,15 @@ jobs:
             --generate-notes \
             --prerelease \
             --latest=false
+
+      - name: Upload Linux binary
+        if: steps.tag.outputs.development == 'true'
+        shell: bash
+        run: |
+          asset="chessvault-${TAG}-linux-x86_64.tar.gz"
+          existing=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          if grep -Fxq "$asset" <<< "$existing"; then
+            echo "Asset already exists: $asset"
+          else
+            gh release upload "$TAG" "dist/$asset"
+          fi

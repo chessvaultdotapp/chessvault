@@ -132,9 +132,17 @@ creates a GitHub **prerelease** with generated release notes. If the tagged comm
 contains `changelogs/<dev-tag>.md` (for example, `changelogs/v1.2.3+26w40a.md`),
 its contents are included in the release body before the generated notes. Without
 that file, only generated notes are used. It does not mark the prerelease
-as the latest release or build/upload binaries. Existing releases are left unchanged
-when a workflow is rerun. Stable tags and tags without trailing development week
+as the latest release. Stable tags and tags without trailing development week
 metadata are ignored.
+
+The workflow builds an optimized Linux x86-64 binary on Ubuntu 24.04 using the
+pinned Rust toolchain and lockfile. It attaches `chessvault-<dev-tag>-linux-x86_64.tar.gz`
+containing the `chessvault` executable. Extract the archive and run `./chessvault`
+in a graphical Linux session. This is a dynamically linked GNU/Linux build, not a
+self-contained bundle; compatible system libraries and graphics drivers are required.
+
+Reruns preserve existing release notes and assets, but upload the binary if its
+asset is missing. A failed build does not create a new prerelease.
 
 The workflow must be included in the tagged commit. It uses the built-in
 `GITHUB_TOKEN` with `contents: write`; no additional secret is needed. Push using
