@@ -1,0 +1,36 @@
+name: Documentation
+
+on:
+  push:
+    paths:
+      - 'zensical.toml'
+      - 'docs/**'
+      - 'venvs/zensical.requirements.txt'
+  pull_request:
+    paths:
+      - 'zensical.toml'
+      - 'docs/**'
+      - 'venvs/zensical.requirements.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build general documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install Python and Zensical
+        run: |
+          uv python install 3.14.5
+          uv venv --python 3.14.5 venvs/zensical
+          uv pip install --python venvs/zensical/bin/python --requirements venvs/zensical.requirements.txt
+
+      # Cross-root documentation links are not yet staged into the site (issue #8).
+      - name: Build documentation
+        run: venvs/zensical/bin/zensical build --config-file zensical.toml

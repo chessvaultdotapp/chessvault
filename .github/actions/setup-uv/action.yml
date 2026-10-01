@@ -1,0 +1,17 @@
+name: Setup uv
+description: Install official uv prebuilt binaries on Linux, Windows, and macOS
+
+inputs:
+  version:
+    description: Exact uv release version, without a v prefix
+    default: '0.12.21'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install uv
+      shell: bash
+      env:
+        UV_VERSION: ${{ inputs.version }}
+        SETUP_UV_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_UV_ACTION_PATH/install.sh"
