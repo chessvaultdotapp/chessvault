@@ -155,6 +155,11 @@ def main() -> None:
     if existing_tag.stdout:
         parser.error(f"tag already exists: {tag}")
 
+    changelog = CHESSVAULT_ROOT / "changelogs" / "unrelease.md"
+    tagged_changelog = changelog.with_name(f"{tag}.md")
+    if changelog.is_file() and tagged_changelog.exists():
+        parser.error(f"changelog already exists: {tagged_changelog}")
+
     previous_version = update_version(manifest_path, target_version)
     print(f"Desktop version: {previous_version} -> {target_version}")
     # Resolve locally so the committed lockfile matches the new package version.
@@ -165,6 +170,12 @@ def main() -> None:
         stdout=subprocess.DEVNULL,
     )
     release_files = [str(manifest_path.relative_to(CHESSVAULT_ROOT)), "Cargo.lock"]
+    if changelog.is_file():
+        changelog.rename(tagged_changelog)
+        release_files.extend(
+            str(path.relative_to(CHESSVAULT_ROOT))
+            for path in (changelog, tagged_changelog)
+        )
     subprocess.run(
         ["git", "add", "--", *release_files],
         cwd=CHESSVAULT_ROOT,

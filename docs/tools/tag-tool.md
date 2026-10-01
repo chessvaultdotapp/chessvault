@@ -65,9 +65,15 @@ The tool performs these steps in order:
 3. Update only `[package].version` in `apps/chessvault/Cargo.toml`, preserving
    unrelated content and formatting.
 4. Refresh `Cargo.lock` offline using Cargo.
-5. Stage and commit the desktop manifest and lockfile with a message such as
+5. If `changelogs/unrelease.md` exists, rename it to `changelogs/<tag>.md`.
+   The tool rejects an existing destination before changing any release files.
+6. Stage and commit the desktop manifest, lockfile, and optional changelog rename with a message such as
    `[desktop] Release v1.2.3`.
-6. Create `v1.2.3` at the new commit, which contains the release version.
+7. Create `v1.2.3` at the new commit, which contains the release version.
+
+Commit `changelogs/unrelease.md` before running the tool so the working tree is
+clean. The rename applies to both explicit and development releases and preserves
+the file contents. If the file is absent, no changelog is created.
 
 Choose a version that changes the release files. If there is nothing to commit,
 Git fails and no tag is created.
@@ -158,7 +164,7 @@ Review the release commit and tag before any manual push.
 ```console
 $ venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
 ...
-63 passed in 0.12s
+66 passed in 0.12s
 ```
 
 Tests cover SemVer validation, suffix progression, manifest preservation,

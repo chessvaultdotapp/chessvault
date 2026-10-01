@@ -270,9 +270,11 @@ def test_existing_tag_is_rejected(
     assert git.call_count == 2
 
 
+@pytest.mark.parametrize("with_changelog", [False, True])
 def test_tag_contains_committed_release_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    with_changelog: bool,
 ) -> None:
     """Exercise real Git in a temporary repository, substituting only Cargo."""
     real_run = subprocess.run
@@ -301,6 +303,10 @@ def test_tag_contains_committed_release_files(
     lockfile.write_text(
         'version = 4\n[[package]]\nname = "chessvault"\nversion = "1.2.3"\n'
     )
+    if with_changelog:
+        changelog = tmp_path / "changelogs" / "unrelease.md"
+        changelog.parent.mkdir()
+        changelog.write_bytes(b"# Changes\r\n\r\n- Improved chess.\r\n")
     git("add", ".")
     git("commit", "-m", "Initial state")
     original_head = git("rev-parse", "HEAD")
@@ -337,3 +343,45 @@ def test_tag_contains_committed_release_files(
     assert git("status", "--porcelain") == ""
     assert 'version = "2.0.0"' in git("show", "v2.0.0:apps/chessvault/Cargo.toml")
     assert 'version = "2.0.0"' in git("show", "v2.0.0:Cargo.lock")
+    if with_changelog:
+        assert not changelog.exists()
+        assert changelog.with_name("v2.0.0.md").read_bytes() == (
+            b"# Changes\r\n\r\n- Improved chess.\r\n"
+        )
+        assert "Improved chess." in git("show", "v2.0.0:changelogs/v2.0.0.md")
+        assert "changelogs/unrelease.md" not in git(
+            "ls-tree", "-r", "--name-only", "v2.0.0"
+        )
+
+
+@pytest.mark.parametrize("collision", [False, True])
+def test_development_changelog(
+    cli_environment: tuple[Path, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    collision: bool,
+) -> None:
+    manifest, git = cli_environment
+    original = manifest.read_bytes()
+    changelog = manifest.parent / "changelogs" / "unrelease.md"
+    changelog.parent.mkdir()
+    changelog.write_text("Development changes\n")
+    target = changelog.with_name("v1.2.3+26w40a.md")
+    monkeypatch.setattr("sys.argv", ["tag-tool", "--dev-rel"])
+    if collision:
+        target.write_text("Existing notes\n")
+        with pytest.raises(SystemExit) as error:
+            tag_tool.main()
+        assert error.value.code == 2
+        assert manifest.read_bytes() == original
+        assert changelog.read_text() == "Development changes\n"
+        assert target.read_text() == "Existing notes\n"
+        assert git.call_count == 2
+    else:
+        tag_tool.main()
+        assert not changelog.exists()
+        assert target.read_text() == "Development changes\n"
+        for command in (git.call_args_list[3], git.call_args_list[4]):
+            assert command.args[0][-2:] == [
+                "changelogs/unrelease.md",
+                "changelogs/v1.2.3+26w40a.md",
+            ]
