@@ -115,7 +115,10 @@ $ git push origin v1.2.3+26w40a
 ```
 
 The [development release workflow](../../.github/workflows/development-release.yml)
-creates a GitHub **prerelease** with generated release notes. It does not mark it
+creates a GitHub **prerelease** with generated release notes. If the tagged commit
+contains `changelogs/<dev-tag>.md` (for example, `changelogs/v1.2.3+26w40a.md`),
+its contents are included in the release body before the generated notes. Without
+that file, only generated notes are used. It does not mark the prerelease
 as the latest release or build/upload binaries. Existing releases are left unchanged
 when a workflow is rerun. Stable tags and tags without trailing development week
 metadata are ignored.

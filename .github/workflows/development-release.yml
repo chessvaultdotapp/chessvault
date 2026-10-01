@@ -32,6 +32,12 @@ jobs:
             echo 'development=true' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check out tagged commit
+        if: steps.tag.outputs.development == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Create prerelease
         if: steps.tag.outputs.development == 'true'
         shell: bash
@@ -41,7 +47,13 @@ jobs:
             echo "Release already exists: $TAG"
             exit 0
           fi
+          notes=()
+          changelog="changelogs/$TAG.md"
+          if [[ -f "$changelog" ]]; then
+            notes=(--notes-file "$changelog")
+          fi
           gh release create "$TAG" \
+            "${notes[@]}" \
             --verify-tag \
             --title "$TAG" \
             --generate-notes \
