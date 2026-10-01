@@ -228,6 +228,60 @@ installation details and alternative methods and the
 [documentation checks](testing.md#documentation-checks) for usage in this
 repository.
 
+### Go
+
+[Go](https://go.dev/) can install and run Go-based development tools such as
+[actionlint](#actionlint). It is not required to build, test, or run Chessvault.
+
+Follow the [official installation instructions](https://go.dev/doc/install)
+for your operating system, then open a new terminal and verify:
+
+```console
+$ go version
+go version go1.26.3 linux/amd64
+```
+
+### actionlint
+
+[actionlint](https://github.com/rhysd/actionlint) checks GitHub Actions workflows
+for syntax errors, invalid expressions, and other common mistakes. Use it when
+editing files in `.github/workflows/`. It is optional and is not currently run
+by the repository's CI workflows.
+
+Install it with [Go](#go):
+
+<!-- rumdl-disable MD014 -->
+```console
+$ go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+```
+<!-- rumdl-enable MD014 -->
+
+Add Go's binary installation directory to your `PATH`: `GOBIN` if configured,
+otherwise `bin` beneath `GOPATH` (normally `$HOME/go/bin`). Verify the installation:
+
+```console
+$ actionlint -version
+v1.7.7
+...
+```
+
+From the workspace root, check all workflows with `actionlint`, or pass specific
+files to check only those workflows:
+
+<!-- rumdl-disable MD014 -->
+```console
+$ actionlint .github/workflows/docs-platform-dirs.yml
+```
+<!-- rumdl-enable MD014 -->
+
+Successful checks produce no output. If available, actionlint also invokes
+ShellCheck for embedded shell scripts; use `-shellcheck=` to explicitly disable
+that integration. See the
+[installation guide](https://github.com/rhysd/actionlint/blob/main/docs/install.md)
+for prebuilt binaries that do not require Go, and the
+[usage guide](https://github.com/rhysd/actionlint/blob/main/docs/usage.md)
+for additional options.
+
 ### GitHub CLI
 
 [GitHub CLI](https://cli.github.com/) (`gh`) lets you manage pull requests,
