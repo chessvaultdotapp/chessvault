@@ -271,10 +271,12 @@ def test_existing_tag_is_rejected(
 
 
 @pytest.mark.parametrize("with_changelog", [False, True])
+@pytest.mark.parametrize("title", [b"# Unreleased", b"# Changes"])
 def test_tag_contains_committed_release_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     with_changelog: bool,
+    title: bytes,
 ) -> None:
     """Exercise real Git in a temporary repository, substituting only Cargo."""
     real_run = subprocess.run
@@ -304,9 +306,9 @@ def test_tag_contains_committed_release_files(
         'version = 4\n[[package]]\nname = "chessvault"\nversion = "1.2.3"\n'
     )
     if with_changelog:
-        changelog = tmp_path / "changelogs" / "unrelease.md"
+        changelog = tmp_path / "changelogs" / "unreleased.md"
         changelog.parent.mkdir()
-        changelog.write_bytes(b"# Changes\r\n\r\n- Improved chess.\r\n")
+        changelog.write_bytes(title + b"\r\n\r\n- Improved chess.\r\n")
     git("add", ".")
     git("commit", "-m", "Initial state")
     original_head = git("rev-parse", "HEAD")
@@ -345,11 +347,12 @@ def test_tag_contains_committed_release_files(
     assert 'version = "2.0.0"' in git("show", "v2.0.0:Cargo.lock")
     if with_changelog:
         assert not changelog.exists()
+        expected_title = b"# v2.0.0" if title == b"# Unreleased" else title
         assert changelog.with_name("v2.0.0.md").read_bytes() == (
-            b"# Changes\r\n\r\n- Improved chess.\r\n"
+            expected_title + b"\r\n\r\n- Improved chess.\r\n"
         )
         assert "Improved chess." in git("show", "v2.0.0:changelogs/v2.0.0.md")
-        assert "changelogs/unrelease.md" not in git(
+        assert "changelogs/unreleased.md" not in git(
             "ls-tree", "-r", "--name-only", "v2.0.0"
         )
 
@@ -362,9 +365,9 @@ def test_development_changelog(
 ) -> None:
     manifest, git = cli_environment
     original = manifest.read_bytes()
-    changelog = manifest.parent / "changelogs" / "unrelease.md"
+    changelog = manifest.parent / "changelogs" / "unreleased.md"
     changelog.parent.mkdir()
-    changelog.write_text("Development changes\n")
+    changelog.write_text("# Unreleased\n\nDevelopment changes\n")
     target = changelog.with_name("v1.2.3+26w40a.md")
     monkeypatch.setattr("sys.argv", ["tag-tool", "--dev-rel"])
     if collision:
@@ -373,15 +376,15 @@ def test_development_changelog(
             tag_tool.main()
         assert error.value.code == 2
         assert manifest.read_bytes() == original
-        assert changelog.read_text() == "Development changes\n"
+        assert changelog.read_text() == "# Unreleased\n\nDevelopment changes\n"
         assert target.read_text() == "Existing notes\n"
         assert git.call_count == 2
     else:
         tag_tool.main()
         assert not changelog.exists()
-        assert target.read_text() == "Development changes\n"
+        assert target.read_text() == "# v1.2.3+26w40a\n\nDevelopment changes\n"
         for command in (git.call_args_list[3], git.call_args_list[4]):
             assert command.args[0][-2:] == [
-                "changelogs/unrelease.md",
+                "changelogs/unreleased.md",
                 "changelogs/v1.2.3+26w40a.md",
             ]

@@ -155,7 +155,7 @@ def main() -> None:
     if existing_tag.stdout:
         parser.error(f"tag already exists: {tag}")
 
-    changelog = CHESSVAULT_ROOT / "changelogs" / "unrelease.md"
+    changelog = CHESSVAULT_ROOT / "changelogs" / "unreleased.md"
     tagged_changelog = changelog.with_name(f"{tag}.md")
     if changelog.is_file() and tagged_changelog.exists():
         parser.error(f"changelog already exists: {tagged_changelog}")
@@ -171,7 +171,15 @@ def main() -> None:
     )
     release_files = [str(manifest_path.relative_to(CHESSVAULT_ROOT)), "Cargo.lock"]
     if changelog.is_file():
+        contents = changelog.read_bytes()
+        contents = re.sub(
+            rb"\A# Unreleased(?=\r?\n|\Z)",
+            f"# {tag}".encode(),
+            contents,
+            count=1,
+        )
         changelog.rename(tagged_changelog)
+        tagged_changelog.write_bytes(contents)
         release_files.extend(
             str(path.relative_to(CHESSVAULT_ROOT))
             for path in (changelog, tagged_changelog)
