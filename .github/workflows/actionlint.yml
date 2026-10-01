@@ -1,0 +1,43 @@
+name: Actionlint
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/scripts/check-changed-workflows.sh'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/scripts/check-changed-workflows.sh'
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check changed workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Check added and modified workflow files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          GOFLAGS: -mod=readonly
+        run: bash .github/scripts/check-changed-workflows.sh "$BASE_SHA" "$HEAD_SHA" "$EVENT_NAME"
