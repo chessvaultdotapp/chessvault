@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ChessVault
+Comment=Play chess
+Exec=chessvault
+Icon=chessvault
+Terminal=false
+Categories=Game;BoardGame;
+Keywords=chess;

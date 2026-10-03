@@ -40,6 +40,10 @@ optimize-assets:
     @command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required: https://pnpm.io/installation" >&2; exit 1; }
     pnpm exec svgo --folder apps/chessvault/assets --recursive
 
+# Build a local Linux x86_64 AppImage in dist/.
+appimage:
+    bash tools/build-appimage.sh
+
 # Apply workspace-wide Rust formatting.
 fmt:
     cargo fmt --all

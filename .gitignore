@@ -1,5 +1,6 @@
 .local/
 
 target/
+dist/
 node_modules/
 site/
