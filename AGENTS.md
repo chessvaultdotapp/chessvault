@@ -12,7 +12,7 @@
 
 ## Commands and toolchain
 
-- Run Cargo commands from the workspace root with the Rust **1.98.0** toolchain pinned in `rust-toolchain.toml`.
+- Run Cargo commands from the workspace root using the toolchain pinned in `rust-toolchain.toml` and `--locked`.
 - Launch the desktop GUI: `just run` or `cargo run -p chessvault --locked`; `just run-debug` enables app debug logs.
 - `just check` runs build → nextest → doctests → formatting → Clippy, stopping on failure. Exact Cargo commands and
   setup are in `justfile` and `docs/development/testing.md`; Clippy uses `--no-deps`.
@@ -28,30 +28,37 @@
   `tombi lint --error-on-warnings <changed-files>`. CI checks all tracked files of each type; see the testing guide.
   Workflow-only edits do not trigger Markdown/TOML checks or Rust CI; run relevant checks locally.
 
-## Documentation and auxiliary tools
+## Assets, documentation, and release tools
 
 - Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
   omit file arguments to check all workflows. `go.mod` pins this tool, not an application component. CI checks only
   changed workflow YAML; composite actions and installer scripts are not validated by actionlint.
-- Desktop SVGs: `pnpm install --frozen-lockfile`, then `just optimize-assets`. For platform-dirs documentation diagrams,
-  edit the `.dot` sources and run `just --justfile crates/platform-dirs/justfile diagram` (Graphviz and root pnpm deps).
+- `pnpm install --frozen-lockfile` installs SVG tooling. `just optimize-assets` optimizes desktop SVGs and regenerates
+  documentation diagrams; it requires Graphviz. Edit diagram `.dot` sources, then run
+  `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update.
+- `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba`, embedded by `src/icon.rs`.
+  Edit the SVG source; generated icon pixels must use straight (demultiplied) RGBA.
 - Documentation has two Zensical roots. Build both with `venvs/zensical/bin/zensical build --config-file zensical.toml`
   and `venvs/zensical/bin/zensical build --config-file crates/platform-dirs/zensical.toml` after diagram generation.
-  `.github/workflows/docs.yml` defines setup using `venvs/zensical.requirements.txt`; cross-root links are not yet staged.
-- `tools/tag-tool/main.py` changes the desktop version, refreshes Cargo.lock offline, commits, and tags locally; it
-  requires a clean tree and cached Cargo dependencies. See `docs/tools/tag-tool.md` for setup and failure recovery.
-  Test it with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q` (dependencies: `venvs/tag-tool.requirements.txt`).
+  Cross-root links are not yet staged; see `.github/workflows/docs.yml` for build/deployment setup.
+- Create Python environments with `just --justfile venvs/justfile development tag-tool zensical` (requires uv).
+  Python checks use `venvs/development/bin/ruff check`, `venvs/development/bin/ruff format --check`, and
+  `venvs/development/bin/ty check --python venvs/tag-tool`, passing changed Python paths to each.
+  Test with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q`; full CI commands are in the testing guide.
+- `tools/tag-tool/main.py` requires a clean tree and cached Cargo dependencies: it updates the desktop version and
+  lockfile offline, consumes committed `changelogs/unreleased.md` if present, then commits and tags locally.
+  Pushing a development tag triggers publication; see `docs/tools/tag-tool.md` for release and recovery instructions.
+- `just appimage` builds `dist/ChessVault-x86_64.AppImage` on Linux x86_64; it requires `desktop-file-validate`, curl,
+  and sha256sum. Development-release CI instead ships a dynamically linked binary tarball, not the AppImage.
 
 ## Package boundaries
 
-- Four packages: the binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; the
-  runtime depends on `crates/platform-dirs`. `CONTRIBUTING.md`'s workspace section is stale (including its claim that
-  desktop does not depend on core); trust manifests.
+- Dependency chain: binary-only `apps/chessvault` → `crates/chess-core` and `crates/application-runtime` →
+  `crates/platform-dirs` (runtime dependency). `CONTRIBUTING.md`'s workspace section is stale; trust manifests.
 - `chess-core` exposes types through `src/lib.rs` re-exports (including `Move`); bitboards and castling rights stay internal.
-- Tests pin `Square`, `Side`, `Piece`, and `CastlingRights` to one-byte representations and their discriminants;
-  castling rights are OR-combinable `u8` masks.
-- `Position` holds six piece-type and two side bitboards; `Piece::Empty` and `Side::Empty` are never valid array
-  indices. Squares are rank-major (`A1 = 0`, `H8 = 63`); `Square::None` is not a valid bit index.
+- Tests pin one-byte representations and discriminants for squares, sides, pieces, and castling-right masks.
+  `Piece::Empty` and `Side::Empty` are invalid occupancy indices; `Square::None` is an invalid bit index.
+  Squares are rank-major (`A1 = 0`, `H8 = 63`).
 - Construct public positions with `Position::standard()`; `Position::empty()` is crate-private and there is no `Default`.
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
@@ -78,8 +85,7 @@
   Piece SVGs use `include_bytes!` and cached `LazyLock` handles; preserve directory-independent rendering and handle reuse.
 - `.exit_on_close_request(false)` lets the close subscription query and save window size before `window::close`. Restore
   failures use defaults; save failures still close the window.
-- Iced's `tokio` feature enables the console's timer subscription. **F12** opens the developer console; its 250 ms
-  refresh subscription runs only while open.
+- Iced's `tokio` feature enables the console timer. **F12** opens the console; refresh runs only while open.
 - The console uses a read-only `text_editor`: reject editing actions and preserve the selection during periodic refresh
   so copying remains usable.
 
