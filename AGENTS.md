@@ -50,7 +50,8 @@
   Pushing a development tag triggers publication; see `docs/tools/tag-tool.md` for release and recovery instructions.
 - `just appimage` builds `dist/ChessVault-x86_64.AppImage` on Linux x86_64; it requires `desktop-file-validate`, curl,
   sha256sum, and readelf. Development-release CI builds on Ubuntu 22.04, checks a glibc 2.35 ceiling, and ships
-  the AppImage with a checksum alongside the dynamically linked binary tarball. See `docs/development/appimage.md`
+  the AppImage alongside the dynamically linked binary tarball; GitHub supplies asset SHA-256 digests.
+  See `docs/development/appimage.md`
   for the manual cross-distribution release acceptance checklist.
 
 ## Package boundaries

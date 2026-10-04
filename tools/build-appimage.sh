@@ -2,6 +2,20 @@
 # Build a native Linux x86_64 AppImage from any working directory.
 set -euo pipefail
 
+binary=
+if [[ $# -ne 0 ]]; then
+    if [[ $# -ne 2 || $1 != --binary ]]; then
+        echo "Usage: $0 [--binary PATH]" >&2
+        exit 1
+    fi
+    if [[ ! -f $2 || ! -x $2 ]]; then
+        echo "Prebuilt binary must be an executable file: $2" >&2
+        exit 1
+    fi
+    # Resolve relative inputs before changing to the workspace root.
+    binary=$(realpath -- "$2")
+fi
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
@@ -9,7 +23,11 @@ if [[ $(uname -s) != Linux || $(uname -m) != x86_64 ]]; then
     echo 'AppImage packaging currently requires Linux x86_64.' >&2
     exit 1
 fi
-for tool in cargo curl sha256sum desktop-file-validate readelf; do
+tools=(curl sha256sum desktop-file-validate readelf)
+if [[ -z $binary ]]; then
+    tools+=(cargo)
+fi
+for tool in "${tools[@]}"; do
     command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
 done
 
@@ -42,9 +60,12 @@ export LDAI_RUNTIME_FILE="$runtime"
 
 desktop="$root/apps/chessvault/data/chessvault.desktop"
 desktop-file-validate "$desktop"
-# Explicit target and target-dir avoid accidentally packaging a cross-compiled binary.
-triple=x86_64-unknown-linux-gnu
-cargo build -p chessvault --release --locked --target "$triple" --target-dir "$root/target"
+if [[ -z $binary ]]; then
+    # Explicit target and target-dir avoid accidentally packaging a cross-compiled binary.
+    triple=x86_64-unknown-linux-gnu
+    cargo build -p chessvault --release --locked --target "$triple" --target-dir "$root/target"
+    binary="$root/target/$triple/release/chessvault"
+fi
 
 # Use a fresh staging directory so removed dependencies cannot leak into later builds.
 stage=$(mktemp -d "$root/target/appimage.XXXXXX")
@@ -60,7 +81,7 @@ cp -- "$root/LICENSE" "$stage/AppDir/usr/share/licenses/chessvault/LICENSE"
 cd "$stage"
 "$linuxdeploy" \
     --appdir "$stage/AppDir" \
-    --executable "$root/target/$triple/release/chessvault" \
+    --executable "$binary" \
     --desktop-file "$desktop" \
     --icon-file "$stage/chessvault.svg" \
     --output appimage
@@ -76,6 +97,4 @@ find squashfs-root -type f -exec readelf --version-info {} \; 2>/dev/null \
 cp -- "$stage/glibc-requirements.txt" "$root/dist/ChessVault-x86_64.glibc.txt"
 chmod 755 "$OUTPUT"
 mv -- "$OUTPUT" "$root/dist/ChessVault-x86_64.AppImage"
-cd "$root/dist"
-sha256sum ChessVault-x86_64.AppImage > ChessVault-x86_64.AppImage.sha256
 printf '\nBuilt %s\n' "$root/dist/ChessVault-x86_64.AppImage"

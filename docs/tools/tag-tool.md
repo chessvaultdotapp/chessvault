@@ -136,23 +136,24 @@ as the latest release. Stable tags and tags without trailing development week
 metadata are ignored.
 
 The workflow builds on Ubuntu 22.04 using the pinned Rust toolchain and lockfile.
-It attaches `chessvault-<dev-tag>-linux-x86_64.AppImage` and a matching `.sha256`
-checksum. See [AppImage distribution](../development/appimage.md) for verification,
+It attaches `chessvault-<dev-tag>-linux-x86_64.AppImage`; GitHub supplies the asset's
+SHA-256 digest. See [AppImage distribution](../development/appimage.md) for verification,
 host requirements, and the manual release acceptance checklist. Packaging validates
 the extracted image and enforces a maximum glibc requirement of 2.35.
 
 The `chessvault-<dev-tag>-linux-x86_64.tar.gz` archive remains available and contains
 `bin/chessvault`. This unbundled executable needs compatible system libraries.
 
-After tag validation, separate read-only native binary and AppImage build jobs run
-in parallel and store their packages as workflow artifacts for seven days.
-The release job waits for both builds to succeed, downloads and verifies the
-packages, and publishes them with `contents: write` permission. A failed release
-job can be rerun without rebuilding while the artifacts are retained.
+After tag validation, one read-only build job compiles the shared Linux binary.
+Two read-only packaging jobs download that same binary and produce the native
+archive and AppImage in parallel, without recompiling. The shared binary and
+packages are retained as workflow artifacts for seven days.
+The release job waits for both packagers to succeed, downloads and checks for the
+packages, and publishes them with `contents: write` permission. Failed packaging
+or release jobs can be rerun without rebuilding while the artifacts are retained.
 
 Reruns preserve existing release notes and assets, but upload missing artifacts.
-A missing checksum is calculated from the published image, not a potentially
-different rebuild. A failed build does not create a new prerelease.
+A failed build does not create a new prerelease.
 
 The workflow must be included in the tagged commit. It uses the built-in
 `GITHUB_TOKEN` with `contents: write`; no additional secret is needed. Push using

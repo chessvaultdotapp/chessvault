@@ -17,13 +17,19 @@ outside the repository. It builds the desktop in release mode with the locked
 dependencies and stages the executable, desktop entry, and icon in a fresh AppDir.
 Linuxdeploy bundles eligible linked libraries and generates the launcher and image.
 
+To package an existing release binary without invoking or requiring Cargo, use
+`bash tools/build-appimage.sh --binary /path/to/chessvault`. Relative paths are
+resolved from the calling directory. The file must be executable and built for
+Linux x86_64 with a compatible distribution baseline. CI uses this mode so the
+native archive and AppImage share a single compilation.
+
 Linuxdeploy (including its AppImage output plugin) and the AppImage runtime use
 fixed releases with checked SHA-256 hashes. Downloads are cached under
 `target/appimage-tools/`. If checksum validation fails, remove the affected cached
 file and retry; do not bypass validation. Temporary staging directories are removed
 on exit. The image is extracted and its entry point, desktop entry, and bundled
 project license are checked before replacing the output in `dist/`. Each build also
-writes a `.sha256` checksum and a `.glibc.txt` inventory of required glibc versions.
+writes a `.glibc.txt` inventory of required glibc versions.
 
 ## Run and verify
 
@@ -52,15 +58,15 @@ inside the image or checkout.
 
 ## Distribution
 
-Development prereleases include a versioned AppImage and matching `.sha256` file.
-Download both into the same directory, verify the checksum, then allow execution:
+Development prereleases include a versioned AppImage. GitHub provides a SHA-256
+digest for each release asset; no separate checksum file is shipped. Compare the
+output of `sha256sum 'chessvault-<dev-tag>-linux-x86_64.AppImage'` with the asset's
+SHA-256 digest on GitHub before allowing execution:
 
 <!-- chmod and successful GUI launches are silent. -->
 <!-- rumdl-disable MD014 -->
 
 ```console
-$ sha256sum --check 'chessvault-<dev-tag>-linux-x86_64.AppImage.sha256'
-chessvault-<dev-tag>-linux-x86_64.AppImage: OK
 $ chmod +x 'chessvault-<dev-tag>-linux-x86_64.AppImage'
 $ './chessvault-<dev-tag>-linux-x86_64.AppImage'
 ```
@@ -81,7 +87,7 @@ compatibility target, not yet a verified support guarantee for every distributio
 Before advertising general Linux support, test the **published image** on clean
 Ubuntu 22.04 and a current Fedora installation, with both X11 and Wayland:
 
-- Verify its downloaded checksum and launch outside the checkout.
+- Compare its SHA-256 checksum with GitHub's asset digest and launch outside the checkout.
 - Test native FUSE launch and `APPIMAGE_EXTRACT_AND_RUN=1` without FUSE.
 - Exercise the board, legal moves, F12 console, resizing, and window-state restoration.
 - Check hardware rendering and software rendering in a VM without a development toolchain.
