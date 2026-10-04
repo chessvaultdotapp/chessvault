@@ -20,4 +20,5 @@ log = "0.4.34"
 rstest.workspace = true
 
 [build-dependencies]
+anyhow.workspace = true
 resvg = { version = "0.45.1", default-features = false }
