@@ -142,7 +142,9 @@ host requirements, and the manual release acceptance checklist. Packaging valida
 the extracted image and enforces a maximum glibc requirement of 2.35.
 
 The `chessvault-<dev-tag>-linux-x86_64.tar.gz` archive remains available and contains
-`bin/chessvault`. This unbundled executable needs compatible system libraries.
+`bin/chessvault` and `share/applications/chessvault.desktop`, staged by the
+[distribution preparation tool](dist-prepare.md). This unbundled executable needs
+compatible system libraries.
 
 After tag validation, one read-only build job compiles the shared Linux binary.
 Two read-only packaging jobs download that same binary and produce the native

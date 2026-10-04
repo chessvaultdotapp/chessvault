@@ -58,6 +58,8 @@ Keep application-specific dependencies in their separate environments, such as
 
 ## Repository tools
 
+- [Distribution preparation tool](dist-prepare.md) — stage the binary and desktop
+  entry for native release tarballs.
 - [Release tag tool](tag-tool.md) — update and commit the desktop
   version and lockfile, then create a local release tag.
 

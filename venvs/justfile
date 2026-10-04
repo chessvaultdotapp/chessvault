@@ -1,7 +1,7 @@
 default:
     @just --list
 
-venvs: development tag-tool zensical
+venvs: development dist-prepare tag-tool zensical
 
 development:
     uv venv development

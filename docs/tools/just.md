@@ -62,6 +62,7 @@ $ just --justfile venvs/justfile --list
 Available recipes:
     default
     development
+    dist-prepare
     tag-tool
     venvs
     zensical
@@ -70,9 +71,10 @@ Available recipes:
 | Command | Purpose |
 | --- | --- |
 | `just --justfile venvs/justfile development` | Set up Ruff and ty. |
+| `just --justfile venvs/justfile dist-prepare` | Set up the distribution preparation tool's pytest environment. |
 | `just --justfile venvs/justfile tag-tool` | Set up the release tag tool and pytest. |
 | `just --justfile venvs/justfile zensical` | Set up the documentation-site dependencies. |
-| `just --justfile venvs/justfile venvs` | Set up all three environments. |
+| `just --justfile venvs/justfile venvs` | Set up all virtual environments. |
 
 Recipes run relative to `venvs/`, not the calling shell's directory. Each runs
 `uv venv <name>` followed by installation from `<name>.requirements.txt`.
@@ -93,5 +95,6 @@ Python 3.11 or newer for `datetime.UTC`; installed tools may have their own
 minimum versions. Recipes currently use POSIX `bin/python` paths. On Windows,
 run the equivalent uv commands with `Scripts/python.exe` instead.
 
-See the [shared development environment](index.md#shared-python-development-environment)
-and [tag tool setup](tag-tool.md#setup) for usage after installation.
+See the [shared development environment](index.md#shared-python-development-environment),
+[tag tool setup](tag-tool.md#setup), and
+[distribution preparation setup](dist-prepare.md#setup) for usage after installation.
