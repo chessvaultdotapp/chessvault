@@ -9,7 +9,7 @@ if [[ $(uname -s) != Linux || $(uname -m) != x86_64 ]]; then
     echo 'AppImage packaging currently requires Linux x86_64.' >&2
     exit 1
 fi
-for tool in cargo curl sha256sum desktop-file-validate; do
+for tool in cargo curl sha256sum desktop-file-validate readelf; do
     command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
 done
 
@@ -53,7 +53,10 @@ trap 'rm -rf -- "$stage"' EXIT
 cp -- "$root/apps/chessvault/assets/logo.svg" "$stage/chessvault.svg"
 export APPIMAGE_EXTRACT_AND_RUN=1
 export ARCH=x86_64
-export OUTPUT="$root/dist/ChessVault-x86_64.AppImage"
+# Build privately; a failed packaging run must not replace the previous artifact.
+export OUTPUT="$stage/ChessVault-x86_64.AppImage"
+mkdir -p "$stage/AppDir/usr/share/licenses/chessvault"
+cp -- "$root/LICENSE" "$stage/AppDir/usr/share/licenses/chessvault/LICENSE"
 cd "$stage"
 "$linuxdeploy" \
     --appdir "$stage/AppDir" \
@@ -61,4 +64,18 @@ cd "$stage"
     --desktop-file "$desktop" \
     --icon-file "$stage/chessvault.svg" \
     --output appimage
-printf '\nBuilt %s\n' "$OUTPUT"
+# Exercise the generated runtime without FUSE and check the packaged entry point.
+"$OUTPUT" --appimage-extract >/dev/null
+test -x squashfs-root/AppRun
+test -x squashfs-root/usr/bin/chessvault
+desktop-file-validate squashfs-root/chessvault.desktop
+test -s squashfs-root/usr/share/licenses/chessvault/LICENSE
+# Record the actual glibc requirement for release review (including bundled libraries).
+find squashfs-root -type f -exec readelf --version-info {} \; 2>/dev/null \
+    | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu > "$stage/glibc-requirements.txt"
+cp -- "$stage/glibc-requirements.txt" "$root/dist/ChessVault-x86_64.glibc.txt"
+chmod 755 "$OUTPUT"
+mv -- "$OUTPUT" "$root/dist/ChessVault-x86_64.AppImage"
+cd "$root/dist"
+sha256sum ChessVault-x86_64.AppImage > ChessVault-x86_64.AppImage.sha256
+printf '\nBuilt %s\n' "$root/dist/ChessVault-x86_64.AppImage"

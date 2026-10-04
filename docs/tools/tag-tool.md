@@ -135,14 +135,24 @@ that file, only generated notes are used. It does not mark the prerelease
 as the latest release. Stable tags and tags without trailing development week
 metadata are ignored.
 
-The workflow builds an optimized Linux x86-64 binary on Ubuntu 24.04 using the
-pinned Rust toolchain and lockfile. It attaches `chessvault-<dev-tag>-linux-x86_64.tar.gz`
-containing the `bin/chessvault` executable. Extract the archive and run `./bin/chessvault`
-in a graphical Linux session. This is a dynamically linked GNU/Linux build, not a
-self-contained bundle; compatible system libraries and graphics drivers are required.
+The workflow builds on Ubuntu 22.04 using the pinned Rust toolchain and lockfile.
+It attaches `chessvault-<dev-tag>-linux-x86_64.AppImage` and a matching `.sha256`
+checksum. See [AppImage distribution](../development/appimage.md) for verification,
+host requirements, and the manual release acceptance checklist. Packaging validates
+the extracted image and enforces a maximum glibc requirement of 2.35.
 
-Reruns preserve existing release notes and assets, but upload the binary if its
-asset is missing. A failed build does not create a new prerelease.
+The `chessvault-<dev-tag>-linux-x86_64.tar.gz` archive remains available and contains
+`bin/chessvault`. This unbundled executable needs compatible system libraries.
+
+After tag validation, separate read-only native binary and AppImage build jobs run
+in parallel and store their packages as workflow artifacts for seven days.
+The release job waits for both builds to succeed, downloads and verifies the
+packages, and publishes them with `contents: write` permission. A failed release
+job can be rerun without rebuilding while the artifacts are retained.
+
+Reruns preserve existing release notes and assets, but upload missing artifacts.
+A missing checksum is calculated from the published image, not a potentially
+different rebuild. A failed build does not create a new prerelease.
 
 The workflow must be included in the tagged commit. It uses the built-in
 `GITHUB_TOKEN` with `contents: write`; no additional secret is needed. Push using

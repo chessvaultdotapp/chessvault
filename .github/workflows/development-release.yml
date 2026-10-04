@@ -6,20 +6,20 @@ on:
       - 'v*\+*'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: development-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Publish development prerelease
+  identify-tag:
+    name: Identify development tag
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 5
+    outputs:
+      development: ${{ steps.tag.outputs.development }}
     env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
       TAG: ${{ github.ref_name }}
     steps:
       - name: Identify development tag
@@ -32,22 +32,27 @@ jobs:
             echo 'development=true' >> "$GITHUB_OUTPUT"
           fi
 
+  build-native:
+    name: Build native Linux binary
+    needs: identify-tag
+    if: needs.identify-tag.outputs.development == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
       - name: Check out tagged commit
-        if: steps.tag.outputs.development == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Install pinned Rust toolchain
-        if: steps.tag.outputs.development == 'true'
         run: rustup show active-toolchain
 
       - name: Build Linux binary
-        if: steps.tag.outputs.development == 'true'
         run: cargo build -p chessvault --bin chessvault --release --locked --target x86_64-unknown-linux-gnu
 
       - name: Package Linux binary
-        if: steps.tag.outputs.development == 'true'
         shell: bash
         run: |
           mkdir -p dist/package/bin
@@ -55,8 +60,93 @@ jobs:
           tar -czf "dist/chessvault-${TAG}-linux-x86_64.tar.gz" \
             -C dist/package bin
 
+      - name: Store native binary artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: development-native-linux-x86_64
+          path: dist/chessvault-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  build-appimage:
+    name: Build Linux AppImage
+    needs: identify-tag
+    if: needs.identify-tag.outputs.development == 'true'
+    # Keep the distribution glibc baseline at 2.35.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y desktop-file-utils
+
+      - name: Build and validate AppImage
+        shell: bash
+        run: |
+          bash tools/build-appimage.sh
+          maximum=$(tail -n 1 dist/ChessVault-x86_64.glibc.txt)
+          if [[ $(printf '%s\n' GLIBC_2.35 "$maximum" | sort -V | tail -n 1) != GLIBC_2.35 ]]; then
+            echo "AppImage exceeds the glibc 2.35 baseline: $maximum" >&2
+            exit 1
+          fi
+          cd dist
+          mv ChessVault-x86_64.AppImage "chessvault-${TAG}-linux-x86_64.AppImage"
+          sha256sum "chessvault-${TAG}-linux-x86_64.AppImage" \
+            > "chessvault-${TAG}-linux-x86_64.AppImage.sha256"
+
+      - name: Store AppImage artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: development-appimage-linux-x86_64
+          path: |
+            dist/chessvault-*.AppImage
+            dist/chessvault-*.AppImage.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  release:
+    name: Publish development prerelease
+    needs: [build-native, build-appimage]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: development-*-linux-x86_64
+          merge-multiple: true
+          path: dist
+
+      - name: Verify release artifacts
+        shell: bash
+        run: |
+          cd dist
+          test -s "chessvault-${TAG}-linux-x86_64.tar.gz"
+          sha256sum --check "chessvault-${TAG}-linux-x86_64.AppImage.sha256"
+
       - name: Create prerelease
-        if: steps.tag.outputs.development == 'true'
         shell: bash
         run: |
           # Rerunning a successful workflow must not replace an existing release.
@@ -77,14 +167,21 @@ jobs:
             --prerelease \
             --latest=false
 
-      - name: Upload Linux binary
-        if: steps.tag.outputs.development == 'true'
+      - name: Upload Linux artifacts
         shell: bash
         run: |
-          asset="chessvault-${TAG}-linux-x86_64.tar.gz"
           existing=$(gh release view "$TAG" --json assets --jq '.assets[].name')
-          if grep -Fxq "$asset" <<< "$existing"; then
-            echo "Asset already exists: $asset"
-          else
-            gh release upload "$TAG" "dist/$asset"
-          fi
+          for suffix in tar.gz AppImage AppImage.sha256; do
+            asset="chessvault-${TAG}-linux-x86_64.$suffix"
+            if grep -Fxq "$asset" <<< "$existing"; then
+              echo "Asset already exists: $asset"
+            else
+              # If only the checksum is missing, hash the published image, not a rebuild.
+              if [[ "$suffix" == AppImage.sha256 ]]; then
+                mkdir -p dist/published
+                gh release download "$TAG" --pattern "${asset%.sha256}" --dir dist/published
+                (cd dist/published && sha256sum "${asset%.sha256}") > "dist/$asset"
+              fi
+              gh release upload "$TAG" "dist/$asset"
+            fi
+          done
