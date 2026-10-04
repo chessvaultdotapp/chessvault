@@ -1,0 +1,2 @@
+optimize-svg:
+    pnpm exec svgo --folder assets --recursive

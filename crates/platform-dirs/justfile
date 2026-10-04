@@ -20,4 +20,4 @@ diagram-generate:
 
 # Optimize the existing documentation SVGs (requires root pnpm dependencies).
 diagram-optimize:
-    cd ../.. && pnpm exec svgo --folder crates/platform-dirs/docs
+    pnpm exec svgo --folder docs

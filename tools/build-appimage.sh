@@ -49,6 +49,8 @@ cargo build -p chessvault --release --locked --target "$triple" --target-dir "$r
 # Use a fresh staging directory so removed dependencies cannot leak into later builds.
 stage=$(mktemp -d "$root/target/appimage.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
+# Match Icon=chessvault without maintaining a second copy of the logo.
+cp -- "$root/apps/chessvault/assets/logo.svg" "$stage/chessvault.svg"
 export APPIMAGE_EXTRACT_AND_RUN=1
 export ARCH=x86_64
 export OUTPUT="$root/dist/ChessVault-x86_64.AppImage"
@@ -57,6 +59,6 @@ cd "$stage"
     --appdir "$stage/AppDir" \
     --executable "$root/target/$triple/release/chessvault" \
     --desktop-file "$desktop" \
-    --icon-file "$root/apps/chessvault/data/chessvault.svg" \
+    --icon-file "$stage/chessvault.svg" \
     --output appimage
 printf '\nBuilt %s\n' "$OUTPUT"
