@@ -11,6 +11,10 @@ tag-tool:
     uv venv tag-tool
     uv pip install --python tag-tool/bin/python --requirements tag-tool.requirements.txt
 
+dist-prepare:
+    uv venv dist-prepare
+    uv pip install --python dist-prepare/bin/python --requirements dist-prepare.requirements.txt
+
 zensical:
     uv venv zensical
     uv pip install --python zensical/bin/python --requirements zensical.requirements.txt
