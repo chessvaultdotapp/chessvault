@@ -14,13 +14,23 @@ use chess_core::{Position, Square};
 
 mod board;
 mod fs;
+mod icon;
 mod logs;
 
 fn main() -> iced::Result {
     let logs = logs::Logs::init();
     info!("ChessVault started");
 
-    let mut window_settings = window::Settings::default();
+    let mut window_settings = window::Settings {
+        icon: match icon::load() {
+            Ok(icon) => Some(icon),
+            Err(err) => {
+                error!(error = ?err, "Failed to load window icon");
+                None
+            }
+        },
+        ..window::Settings::default()
+    };
     match WindowRecreateInfo::load() {
         Ok(Some(info)) => window_settings.size = Size::new(info.width, info.height),
         Ok(None) => {
