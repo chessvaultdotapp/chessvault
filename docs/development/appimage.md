@@ -96,6 +96,13 @@ Ubuntu 22.04 and a current Fedora installation, with both X11 and Wayland:
 
 CI validates packaging, not these interactive compatibility checks.
 
+## Known issues
+
+- **COSMIC desktop on EndeavourOS:** The distributed AppImage's dock icon is reported
+  missing in development releases 26w40c and 26w40d when launched from Gear Lever.
+  The icon displays correctly in both Gear Lever and the launcher. The COSMIC version,
+  cause, and workaround are not yet confirmed. Tracked in [issue #11](https://github.com/chessvaultdotapp/chessvault/issues/11).
+
 ## Scope and limitations
 
 AppImage does not remove the host glibc baseline requirement.
