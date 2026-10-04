@@ -30,14 +30,20 @@ def test_prepare(tmp_path: Path) -> None:
 
     staged = output / "bin" / "chessvault"
     assert staged.read_bytes() == binary.read_bytes()
+    desktop = output / "share/applications/chessvault.desktop"
+    assert desktop.read_bytes() == dist_prepare.DESKTOP_ENTRY.read_bytes()
     assert sorted(
         path.relative_to(output).as_posix() for path in output.rglob("*")
     ) == [
         "bin",
         "bin/chessvault",
+        "share",
+        "share/applications",
+        "share/applications/chessvault.desktop",
     ]
     if os.name == "posix":
         assert staged.stat().st_mode & 0o777 == 0o755
+        assert desktop.stat().st_mode & 0o777 == 0o644
         assert binary.stat().st_mode & 0o777 == 0o600
     assert appimage.read_bytes() == b"unrelated artifact"
     assert sorted(path.name for path in dist.iterdir()) == [
@@ -93,6 +99,18 @@ def test_copy_failure_cleans_staging(tmp_path: Path) -> None:
     assert list(output.parent.iterdir()) == []
 
 
+def test_missing_desktop_entry_cleans_staging(tmp_path: Path) -> None:
+    binary = tmp_path / "binary"
+    binary.write_bytes(b"binary")
+    output = tmp_path / "dist/package"
+    with (
+        patch.object(dist_prepare, "DESKTOP_ENTRY", tmp_path / "missing.desktop"),
+        pytest.raises(FileNotFoundError),
+    ):
+        dist_prepare.prepare(binary, output)
+    assert list(output.parent.iterdir()) == []
+
+
 def test_cli_from_another_directory(tmp_path: Path) -> None:
     (tmp_path / "binary").write_bytes(b"binary")
     result = subprocess.run(
@@ -104,6 +122,9 @@ def test_cli_from_another_directory(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "dist/package/bin/chessvault").read_bytes() == b"binary"
+    assert (
+        tmp_path / "dist/package/share/applications/chessvault.desktop"
+    ).read_bytes() == dist_prepare.DESKTOP_ENTRY.read_bytes()
     assert "Prepared" in result.stdout
 
 

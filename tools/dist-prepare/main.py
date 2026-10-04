@@ -1,4 +1,4 @@
-"""Stage bin/chessvault for tarball creation without building or archiving it."""
+"""Stage the ChessVault binary and desktop entry without building or archiving."""
 
 import argparse
 import shutil
@@ -6,10 +6,11 @@ import tempfile
 from pathlib import Path
 
 CHESSVAULT_ROOT = Path(__file__).resolve().parents[2]
+DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
 
 
 def prepare(binary: Path, output: Path) -> None:
-    """Copy a built binary into a new package directory with mode 0755.
+    """Stage the binary (0755) and desktop entry (0644) in a new package directory.
 
     Existing output is rejected rather than mixing stale files into a release.
     Copy into a temporary sibling first so copy failures leave no partial package.
@@ -28,6 +29,10 @@ def prepare(binary: Path, output: Path) -> None:
         destination.parent.mkdir(parents=True)
         shutil.copyfile(binary, destination)
         destination.chmod(0o755)
+        desktop = package / "share/applications/chessvault.desktop"
+        desktop.parent.mkdir(parents=True)
+        shutil.copyfile(DESKTOP_ENTRY, desktop)
+        desktop.chmod(0o644)
         package.rename(output)
 
 
