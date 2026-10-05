@@ -31,7 +31,7 @@ jobs:
           UV_PYTHON: '3.14.5'
         run: |
           uv python install "$UV_PYTHON"
-          just --justfile venvs/justfile development tag-tool
+          just --justfile venvs/justfile development tag-tool dist-prepare
 
       - name: Lint tracked Python files
         run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check
@@ -44,3 +44,6 @@ jobs:
 
       - name: Test tag tool
         run: venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
+
+      - name: Test distribution preparation tool
+        run: venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q
