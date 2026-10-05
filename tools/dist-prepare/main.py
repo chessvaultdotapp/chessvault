@@ -1,4 +1,4 @@
-"""Stage the ChessVault binary and desktop entry without building or archiving."""
+"""Stage the ChessVault binary, desktop entry, and icon without building or archiving."""
 
 import argparse
 import shutil
@@ -10,13 +10,16 @@ DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
 
 
 def prepare(binary: Path, output: Path) -> None:
-    """Stage the binary (0755) and desktop entry (0644) in a new package directory.
+    """Stage the binary (0755), desktop entry and sibling chessvault.png (0644).
 
     Existing output is rejected rather than mixing stale files into a release.
     Copy into a temporary sibling first so copy failures leave no partial package.
     """
     if not binary.is_file():
         raise ValueError(f"binary is not a regular file: {binary}")
+    icon = binary.with_name("chessvault.png")
+    if not icon.is_file():
+        raise ValueError(f"icon is not a regular file: {icon}")
     if output.exists() or output.is_symlink():
         raise ValueError(f"output already exists: {output}")
 
@@ -33,12 +36,20 @@ def prepare(binary: Path, output: Path) -> None:
         desktop.parent.mkdir(parents=True)
         shutil.copyfile(DESKTOP_ENTRY, desktop)
         desktop.chmod(0o644)
+        staged_icon = package / "share/icons/hicolor/256x256/apps/chessvault.png"
+        staged_icon.parent.mkdir(parents=True)
+        shutil.copyfile(icon, staged_icon)
+        staged_icon.chmod(0o644)
         package.rename(output)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("binary", type=Path, help="path to the built ChessVault binary")
+    parser.add_argument(
+        "binary",
+        type=Path,
+        help="path to the built ChessVault binary (with chessvault.png beside it)",
+    )
     parser.add_argument(
         "--output",
         type=Path,

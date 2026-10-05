@@ -50,13 +50,32 @@ jobs:
         run: rustup show active-toolchain
 
       - name: Build Linux binary
-        run: cargo build -p chessvault --bin chessvault --release --locked --target x86_64-unknown-linux-gnu
+        shell: bash
+        run: |
+          cargo build -p chessvault --bin chessvault --release --locked \
+            --target x86_64-unknown-linux-gnu --message-format=json > build-messages.jsonl
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          messages = [json.loads(line) for line in pathlib.Path("build-messages.jsonl").read_text().splitlines()]
+          outputs = [pathlib.Path(message["out_dir"]) for message in messages
+                     if message["reason"] == "build-script-executed"
+                     and pathlib.Path(message["out_dir"], "chessvault.png").is_file()]
+          if len(outputs) != 1:
+              raise SystemExit(f"Expected one generated ChessVault icon, found {len(outputs)}")
+          shutil.copyfile(outputs[0] / "chessvault.png",
+                          "target/x86_64-unknown-linux-gnu/release/chessvault.png")
+          PY
 
       - name: Store shared binary
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: shared-linux-binary
-          path: target/x86_64-unknown-linux-gnu/release/chessvault
+          path: |
+            target/x86_64-unknown-linux-gnu/release/chessvault
+            target/x86_64-unknown-linux-gnu/release/chessvault.png
           if-no-files-found: error
           retention-days: 7
 

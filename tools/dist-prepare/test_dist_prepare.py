@@ -16,7 +16,15 @@ dist_prepare = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(dist_prepare)
 
 
-def test_prepare(tmp_path: Path) -> None:
+@pytest.fixture(autouse=True)
+def icon(tmp_path: Path) -> Path:
+    path = tmp_path / "chessvault.png"
+    path.write_bytes(b"test icon")
+    path.chmod(0o600)
+    return path
+
+
+def test_prepare(tmp_path: Path, icon: Path) -> None:
     binary = tmp_path / "built-binary"
     binary.write_bytes(b"\x00fake executable\xff")
     binary.chmod(0o600)
@@ -40,10 +48,19 @@ def test_prepare(tmp_path: Path) -> None:
         "share",
         "share/applications",
         "share/applications/chessvault.desktop",
+        "share/icons",
+        "share/icons/hicolor",
+        "share/icons/hicolor/256x256",
+        "share/icons/hicolor/256x256/apps",
+        "share/icons/hicolor/256x256/apps/chessvault.png",
     ]
+    staged_icon = output / "share/icons/hicolor/256x256/apps/chessvault.png"
+    assert staged_icon.read_bytes() == icon.read_bytes()
     if os.name == "posix":
         assert staged.stat().st_mode & 0o777 == 0o755
         assert desktop.stat().st_mode & 0o777 == 0o644
+        assert staged_icon.stat().st_mode & 0o777 == 0o644
+        assert icon.stat().st_mode & 0o777 == 0o600
         assert binary.stat().st_mode & 0o777 == 0o600
     assert appimage.read_bytes() == b"unrelated artifact"
     assert sorted(path.name for path in dist.iterdir()) == [
@@ -126,6 +143,19 @@ def test_cli_from_another_directory(tmp_path: Path) -> None:
         tmp_path / "dist/package/share/applications/chessvault.desktop"
     ).read_bytes() == dist_prepare.DESKTOP_ENTRY.read_bytes()
     assert "Prepared" in result.stdout
+
+
+@pytest.mark.parametrize("kind", ["missing", "directory"])
+def test_invalid_icon_leaves_no_output(tmp_path: Path, icon: Path, kind: str) -> None:
+    binary = tmp_path / "binary"
+    binary.write_bytes(b"binary")
+    icon.unlink()
+    if kind == "directory":
+        icon.mkdir()
+    output = tmp_path / "dist/package"
+    with pytest.raises(ValueError, match="icon is not a regular file"):
+        dist_prepare.prepare(binary, output)
+    assert not output.parent.exists()
 
 
 def test_cli_reports_error(tmp_path: Path) -> None:

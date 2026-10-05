@@ -32,11 +32,16 @@ Likewise, use `venvs/dist-prepare/Scripts/python.exe` for the examples below.
 ## Prepare a package
 
 Build the release binary with the repository's pinned [Rust toolchain](rust.md),
-or supply an already-built binary:
+or supply an already-built binary. Place the generated `chessvault.png` beside it.
+`build.rs` writes this 256×256 PNG into its Cargo `OUT_DIR`; use the `out_dir`
+from the matching `build-script-executed` message with `--message-format=json`
+to locate it reliably (as the release workflow does). Below, replace `<OUT_DIR>`
+with that directory:
 
 ```console
 $ cargo build -p chessvault --bin chessvault --release --locked
 ...
+$ cp <OUT_DIR>/chessvault.png target/release/chessvault.png
 $ venvs/dist-prepare/bin/python tools/dist-prepare/main.py target/release/chessvault
 Prepared /path/to/chessvault/dist/package
 ```
@@ -62,12 +67,14 @@ dist/package/
 ├── bin/
 │   └── chessvault
 └── share/
-    └── applications/
-        └── chessvault.desktop
+    ├── applications/
+    │   └── chessvault.desktop
+    └── icons/hicolor/256x256/apps/
+        └── chessvault.png
 ```
 
-The binary is copied with mode `0755` and the desktop entry with mode `0644`.
-Source contents and permissions are not changed. No libraries, icons, or other
+The binary is copied with mode `0755`; the desktop entry and PNG use `0644`.
+Source contents and permissions are not changed. No libraries or additional
 assets are bundled, and the tool does not validate the binary's architecture
 or runtime dependencies. The executable needs compatible system libraries.
 
@@ -83,10 +90,15 @@ bin/chessvault
 share/
 share/applications/
 share/applications/chessvault.desktop
+share/icons/
+share/icons/hicolor/
+share/icons/hicolor/256x256/
+share/icons/hicolor/256x256/apps/
+share/icons/hicolor/256x256/apps/chessvault.png
 ```
 
 The [development release workflow](../../.github/workflows/development-release.yml)
-checks out the tagged commit and downloads the shared Linux binary, then runs:
+checks out the tagged commit and downloads the shared Linux binary and generated PNG, then runs:
 
 ```console
 $ python3 tools/dist-prepare/main.py binary/chessvault --output dist/package
@@ -101,7 +113,7 @@ built binary; it does not use this staging tool. See the
 
 ## Failures and recovery
 
-The tool rejects a missing or non-file binary and any existing output path,
+The tool rejects a missing or non-file binary or sibling `chessvault.png`, and any existing output path,
 including directories and dangling symlinks. It never merges into or replaces
 an existing package directory. Review an old package before removing it, or
 choose a new `--output` path when retrying.
