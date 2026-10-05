@@ -25,7 +25,7 @@ if [[ $(uname -s) != Linux || $(uname -m) != x86_64 ]]; then
 fi
 tools=(curl sha256sum desktop-file-validate readelf)
 if [[ -z $binary ]]; then
-    tools+=(cargo)
+    tools+=(cargo python3)
 fi
 for tool in "${tools[@]}"; do
     command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
@@ -60,16 +60,36 @@ export LDAI_RUNTIME_FILE="$runtime"
 
 desktop="$root/apps/chessvault/data/chessvault.desktop"
 desktop-file-validate "$desktop"
-if [[ -z $binary ]]; then
-    # Explicit target and target-dir avoid accidentally packaging a cross-compiled binary.
-    triple=x86_64-unknown-linux-gnu
-    cargo build -p chessvault --release --locked --target "$triple" --target-dir "$root/target"
-    binary="$root/target/$triple/release/chessvault"
-fi
-
 # Use a fresh staging directory so removed dependencies cannot leak into later builds.
 stage=$(mktemp -d "$root/target/appimage.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
+if [[ -z $binary ]]; then
+    # Explicit target and target-dir avoid accidentally packaging a cross-compiled binary.
+    triple=x86_64-unknown-linux-gnu
+    cargo build -p chessvault --release --locked --target "$triple" --target-dir "$root/target" \
+        --message-format=json > "$stage/build-messages.jsonl"
+    binary="$root/target/$triple/release/chessvault"
+    icon=$(python3 - "$stage/build-messages.jsonl" <<'PY'
+import json
+import pathlib
+import sys
+
+messages = [json.loads(line) for line in pathlib.Path(sys.argv[1]).read_text().splitlines()]
+icons = [pathlib.Path(message["out_dir"], "chessvault.png") for message in messages
+         if message["reason"] == "build-script-executed"
+         and pathlib.Path(message["out_dir"], "chessvault.png").is_file()]
+if len(icons) != 1:
+    raise SystemExit(f"Expected one generated ChessVault icon, found {len(icons)}")
+print(icons[0])
+PY
+    )
+else
+    icon="$(dirname -- "$binary")/chessvault.png"
+fi
+if [[ ! -s $icon ]]; then
+    echo "Missing generated PNG icon: $icon" >&2
+    exit 1
+fi
 # Match Icon=chessvault without maintaining a second copy of the logo.
 cp -- "$root/apps/chessvault/assets/logo.svg" "$stage/chessvault.svg"
 export APPIMAGE_EXTRACT_AND_RUN=1
@@ -78,6 +98,8 @@ export ARCH=x86_64
 export OUTPUT="$stage/ChessVault-x86_64.AppImage"
 mkdir -p "$stage/AppDir/usr/share/licenses/chessvault"
 cp -- "$root/LICENSE" "$stage/AppDir/usr/share/licenses/chessvault/LICENSE"
+mkdir -p "$stage/AppDir/usr/share/icons/hicolor/256x256/apps"
+install -m 644 "$icon" "$stage/AppDir/usr/share/icons/hicolor/256x256/apps/chessvault.png"
 cd "$stage"
 "$linuxdeploy" \
     --appdir "$stage/AppDir" \
@@ -91,6 +113,8 @@ test -x squashfs-root/AppRun
 test -x squashfs-root/usr/bin/chessvault
 desktop-file-validate squashfs-root/chessvault.desktop
 test -s squashfs-root/usr/share/licenses/chessvault/LICENSE
+test -s squashfs-root/usr/share/icons/hicolor/256x256/apps/chessvault.png
+test -s squashfs-root/usr/share/icons/hicolor/scalable/apps/chessvault.svg
 # Record the actual glibc requirement for release review (including bundled libraries).
 find squashfs-root -type f -exec readelf --version-info {} \; 2>/dev/null \
     | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu > "$stage/glibc-requirements.txt"

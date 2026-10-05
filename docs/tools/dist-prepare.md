@@ -69,11 +69,15 @@ dist/package/
 └── share/
     ├── applications/
     │   └── chessvault.desktop
-    └── icons/hicolor/256x256/apps/
-        └── chessvault.png
+    └── icons/hicolor/
+        ├── 256x256/apps/
+        │   └── chessvault.png
+        └── scalable/apps/
+            └── chessvault.svg
 ```
 
-The binary is copied with mode `0755`; the desktop entry and PNG use `0644`.
+The binary is copied with mode `0755`; the desktop entry and both icons use `0644`.
+The scalable SVG is copied from the repository's `apps/chessvault/assets/logo.svg`.
 Source contents and permissions are not changed. No libraries or additional
 assets are bundled, and the tool does not validate the binary's architecture
 or runtime dependencies. The executable needs compatible system libraries.
@@ -95,6 +99,9 @@ share/icons/hicolor/
 share/icons/hicolor/256x256/
 share/icons/hicolor/256x256/apps/
 share/icons/hicolor/256x256/apps/chessvault.png
+share/icons/hicolor/scalable/
+share/icons/hicolor/scalable/apps/
+share/icons/hicolor/scalable/apps/chessvault.svg
 ```
 
 The [development release workflow](../../.github/workflows/development-release.yml)

@@ -53,13 +53,19 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
         "share/icons/hicolor/256x256",
         "share/icons/hicolor/256x256/apps",
         "share/icons/hicolor/256x256/apps/chessvault.png",
+        "share/icons/hicolor/scalable",
+        "share/icons/hicolor/scalable/apps",
+        "share/icons/hicolor/scalable/apps/chessvault.svg",
     ]
     staged_icon = output / "share/icons/hicolor/256x256/apps/chessvault.png"
     assert staged_icon.read_bytes() == icon.read_bytes()
+    scalable_icon = output / "share/icons/hicolor/scalable/apps/chessvault.svg"
+    assert scalable_icon.read_bytes() == dist_prepare.SCALABLE_ICON.read_bytes()
     if os.name == "posix":
         assert staged.stat().st_mode & 0o777 == 0o755
         assert desktop.stat().st_mode & 0o777 == 0o644
         assert staged_icon.stat().st_mode & 0o777 == 0o644
+        assert scalable_icon.stat().st_mode & 0o777 == 0o644
         assert icon.stat().st_mode & 0o777 == 0o600
         assert binary.stat().st_mode & 0o777 == 0o600
     assert appimage.read_bytes() == b"unrelated artifact"
@@ -116,12 +122,13 @@ def test_copy_failure_cleans_staging(tmp_path: Path) -> None:
     assert list(output.parent.iterdir()) == []
 
 
-def test_missing_desktop_entry_cleans_staging(tmp_path: Path) -> None:
+@pytest.mark.parametrize("asset", ["DESKTOP_ENTRY", "SCALABLE_ICON"])
+def test_missing_asset_cleans_staging(tmp_path: Path, asset: str) -> None:
     binary = tmp_path / "binary"
     binary.write_bytes(b"binary")
     output = tmp_path / "dist/package"
     with (
-        patch.object(dist_prepare, "DESKTOP_ENTRY", tmp_path / "missing.desktop"),
+        patch.object(dist_prepare, asset, tmp_path / "missing-asset"),
         pytest.raises(FileNotFoundError),
     ):
         dist_prepare.prepare(binary, output)

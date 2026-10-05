@@ -1,6 +1,6 @@
 # AppImage packaging and distribution
 
-Build on Linux x86_64 with the repository's pinned Rust toolchain, `curl`,
+Build on Linux x86_64 with the repository's pinned Rust toolchain, Python 3, `curl`,
 `sha256sum` (coreutils), `readelf` (binutils), and `desktop-file-validate` (desktop-file-utils).
 The first build needs network access for Cargo dependencies and packaging tools.
 
@@ -14,13 +14,16 @@ Built /path/to/chessvault/dist/ChessVault-x86_64.AppImage
 
 Without Just, run `bash tools/build-appimage.sh`. The script also works from
 outside the repository. It builds the desktop in release mode with the locked
-dependencies and stages the executable, desktop entry, and icon in a fresh AppDir.
+dependencies and stages the executable, desktop entry, and icons in a fresh AppDir.
+Both `usr/share/icons/hicolor/scalable/apps/chessvault.svg` and
+`usr/share/icons/hicolor/256x256/apps/chessvault.png` are included.
 Linuxdeploy bundles eligible linked libraries and generates the launcher and image.
 
 To package an existing release binary without invoking or requiring Cargo, use
 `bash tools/build-appimage.sh --binary /path/to/chessvault`. Relative paths are
 resolved from the calling directory. The file must be executable and built for
-Linux x86_64 with a compatible distribution baseline. CI uses this mode so the
+Linux x86_64 with a compatible distribution baseline. Place the generated
+256×256 `chessvault.png` beside the binary. CI uses this mode so the
 native archive and AppImage share a single compilation.
 
 Linuxdeploy (including its AppImage output plugin) and the AppImage runtime use
@@ -28,7 +31,7 @@ fixed releases with checked SHA-256 hashes. Downloads are cached under
 `target/appimage-tools/`. If checksum validation fails, remove the affected cached
 file and retry; do not bypass validation. Temporary staging directories are removed
 on exit. The image is extracted and its entry point, desktop entry, and bundled
-project license are checked before replacing the output in `dist/`. Each build also
+project license and both icon paths are checked before replacing the output in `dist/`. Each build also
 writes a `.glibc.txt` inventory of required glibc versions.
 
 ## Run and verify

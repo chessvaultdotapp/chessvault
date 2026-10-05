@@ -7,6 +7,7 @@ from pathlib import Path
 
 CHESSVAULT_ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
+SCALABLE_ICON = CHESSVAULT_ROOT / "apps/chessvault/assets/logo.svg"
 
 
 def prepare(binary: Path, output: Path) -> None:
@@ -40,6 +41,10 @@ def prepare(binary: Path, output: Path) -> None:
         staged_icon.parent.mkdir(parents=True)
         shutil.copyfile(icon, staged_icon)
         staged_icon.chmod(0o644)
+        scalable_icon = package / "share/icons/hicolor/scalable/apps/chessvault.svg"
+        scalable_icon.parent.mkdir(parents=True)
+        shutil.copyfile(SCALABLE_ICON, scalable_icon)
+        scalable_icon.chmod(0o644)
         package.rename(output)
 
 
