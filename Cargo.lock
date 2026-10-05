@@ -466,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "chessvault"
-version = "0.0.0+26w40d"
+version = "0.0.0+26w41a"
 dependencies = [
  "anyhow",
  "application-runtime",
