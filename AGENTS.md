@@ -31,37 +31,35 @@
 ## Assets, documentation, and release tools
 
 - Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
-  omit file arguments to check all workflows. `go.mod` pins this tool, not an application component. CI checks only
-  changed workflow YAML; composite actions and installer scripts are not validated by actionlint.
+  omit file arguments to check all workflows. CI checks only changed workflow YAML, not composite actions or installers.
 - `pnpm install --frozen-lockfile` installs SVG tooling. `just optimize-assets` optimizes desktop SVGs and regenerates
   documentation diagrams; it requires Graphviz. Edit diagram `.dot` sources, then run
   `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update.
-- `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba`, embedded by `src/icon.rs`.
-  Edit the SVG source; generated icon pixels must use straight (demultiplied) RGBA.
+- `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
+  `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
 - Documentation has two Zensical roots. Build both with `venvs/zensical/bin/zensical build --config-file zensical.toml`
   and `venvs/zensical/bin/zensical build --config-file crates/platform-dirs/zensical.toml` after diagram generation.
   Cross-root links are not yet staged; see `.github/workflows/docs.yml` for build/deployment setup.
-- Create Python environments with `just --justfile venvs/justfile development tag-tool zensical` (requires uv).
+- With uv installed: `just --justfile venvs/justfile development tag-tool dist-prepare zensical` creates Python environments.
   Python checks use `venvs/development/bin/ruff check`, `venvs/development/bin/ruff format --check`, and
   `venvs/development/bin/ty check --python venvs/tag-tool`, passing changed Python paths to each.
-  Test with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q`; full CI commands are in the testing guide.
+  Test with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q` and
+  `venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q`; `.github/workflows/python.yml` is the source of truth.
+- `tools/dist-prepare/main.py` only stages files: it requires `chessvault.png` beside the supplied binary and rejects an
+  existing output directory. Building and archiving happen outside this tool.
 - `tools/tag-tool/main.py` requires a clean tree and cached Cargo dependencies: it updates the desktop version and
   lockfile offline, consumes committed `changelogs/unreleased.md` if present, then commits and tags locally.
   Pushing a development tag triggers publication; see `docs/tools/tag-tool.md` for release and recovery instructions.
-- `just appimage` builds `dist/ChessVault-x86_64.AppImage` on Linux x86_64; it requires `desktop-file-validate`, curl,
-  sha256sum, and readelf. Development-release CI builds on Ubuntu 22.04, checks a glibc 2.35 ceiling, and ships
-  the AppImage alongside the dynamically linked binary tarball; GitHub supplies asset SHA-256 digests.
-  See `docs/development/appimage.md`
-  for the manual cross-distribution release acceptance checklist.
+- `just appimage` builds the Linux x86_64 AppImage; consult `docs/development/appimage.md` for prerequisites and
+  cross-distribution acceptance checks, and `.github/workflows/development-release.yml` for release packaging.
 
 ## Package boundaries
 
-- Dependency chain: binary-only `apps/chessvault` → `crates/chess-core` and `crates/application-runtime` →
-  `crates/platform-dirs` (runtime dependency). `CONTRIBUTING.md`'s workspace section is stale; trust manifests.
+- The binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; only the runtime
+  depends on `crates/platform-dirs`.
 - `chess-core` exposes types through `src/lib.rs` re-exports (including `Move`); bitboards and castling rights stay internal.
 - Tests pin one-byte representations and discriminants for squares, sides, pieces, and castling-right masks.
   `Piece::Empty` and `Side::Empty` are invalid occupancy indices; `Square::None` is an invalid bit index.
-  Squares are rank-major (`A1 = 0`, `H8 = 63`).
 - Construct public positions with `Position::standard()`; `Position::empty()` is crate-private and there is no `Default`.
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
@@ -74,7 +72,7 @@
   Linux-only (other platforms error).
 - Linux accepts only absolute `XDG_STATE_HOME`, falling back to an absolute home directory plus `.local/state`. Preserve
   non-Unicode paths; resolver tests inject environment values and home lookup instead of mutating process-wide
-  environment. Linux tests use `linux::tests::` and are Linux-only.
+  environment. Linux resolver tests are Linux-only.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
 - `application_runtime::fs::application_state_dir()` appends `chessvault`; desktop initialization creates the directory.
@@ -84,16 +82,13 @@
 
 - `apps/chessvault/src/main.rs` uses Iced **0.14**'s `iced::application` builder with
   `ChessVault::{update, view, subscription}`. Follow this API rather than older Iced `Application` trait examples.
-- `ChessVault` owns the position and selection; `board.rs` handles clicks and legal-destination hints via core APIs.
-  Piece SVGs use `include_bytes!` and cached `LazyLock` handles; preserve directory-independent rendering and handle reuse.
+- `ChessVault` owns position/selection; `board.rs` calls core move APIs. Preserve embedded piece SVGs (`include_bytes!`)
+  and cached `LazyLock` handles so rendering is directory-independent and reuses handles.
 - `.exit_on_close_request(false)` lets the close subscription query and save window size before `window::close`. Restore
   failures use defaults; save failures still close the window.
 - Iced's `tokio` feature enables the console timer. **F12** opens the console; refresh runs only while open.
 - The console uses a read-only `text_editor`: reject editing actions and preserve the selection during periodic refresh
   so copying remains usable.
-
-## Logging invariants
-
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
 - `RUST_LOG` controls capture (default `info`). Terminal output requires debug assertions; in-app capture works in release.

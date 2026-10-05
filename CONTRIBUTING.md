@@ -9,8 +9,12 @@ development tools, clone the repository, and build and run the desktop app.
 
 - `apps/chessvault`: the desktop app, built with Iced 0.14.
 - `crates/chess-core`: the chess core library and its inline unit tests.
+- `crates/application-runtime`: application-specific runtime services, including
+  application state directory resolution.
+- `crates/platform-dirs`: platform-specific state directory resolution.
 
-The desktop app does not yet depend on `chess-core`.
+The desktop app depends on `chess-core` and `application-runtime`. Only
+`application-runtime` depends on `platform-dirs`.
 
 ## Commit messages
 
@@ -28,7 +32,7 @@ or broken intermediate steps.
 - Keep a feature or bug fix together with its relevant tests and documentation.
 - Put unrelated refactoring, formatting, or cleanup in separate commits.
 - Keep cross-package changes together when they serve the same purpose, using
-  both `[desktop][chess-core]` tags.
+  the tags for all affected packages, such as `[desktop][chess-core]`.
 - Aim for each commit to build and pass the relevant checks on its own.
 
 For example, a desktop console fix and its regression test belong in one
@@ -94,7 +98,7 @@ repository commit.
 Press **F12** to open the developer console. Enable app debug events with:
 
 ```sh
-RUST_LOG=chessvault=debug cargo run -p chessvault
+RUST_LOG=chessvault=debug cargo run -p chessvault --locked
 ```
 
 `RUST_LOG` controls which events are captured. The console's source toggles
