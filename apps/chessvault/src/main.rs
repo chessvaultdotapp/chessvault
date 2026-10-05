@@ -31,6 +31,10 @@ fn main() -> iced::Result {
         },
         ..window::Settings::default()
     };
+    #[cfg(target_os = "linux")]
+    {
+        window_settings.platform_specific.application_id = "chessvault".into();
+    }
     match WindowRecreateInfo::load() {
         Ok(Some(info)) => window_settings.size = Size::new(info.width, info.height),
         Ok(None) => {
