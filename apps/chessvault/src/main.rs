@@ -10,10 +10,11 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
-use chess_core::{Position, Square};
+use chess_core::{Game, GameStatus, Position, Square};
 
 mod board;
 mod fs;
+mod game_status;
 mod icon;
 mod logs;
 
@@ -61,7 +62,7 @@ struct ChessVault {
     log_text: String,
     log_content: text_editor::Content,
     sources_open: bool,
-    position: Position,
+    game: Game,
     selected_square: Option<Square>,
 }
 
@@ -175,7 +176,7 @@ impl ChessVault {
             log_text: String::new(),
             log_content: text_editor::Content::new(),
             sources_open: false,
-            position: Position::standard(),
+            game: Game::new(Position::standard()),
             selected_square: None,
         };
 
@@ -199,7 +200,9 @@ impl ChessVault {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectSquare(square) => {
-                self.selected_square = board::click(&mut self.position, self.selected_square, square);
+                if self.game.status() == GameStatus::Ongoing {
+                    self.selected_square = board::click(&mut self.game.position, self.selected_square, square);
+                }
             }
             Message::ToggleConsole => {
                 self.console_open = !self.console_open;
@@ -277,10 +280,18 @@ impl ChessVault {
 
     fn view(&self) -> Element<'_, Message> {
         let content = column![
-            container(board::view(&self.position, self.selected_square, Message::SelectSquare))
-                .padding(24)
-                .width(Fill)
-                .height(Fill)
+            container(
+                row![
+                    board::view(&self.game.position, self.selected_square, Message::SelectSquare),
+                    container(text(game_status::label(self.game.status())).size(24))
+                        .width(180)
+                        .height(Fill),
+                ]
+                .spacing(24)
+            )
+            .padding(24)
+            .width(Fill)
+            .height(Fill)
         ];
 
         if !self.console_open {
