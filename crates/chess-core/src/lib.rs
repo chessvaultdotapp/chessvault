@@ -8,12 +8,17 @@
 
 mod bitboard;
 mod castling_rights;
+mod game;
 mod piece;
 mod position;
 mod side;
 mod square;
 
+pub use game::{Game, GameStatus};
 pub use piece::Piece;
-pub use position::{Position, movegen::Move};
+pub use position::{
+    Position,
+    movegen::{Move, PositionStatus},
+};
 pub use side::Side;
 pub use square::{InvalidSquareIndex, Square};

@@ -10,6 +10,14 @@ pub struct Move {
     pub promotion: Option<Piece>,
 }
 
+/// Position-based status only; repetition, move-count and dead-position draws are not evaluated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PositionStatus {
+    Ongoing,
+    Checkmate,
+    Stalemate,
+}
+
 type Board = [Option<(Piece, Side)>; 64];
 
 fn square(index: usize) -> Square {
@@ -71,6 +79,18 @@ impl Position {
     /// Returns the side whose legal moves are generated.
     pub fn side_to_move(&self) -> Side {
         self.side_to_move
+    }
+
+    /// Classifies a legal position by available moves and king safety.
+    /// Does not adjudicate other draw rules or game-level results such as resignation.
+    pub fn status(&self) -> PositionStatus {
+        if !self.legal_moves().is_empty() {
+            PositionStatus::Ongoing
+        } else if safe(&self.board(), self.side_to_move) {
+            PositionStatus::Stalemate
+        } else {
+            PositionStatus::Checkmate
+        }
     }
 
     /// Generates all legal moves for the side to move, including all four promotions.
@@ -269,6 +289,25 @@ mod tests {
     }
 
     #[test]
+    fn position_status() {
+        use {Piece::*, Side::*, Square::*};
+        assert_eq!(Position::standard().status(), PositionStatus::Ongoing);
+        for side in [White, Black] {
+            let other = opponent(side);
+            let check = setup(&[(A1, King, side), (H8, King, other), (A8, Rook, other)]);
+            let mut check = check;
+            check.side_to_move = side;
+            assert!(!safe(&check.board(), side));
+            assert_eq!(check.status(), PositionStatus::Ongoing);
+            for (queen, expected) in [(B2, PositionStatus::Checkmate), (B3, PositionStatus::Stalemate)] {
+                let mut position = setup(&[(A1, King, side), (C2, King, other), (queen, Queen, other)]);
+                position.side_to_move = side;
+                assert_eq!(position.status(), expected);
+            }
+        }
+    }
+
+    #[test]
     fn special_moves_and_pins() {
         use {Piece::*, Side::*, Square::*};
         let mut position = setup(&[
@@ -342,6 +381,7 @@ mod tests {
             }));
         }
         assert!(position.legal_moves().is_empty());
+        assert_eq!(position.status(), PositionStatus::Checkmate);
         assert!(Position::empty().legal_moves().is_empty());
     }
 }
