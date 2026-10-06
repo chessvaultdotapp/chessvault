@@ -10,7 +10,7 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
-use chess_core::{Game, GameStatus, Position, Square};
+use chess_core::{Game, GameStatus, Position, Side, Square};
 
 mod board;
 mod fs;
@@ -155,9 +155,41 @@ mod window_recreate_tests {
     }
 }
 
+#[cfg(test)]
+mod resignation_tests {
+    use super::*;
+
+    #[test]
+    fn resigning_ends_play_and_clears_selection() {
+        for side in [Side::White, Side::Black] {
+            let mut app = ChessVault {
+                logs: logs::Logs::default(),
+                console_open: false,
+                log_text: String::new(),
+                log_content: text_editor::Content::new(),
+                sources_open: false,
+                game: Game::new(Position::standard()),
+                selected_square: Some(Square::E2),
+            };
+            let _ = app.update(Message::Resign(side));
+            assert_eq!(app.game.status(), GameStatus::Resigned(side));
+            assert_eq!(app.selected_square, None);
+            let _ = app.update(Message::SelectSquare(Square::E2));
+            let _ = app.update(Message::SelectSquare(Square::E4));
+            assert_eq!(app.selected_square, None);
+            assert!(app.game.position.piece_at(Square::E2).is_some());
+            assert!(app.game.position.piece_at(Square::E4).is_none());
+            let _ = app.update(Message::Resign(Side::White));
+            let _ = app.update(Message::Resign(Side::Black));
+            assert_eq!(app.game.status(), GameStatus::Resigned(side));
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Message {
     SelectSquare(Square),
+    Resign(Side),
     ToggleConsole,
     ClearLogs,
     RefreshLogs,
@@ -202,6 +234,11 @@ impl ChessVault {
             Message::SelectSquare(square) => {
                 if self.game.status() == GameStatus::Ongoing {
                     self.selected_square = board::click(&mut self.game.position, self.selected_square, square);
+                }
+            }
+            Message::Resign(side) => {
+                if self.game.resign(side) {
+                    self.selected_square = None;
                 }
             }
             Message::ToggleConsole => {
@@ -279,13 +316,32 @@ impl ChessVault {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        let game_status = self.game.status();
+        let ongoing = game_status == GameStatus::Ongoing;
+        let label = game_status::label(game_status);
+        let status = container(text(label).size(24)).padding(16).width(Fill);
+        let status = if label.is_empty() {
+            status
+        } else {
+            status.style(container::rounded_box)
+        };
+
+        let controls = column![
+            button("Black resigns")
+                .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))
+                .width(Fill),
+            status,
+            button("White resigns")
+                .on_press_maybe(ongoing.then_some(Message::Resign(Side::White)))
+                .width(Fill),
+        ]
+        .spacing(12);
+
         let content = column![
             container(
                 row![
                     board::view(&self.game.position, self.selected_square, Message::SelectSquare),
-                    container(text(game_status::label(self.game.status())).size(24))
-                        .width(180)
-                        .height(Fill),
+                    container(controls).width(220).center_y(Fill),
                 ]
                 .spacing(24)
             )
