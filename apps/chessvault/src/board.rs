@@ -31,6 +31,9 @@ static PIECES: LazyLock<[[svg::Handle; 6]; 2]> = LazyLock::new(|| {
     .map(|pieces| pieces.map(svg::Handle::from_memory))
 });
 
+static CHECK_MARKER: LazyLock<svg::Handle> =
+    LazyLock::new(|| svg::Handle::from_memory(include_bytes!("../assets/check-marker.svg").as_slice()));
+
 fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
     PIECES.get(side as usize)?.get(piece as usize).cloned()
 }
@@ -67,12 +70,22 @@ fn legal_destinations(position: &Position, selected: Option<Square>) -> [bool; 6
     destinations
 }
 
+fn checked_king(position: &Position) -> Option<Square> {
+    if !position.is_in_check() {
+        return None;
+    }
+    (0..64)
+        .map(|index| Square::try_from(index).expect("valid board square"))
+        .find(|&square| position.piece_at(square) == Some((Piece::King, position.side_to_move())))
+}
+
 pub fn view<'a, Message: Clone + 'a>(
     position: &'a Position,
     selected: Option<Square>,
     on_select: impl Fn(Square) -> Message + 'a,
 ) -> Element<'a, Message> {
     let destinations = legal_destinations(position, selected);
+    let checked = checked_king(position);
     responsive(move |size| {
         let side = size.width.min(size.height);
         let square_size = side / 8.0;
@@ -114,6 +127,11 @@ pub fn view<'a, Message: Clone + 'a>(
                     ],
                 ];
                 let mut layers = stack![];
+                if checked == Some(square) {
+                    let diameter = square_size;
+                    let marker = svg(CHECK_MARKER.clone()).width(diameter).height(diameter);
+                    layers = layers.push(container(marker).center_x(Fill).center_y(Fill));
+                }
                 if let Some(handle) = position
                     .piece_at(square)
                     .and_then(|(piece, side)| piece_handle(piece, side))
@@ -164,6 +182,29 @@ pub fn view<'a, Message: Clone + 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn check_marker_follows_moves_and_replacement() {
+        use Square::{D1, D8, E1, E2, E4, E5, E7, E8, F2, F3, F6, F7, G2, G4, G6, G7, H4, H5};
+        let mut position = Position::standard();
+        assert_eq!(checked_king(&position), None);
+        // 1. e4 f6 2. Qh5+ g6
+        for (from, to) in [(E2, E4), (F7, F6), (D1, H5)] {
+            assert_eq!(click(&mut position, Some(from), to), None);
+        }
+        assert_eq!(checked_king(&position), Some(E8));
+        assert_eq!(click(&mut position, Some(G7), G6), None);
+        assert_eq!(checked_king(&position), None);
+
+        position = Position::standard();
+        // Fool's mate keeps the check marker on the checkmated king.
+        for (from, to) in [(F2, F3), (E7, E5), (G2, G4), (D8, H4)] {
+            assert_eq!(click(&mut position, Some(from), to), None);
+        }
+        assert_eq!(checked_king(&position), Some(E1));
+        position = Position::standard();
+        assert_eq!(checked_king(&position), None);
+    }
 
     fn destinations(position: &Position, selected: Option<Square>) -> Vec<Square> {
         legal_destinations(position, selected)

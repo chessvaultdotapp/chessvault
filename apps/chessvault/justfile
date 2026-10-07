@@ -1,2 +1,5 @@
-optimize-svg:
-    pnpm exec svgo --folder assets --recursive
+optimize-svgs: optimize-pieces
+    pnpm exec svgo --input assets/check-marker.svg assets/logo.svg
+
+optimize-pieces:
+    pnpm exec svgo --folder assets/rhosgfx-outline

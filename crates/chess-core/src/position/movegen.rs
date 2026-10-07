@@ -81,12 +81,17 @@ impl Position {
         self.side_to_move
     }
 
+    /// Returns whether the side-to-move king is in check.
+    pub fn is_in_check(&self) -> bool {
+        !safe(&self.board(), self.side_to_move)
+    }
+
     /// Classifies a legal position by available moves and king safety.
     /// Does not adjudicate other draw rules or game-level results such as resignation.
     pub fn status(&self) -> PositionStatus {
         if !self.legal_moves().is_empty() {
             PositionStatus::Ongoing
-        } else if safe(&self.board(), self.side_to_move) {
+        } else if !self.is_in_check() {
             PositionStatus::Stalemate
         } else {
             PositionStatus::Checkmate
@@ -292,17 +297,19 @@ mod tests {
     fn position_status() {
         use {Piece::*, Side::*, Square::*};
         assert_eq!(Position::standard().status(), PositionStatus::Ongoing);
+        assert!(!Position::standard().is_in_check());
         for side in [White, Black] {
             let other = opponent(side);
             let check = setup(&[(A1, King, side), (H8, King, other), (A8, Rook, other)]);
             let mut check = check;
             check.side_to_move = side;
-            assert!(!safe(&check.board(), side));
+            assert!(check.is_in_check());
             assert_eq!(check.status(), PositionStatus::Ongoing);
             for (queen, expected) in [(B2, PositionStatus::Checkmate), (B3, PositionStatus::Stalemate)] {
                 let mut position = setup(&[(A1, King, side), (C2, King, other), (queen, Queen, other)]);
                 position.side_to_move = side;
                 assert_eq!(position.status(), expected);
+                assert_eq!(position.is_in_check(), expected == PositionStatus::Checkmate);
             }
         }
     }

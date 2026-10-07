@@ -39,7 +39,7 @@ optimize-assets:
     @command -v node >/dev/null 2>&1 || { echo "Node.js is required: https://nodejs.org/en/download" >&2; exit 1; }
     @command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required: https://pnpm.io/installation" >&2; exit 1; }
     @command -v dot >/dev/null 2>&1 || { echo "Graphviz is required: https://graphviz.org/download/" >&2; exit 1; }
-    just --justfile apps/chessvault/justfile optimize-svg
+    just --justfile apps/chessvault/justfile optimize-svgs
     just --justfile crates/platform-dirs/justfile diagram
 
 # Build a local Linux x86_64 AppImage in dist/.
