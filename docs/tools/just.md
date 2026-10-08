@@ -40,7 +40,7 @@ Available recipes:
 Check recipes follow the [ordered verification sequence](../development/testing.md#ordered-checks),
 stop on failure, and require [cargo-nextest](cargo-nextest.md). They run
 doctests separately, except for the binary-only `chessvault` package.
-`check-package` also accepts `chessvault`, `application-runtime`, and
+`check-package` also accepts `chessvault` and
 `platform-dirs`. Native path checks supplement the default checks; see
 [platform and feature variants](../development/testing.md#platform-and-feature-variants).
 If nextest is unavailable, use the manual Cargo fallback described in the

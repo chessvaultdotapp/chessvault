@@ -1,13 +1,15 @@
 # Platform directories
 
 `platform-dirs` resolves the base directory for persistent user state. It only
-resolves paths: callers append application-specific names and create directories
+resolves paths, optionally appending an application name; callers create directories
 as needed.
 
 ## API
 
-The crate exposes `platform_dirs::user_state_dir()`, which returns an
-`anyhow::Result<PathBuf>`. See the [in-code documentation](../src/lib.rs) for
+The crate exposes `platform_dirs::user_state_dir(app_name: Option<&str>)`, returning
+`anyhow::Result<PathBuf>`. Pass `None` for the base or `Some("my-app")` for an
+application subdirectory. Empty names, `.`, `..`, slashes, backslashes, colons,
+and NUL bytes are rejected. See the [in-code documentation](../src/lib.rs) for
 resolution rules, errors, and usage examples.
 
 ## Features and platform support

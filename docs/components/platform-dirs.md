@@ -1,8 +1,8 @@
 # Platform directories
 
-`platform-dirs` resolves the user's state-directory base. It does not know the
-Chessvault application name and does not create directories. Application naming
-belongs to [Application runtime](application-runtime.md).
+`platform-dirs` resolves the user's state-directory base and optionally appends
+an application name. The desktop passes `Some("chessvault")` and creates the
+directory; the library only resolves paths.
 
 ## Source map
 
@@ -13,7 +13,10 @@ belongs to [Application runtime](application-runtime.md).
 
 ## Public API
 
-`platform_dirs::user_state_dir()` returns an `anyhow::Result<PathBuf>`. A
+`platform_dirs::user_state_dir(app_name: Option<&str>)` returns an `anyhow::Result<PathBuf>`.
+Pass `None` for the base or `Some("chessvault")` for its application subdirectory.
+Names must be a single nonempty component; `.`, `..`, slashes, backslashes,
+colons, and NUL bytes are rejected on every platform. A
 successful result identifies a path, not a guarantee that it exists or is
 writable. Non-Unicode paths are preserved; display strings should not be used
 to reconstruct paths.
@@ -21,7 +24,7 @@ to reconstruct paths.
 ### Development override
 
 With both debug assertions and the default-enabled `development` feature, the
-function returns:
+base directory is:
 
 ```text
 <current working directory>/.local/state

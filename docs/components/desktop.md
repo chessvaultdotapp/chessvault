@@ -144,8 +144,7 @@ failure to create the application state directory during boot is fatal.
 
 Saving directly truncates the `recreate` file; writes are not atomic. To reset
 window state, remove that file while the app is closed. See
-[Application runtime](application-runtime.md) for application paths and
-[Platform directories](platform-dirs.md) for platform policy and limitations.
+[Platform directories](platform-dirs.md) for application paths, platform policy, and limitations.
 
 ## Verification
 

@@ -1,8 +1,8 @@
 //! Platform-aware resolution of user state directories.
 //!
 //! Use [`user_state_dir`] to locate the base directory for persistent user state.
-//! This crate only resolves paths: callers append any application-specific
-//! subdirectory and create directories as needed.
+//! An optional application name selects a subdirectory beneath that base.
+//! This crate only resolves paths: callers create directories as needed.
 //!
 //! # Features and platform support
 //!
@@ -25,7 +25,11 @@ use anyhow::Result;
 #[cfg(all(target_os = "linux", any(not(all(debug_assertions, feature = "development")), test)))]
 mod linux;
 
-/// Returns the absolute base directory for persistent user state.
+/// Returns the absolute directory for persistent user state.
+///
+/// Pass `None` for the base directory or `Some("my-app")` to append an application
+/// name. Names must be a single nonempty directory component: `.` and `..`,
+/// slashes, backslashes, colons, and NUL bytes are rejected on every platform.
 ///
 /// With debug assertions and the default-enabled `development` feature, returns
 /// `<current working directory>/.local/state` on every platform.
@@ -36,12 +40,15 @@ mod linux;
 /// [`std::env::home_dir`], which must also be absolute. Non-Unicode paths are
 /// preserved.
 ///
-/// Does not create the directory, check whether it exists or is writable, or
-/// append an application-specific name.
+/// Does not create the directory or check whether it exists or is writable.
 ///
 /// # Errors
 ///
+/// Base-directory resolution runs before application-name validation, so resolution
+/// errors take precedence over invalid-name errors.
+///
 /// Returns an error if:
+/// - The application name is invalid.
 /// - Development resolution cannot read the current working directory.
 /// - Native Linux resolution has neither an absolute `XDG_STATE_HOME` nor an
 ///   absolute home directory.
@@ -53,7 +60,7 @@ mod linux;
 /// Resolve a path without creating any directories, handling resolution errors:
 ///
 /// ```
-/// match platform_dirs::user_state_dir() {
+/// match platform_dirs::user_state_dir(None) {
 ///     Ok(path) => {
 ///         assert!(path.is_absolute());
 ///         println!("User state directory: {}", path.display());
@@ -66,11 +73,25 @@ mod linux;
 /// run because it writes to the filesystem:
 ///
 /// ```no_run
-/// let state_dir = platform_dirs::user_state_dir()?.join("my-app");
+/// let state_dir = platform_dirs::user_state_dir(Some("my-app"))?;
 /// std::fs::create_dir_all(&state_dir)?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn user_state_dir() -> Result<PathBuf> {
+pub fn user_state_dir(app_name: Option<&str>) -> Result<PathBuf> {
+    let mut path = base_state_dir()?;
+    if let Some(name) = app_name {
+        anyhow::ensure!(
+            !name.is_empty() && name != "." && name != ".." && !name.contains(['/', '\\', ':', '\0']),
+            "Application name must be a single nonempty directory component"
+        );
+
+        path.push(name);
+    }
+
+    Ok(path)
+}
+
+fn base_state_dir() -> Result<PathBuf> {
     #[cfg(all(debug_assertions, feature = "development"))]
     {
         use anyhow::Context;
@@ -92,12 +113,57 @@ pub fn user_state_dir() -> Result<PathBuf> {
     }
 }
 
-#[cfg(all(test, debug_assertions, feature = "development"))]
+#[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn optional_application_name() {
+        let base = base_state_dir();
+        for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
+            match &base {
+                Ok(base) => {
+                    let expected = name.map_or_else(|| base.clone(), |name| base.join(name));
+                    assert_eq!(user_state_dir(name).unwrap(), expected);
+                }
+                Err(error) => assert_eq!(format!("{:#}", user_state_dir(name).unwrap_err()), format!("{error:#}")),
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_names_are_rejected_unless_base_resolution_fails() {
+        let expected = match base_state_dir() {
+            Ok(_) => "Application name must be a single nonempty directory component".to_owned(),
+            Err(error) => format!("{error:#}"),
+        };
+        for name in [
+            "",
+            ".",
+            "..",
+            "/app",
+            "a/b",
+            "a\\b",
+            "a/",
+            "C:app",
+            "C:\\app",
+            "\\\\server\\app",
+            "a\0b",
+        ] {
+            let error = user_state_dir(Some(name)).unwrap_err();
+            assert_eq!(format!("{error:#}"), expected);
+        }
+    }
+
+    #[cfg(all(debug_assertions, feature = "development"))]
     #[test]
     fn debug_state_dir_uses_current_working_directory() {
         let cwd = std::env::current_dir().unwrap();
 
-        assert_eq!(super::user_state_dir().unwrap(), cwd.join(".local/state"));
+        assert_eq!(user_state_dir(None).unwrap(), cwd.join(".local/state"));
+        assert_eq!(
+            user_state_dir(Some("chessvault")).unwrap(),
+            cwd.join(".local/state/chessvault")
+        );
     }
 }

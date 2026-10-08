@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 pub(crate) fn window_recreate_info_filepath() -> Result<PathBuf> {
-    resolve_window_recreate_info_filepath(application_runtime::fs::application_state_dir())
+    resolve_window_recreate_info_filepath(platform_dirs::user_state_dir(Some("chessvault")))
 }
 
 fn resolve_window_recreate_info_filepath(state_dir: Result<PathBuf>) -> Result<PathBuf> {

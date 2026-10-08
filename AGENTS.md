@@ -4,7 +4,7 @@
 
 - Read `CONTRIBUTING.md` when preparing a PR; consult `docs/development/testing.md` for detailed verification. Visible
   desktop changes require launching the app in a graphical session and exercising the affected interaction.
-- Commit tags follow `docs/conventions/commit-messages.md`: `[desktop]`, `[chess-core]`, `[application-runtime]`, or
+- Commit tags follow `docs/conventions/commit-messages.md`: `[desktop]`, `[chess-core]`, or
   `[platform-dirs]` for the affected packages (including tests); add `[docs]` for documentation and `[ci]` for CI.
   Combine applicable tags without spaces. Shared docs use `[docs]`; workspace-only infrastructure needs no package tag.
 - Pin external GitHub Actions to full 40-character commit SHAs with release-version comments; verify both upstream when
@@ -17,7 +17,7 @@
 - `just check` runs build → nextest → doctests → formatting → Clippy, stopping on failure. Exact Cargo commands and
   setup are in `justfile` and `docs/development/testing.md`; Clippy uses `--no-deps`.
 - Nextest excludes doctests. If unavailable, replace both test steps with `cargo test --workspace --locked`.
-- Focus checks with `just check-package <package>` (`chessvault`, `chess-core`, `application-runtime`, `platform-dirs`).
+- Focus checks with `just check-package <package>` (`chessvault`, `chess-core`, `platform-dirs`).
   It keeps formatting workspace-wide and skips doctests for the binary-only desktop. Use workspace checks for shared
   configuration, cross-package changes, or APIs affecting consumers.
 - Single desktop unit test (does not launch the GUI):
@@ -55,8 +55,7 @@
 
 ## Package boundaries
 
-- The binary-only `apps/chessvault` depends on `crates/chess-core` and `crates/application-runtime`; only the runtime
-  depends on `crates/platform-dirs`.
+- The binary-only `apps/chessvault` depends directly on `crates/chess-core` and `crates/platform-dirs`.
 - `chess-core` exposes types through `src/lib.rs` re-exports (including `Move`); bitboards and castling rights stay internal.
 - Tests pin one-byte representations and discriminants for squares, sides, pieces, and castling-right masks.
   `Piece::Empty` and `Side::Empty` are invalid occupancy indices; `Square::None` is an invalid bit index.
@@ -67,7 +66,8 @@
 
 ## State paths
 
-- `platform_dirs::user_state_dir()` only resolves paths. Default-enabled `development` plus debug assertions selects
+- `platform_dirs::user_state_dir(app_name: Option<&str>)` only resolves paths.
+  Default-enabled `development` plus debug assertions selects
   `<cwd>/.local/state` on every platform; release builds or `default-features = false` use OS resolution, currently
   Linux-only (other platforms error).
 - Linux accepts only absolute `XDG_STATE_HOME`, falling back to an absolute home directory plus `.local/state`. Preserve
@@ -75,7 +75,8 @@
   environment. Linux resolver tests are Linux-only.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
-- `application_runtime::fs::application_state_dir()` appends `chessvault`; desktop initialization creates the directory.
+- Desktop passes `Some("chessvault")` to `user_state_dir`; `None` returns the base. Names must be one nonempty component,
+  excluding `.`, `..`, slashes, backslashes, colons, and NUL bytes. Desktop initialization creates the directory.
   Window dimensions are JSON in `recreate` (no extension), normally `.local/state/chessvault/recreate` in development.
 
 ## App wiring

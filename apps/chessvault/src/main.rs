@@ -221,7 +221,7 @@ impl ChessVault {
     }
 
     fn initialize(&mut self) -> Result<()> {
-        match application_runtime::fs::application_state_dir().context("Failed to resolve application state directory")
+        match platform_dirs::user_state_dir(Some("chessvault")).context("Failed to resolve application state directory")
         {
             Ok(path) => std::fs::create_dir_all(&path)
                 .with_context(|| format!("Failed to create application state directory: {}", path.display())),

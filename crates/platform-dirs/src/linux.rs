@@ -18,15 +18,18 @@ pub(crate) fn user_state_dir() -> Result<PathBuf> {
 /// OS-native path values preserve non-Unicode names; injected inputs let tests
 /// exercise the policy without changing the process environment.
 fn resolve_user_state_dir(xdg_state_home: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
-    match xdg_state_home.map(PathBuf::from) {
-        Some(path) if path.is_absolute() => Ok(path),
-        _ => {
-            let home = home()
-                .filter(|path| path.is_absolute())
-                .context("Cannot resolve user state directory: XDG_STATE_HOME is unset or invalid and no absolute home directory could be determined.")?;
-            Ok(home.join(".local").join("state"))
-        }
+    if let Some(path) = xdg_state_home.map(PathBuf::from)
+        && path.is_absolute()
+    {
+        return Ok(path);
     }
+
+    let home = home().filter(|path| path.is_absolute()).context(
+        "Cannot resolve user state directory: \
+             XDG_STATE_HOME is unset or invalid and no absolute home directory could be determined.",
+    )?;
+
+    Ok(home.join(".local").join("state"))
 }
 
 #[cfg(test)]

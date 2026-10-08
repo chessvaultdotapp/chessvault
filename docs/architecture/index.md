@@ -1,7 +1,7 @@
 # Architecture
 
 This page describes the current implementation, rather than a target design.
-Chessvault is a Rust workspace with an Iced desktop application and three
+Chessvault is a Rust workspace with an Iced desktop application and two
 supporting libraries. The app displays the standard chess starting position,
 provides an in-app developer console, and remembers its window size. It does not
 yet support playing moves.
@@ -11,8 +11,7 @@ yet support playing moves.
 ```text
 chessvault (desktop binary)
 ├── chess-core
-└── application-runtime
-    └── platform-dirs
+└── platform-dirs
 ```
 
 Arrows in this tree represent workspace dependencies; third-party dependencies
@@ -22,13 +21,11 @@ are omitted.
 | --- | --- | --- |
 | `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../../apps/chessvault/src/main.rs) |
 | `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
-| `application-runtime` | Application-specific runtime helpers; currently the Chessvault state-directory path | [`crates/application-runtime/src/lib.rs`](../../crates/application-runtime/src/lib.rs) |
 | `platform-dirs` | Platform-specific user state-directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
 
-The chess core has no dependency on the GUI or runtime libraries. Platform
-resolution does not know the application name; `application-runtime` adds that
-policy. The desktop application owns filesystem side effects and the format of
-its saved window state.
+The chess core has no dependency on the GUI or platform directory library.
+Platform resolution accepts an optional application name; the desktop passes
+`chessvault`. The desktop owns filesystem side effects and its saved window-state format.
 
 ## Desktop lifecycle and state
 
@@ -96,9 +93,8 @@ capabilities should not be inferred from the presence of position metadata.
 State paths are resolved in layers:
 
 ```text
-platform_dirs::user_state_dir()
-    → application_runtime::fs::application_state_dir()  [append chessvault]
-    → desktop fs::window_recreate_info_filepath()        [append recreate]
+platform_dirs::user_state_dir(Some("chessvault"))      [append chessvault to base]
+    → desktop fs::window_recreate_info_filepath()    [append recreate]
 ```
 
 The path helpers return `PathBuf` values without creating directories and

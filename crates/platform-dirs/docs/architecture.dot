@@ -5,7 +5,7 @@ digraph architecture {
     package [label=<
         <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="14" COLOR="#475569" BGCOLOR="#ffffff">
             <TR><TD COLSPAN="3" BGCOLOR="#dbeafe"><B>platform-dirs</B></TD></TR>
-            <TR><TD COLSPAN="3">Public API: user_state_dir()</TD></TR>
+            <TR><TD COLSPAN="3">Public API: user_state_dir(app_name)</TD></TR>
             <TR>
                 <TD BGCOLOR="#f1f5f9"><B>Development override</B><BR/>Debug assertions +<BR/>development feature</TD>
                 <TD COLSPAN="2" BGCOLOR="#f1f5f9"><B>Native platform resolution</B><BR/>Otherwise</TD>

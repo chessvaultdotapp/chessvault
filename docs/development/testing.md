@@ -54,7 +54,6 @@ commands with one of:
 
 - `-p chessvault` — desktop application.
 - `-p chess-core` — chess primitives and positions.
-- `-p application-runtime` — application state-directory policy.
 - `-p platform-dirs` — platform directory resolution.
 
 Keep `cargo fmt --all -- --check` workspace-wide. Use workspace checks for shared
@@ -123,7 +122,7 @@ Use these nearby tests as examples when extending a component:
   empty pieces, sides, and squares are not valid occupancy indices.
 - **Desktop:** test log capture and filtering, window-state JSON validation, and
   file-path composition independently of the GUI.
-- **Runtime and platform directories:** inject upstream path results,
+- **Platform directories:** inject upstream path results,
   environment values, and home-directory lookups. Do not mutate process-wide
   environment variables in tests. Preserve non-Unicode path coverage where
   supported.

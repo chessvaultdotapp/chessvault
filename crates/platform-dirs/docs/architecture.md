@@ -9,18 +9,17 @@ See [Development tasks](index.md#development-tasks) for prerequisites.
 
 ## Responsibility and boundaries
 
-`platform-dirs` resolves the base directory for persistent user state. It does
-not append an application name, create directories, or check existence and
-permissions. These concerns belong to callers; in this workspace,
-`application-runtime` appends the application name and desktop initialization
-creates the directory.
+`platform-dirs` resolves the directory for persistent user state, optionally
+appending a validated application name. It does not create directories or check
+existence and permissions. The desktop passes `Some("chessvault")` and creates
+the directory during initialization.
 
 Paths remain OS-native `PathBuf` values so non-Unicode names are preserved.
 Resolution happens on each call rather than being cached.
 
 ## Module structure
 
-- [`src/lib.rs`](../src/lib.rs) exposes `user_state_dir()` and selects the
+- [`src/lib.rs`](../src/lib.rs) exposes `user_state_dir(app_name)`, validates the name, and selects the
   development override, a native resolver, or an unsupported-platform error.
 - [`src/linux.rs`](../src/linux.rs) owns Linux environment lookup, resolution
   policy, and its unit tests. It is private to the crate.
@@ -53,8 +52,10 @@ The [resolution diagram source](resolution.dot) uses ovals for entry and return
 points, rectangles for actions, and diamonds for decisions. Blue decisions and
 dashed edges show compile-time selection, not runtime configuration checks.
 Home lookup checks for an absolute path value, not whether the directory exists
-on disk. After a successful return, callers may append an application name and
-create directories as needed.
+on disk. The diagram shows base-directory resolution; the public wrapper resolves
+the base first, then validates and appends the optional application name.
+Base-resolution errors take precedence over invalid-name errors.
+Callers create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`. The package's
 documentation CI workflow also runs Graphviz followed by one SVGO pass before

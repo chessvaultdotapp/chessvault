@@ -3,7 +3,7 @@ digraph resolution {
     node [shape=box, style=filled, fillcolor="#ffffff", color="#475569", fontname="sans-serif", fontsize=11, margin="0.16,0.10"];
     edge [color="#475569", fontname="sans-serif", fontsize=10, arrowsize=0.7];
 
-    start [shape=oval, label="user_state_dir()", fillcolor="#dbeafe"];
+    start [shape=oval, label="Base state directory", fillcolor="#dbeafe"];
     select [shape=diamond, label="Debug assertions +\ndevelopment feature?\n(compile time)", fillcolor="#dbeafe"];
     platform [shape=diamond, label="Linux target?\n(compile time)", fillcolor="#dbeafe"];
 
