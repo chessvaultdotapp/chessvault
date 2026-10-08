@@ -9,7 +9,7 @@ See [Development tasks](index.md#development-tasks) for prerequisites.
 
 ## Responsibility and boundaries
 
-`platform-dirs` resolves the directory for persistent user state, optionally
+`platform-dirs` resolves directories for persistent user state and logs, optionally
 appending a validated application name. It does not create directories or check
 existence and permissions. The desktop passes `Some("chessvault")` and creates
 the directory during initialization.
@@ -21,11 +21,13 @@ Resolution happens on each call rather than being cached.
 
 - [`src/lib.rs`](../src/lib.rs) exposes `user_state_dir(app_name)`, validates the name, and selects the
   development override, a native resolver, or an unsupported-platform error.
+  It also exposes `user_log_dir(app_name, opinion)`, which delegates to
+  `user_state_dir` and appends `log` unless `opinion` is `Some(false)`.
 - [`src/linux.rs`](../src/linux.rs) owns Linux environment lookup, resolution
   policy, and its unit tests. It is private to the crate.
 
 The public API returns `anyhow::Result<PathBuf>`, keeping platform-specific
-implementation details behind a single entry point.
+implementation details behind the state and log directory entry points.
 
 ## Compile-time selection
 
@@ -46,15 +48,18 @@ checked even when the public entry point uses the development override.
 
 ## Resolution flow
 
-![Compile-time implementation selection and runtime state-directory resolution, including fallbacks and errors](resolution.svg)
+![Log-directory opinion handling and shared base-state resolution, including fallbacks and errors](resolution.svg)
 
 The [resolution diagram source](resolution.dot) uses ovals for entry and return
 points, rectangles for actions, and diamonds for decisions. Blue decisions and
 dashed edges show compile-time selection, not runtime configuration checks.
 Home lookup checks for an absolute path value, not whether the directory exists
-on disk. The diagram shows base-directory resolution; the public wrapper resolves
-the base first, then validates and appends the optional application name.
+on disk. The base-state flow shows shared directory resolution; `user_state_dir`
+resolves the base first, then validates and appends the optional application name.
 Base-resolution errors take precedence over invalid-name errors.
+The separate log-wrapper flow calls `user_state_dir` and appends `log` for `None`
+or `Some(true)`, or returns it unchanged for `Some(false)`. It propagates
+state-directory errors unchanged.
 Callers create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`. The package's
@@ -82,6 +87,10 @@ Neither branch creates or validates the directory on disk.
 Linux policy tests inject environment values and a home-lookup closure instead
 of modifying the process environment. This keeps tests independent and allows
 coverage of fallback errors, non-Unicode paths, and whether home lookup runs.
+
+Log-directory tests cover all three opinion values with and without an application
+name, including names containing spaces and Unicode. They also check that invalid
+application names propagate the same errors as state-directory resolution.
 
 A separate development-mode test checks the public entry point against the
 current working directory. Check both default and no-default-features builds

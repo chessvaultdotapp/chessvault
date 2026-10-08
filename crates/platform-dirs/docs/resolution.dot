@@ -3,6 +3,28 @@ digraph resolution {
     node [shape=box, style=filled, fillcolor="#ffffff", color="#475569", fontname="sans-serif", fontsize=11, margin="0.16,0.10"];
     edge [color="#475569", fontname="sans-serif", fontsize=10, arrowsize=0.7];
 
+    subgraph cluster_log {
+        label="Log directory wrapper";
+        fontname="sans-serif";
+        color="#94a3b8";
+
+        log_start [shape=oval, label="user_log_dir(app_name, opinion)", fillcolor="#dbeafe"];
+        state_call [label="Call user_state_dir(app_name)\nResolve base, then validate and\nappend optional application name"];
+        state_ok [shape=diamond, label="Resolution and\nvalidation succeeded?"];
+        opinion [shape=diamond, label="opinion.unwrap_or(true)?"];
+        append_log [label="Append log"];
+        log_result [shape=oval, label="Return PathBuf", fillcolor="#dcfce7"];
+        log_error [shape=oval, label="Propagate error unchanged", fillcolor="#fee2e2"];
+
+        log_start -> state_call;
+        state_call -> state_ok;
+        state_ok -> opinion [label="Yes"];
+        state_ok -> log_error [label="No"];
+        opinion -> append_log [label="None or Some(true)"];
+        opinion -> log_result [label="Some(false)"];
+        append_log -> log_result;
+    }
+
     start [shape=oval, label="Base state directory", fillcolor="#dbeafe"];
     select [shape=diamond, label="Debug assertions +\ndevelopment feature?\n(compile time)", fillcolor="#dbeafe"];
     platform [shape=diamond, label="Linux target?\n(compile time)", fillcolor="#dbeafe"];

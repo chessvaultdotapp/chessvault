@@ -1,6 +1,7 @@
-//! Platform-aware resolution of user state directories.
+//! Platform-aware resolution of user state and log directories.
 //!
-//! Use [`user_state_dir`] to locate the base directory for persistent user state.
+//! Use [`user_state_dir`] to locate the base directory for persistent user state,
+//! or [`user_log_dir`] to resolve a log directory beneath it by default.
 //! An optional application name selects a subdirectory beneath that base.
 //! This crate only resolves paths: callers create directories as needed.
 //!
@@ -113,9 +114,76 @@ fn base_state_dir() -> Result<PathBuf> {
     }
 }
 
+/// Returns the absolute directory for user logs.
+///
+/// Resolves [`user_state_dir`] with the supplied application name, then appends
+/// `log` when `opinion` is `None` (the default) or `Some(true)`. With
+/// `Some(false)`, returns the state directory unchanged.
+///
+/// Uses the same development and native resolution rules as [`user_state_dir`].
+/// Does not create the directory or check whether it exists or is writable.
+///
+/// # Errors
+///
+/// Returns the same resolution and application-name validation errors as
+/// [`user_state_dir`].
+///
+/// # Examples
+///
+/// ```
+/// match platform_dirs::user_log_dir(Some("my-app"), None) {
+///     Ok(path) => {
+///         assert!(path.is_absolute());
+///         assert!(path.ends_with("my-app/log"));
+///         println!("User log directory: {}", path.display());
+///     }
+///     Err(error) => eprintln!("Cannot resolve user log directory: {error}"),
+/// }
+/// ```
+pub fn user_log_dir(app_name: Option<&str>, opinion: Option<bool>) -> Result<PathBuf> {
+    let mut base = user_state_dir(app_name)?;
+    if opinion.unwrap_or(true) {
+        base.push("log");
+    }
+
+    Ok(base)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn log_directory_opinions_and_application_names() {
+        for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
+            let state = user_state_dir(name);
+            for (opinion, append_log) in [(None, true), (Some(true), true), (Some(false), false)] {
+                match &state {
+                    Ok(state) => {
+                        let expected = if append_log { state.join("log") } else { state.clone() };
+                        assert_eq!(user_log_dir(name, opinion).unwrap(), expected);
+                    }
+                    Err(error) => assert_eq!(
+                        format!("{:#}", user_log_dir(name, opinion).unwrap_err()),
+                        format!("{error:#}")
+                    ),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn log_directory_preserves_invalid_name_errors() {
+        for name in ["", ".", "..", "/app", "a/b", "a\\b", "C:app", "a\0b"] {
+            let expected = format!("{:#}", user_state_dir(Some(name)).unwrap_err());
+            for opinion in [None, Some(true), Some(false)] {
+                assert_eq!(
+                    format!("{:#}", user_log_dir(Some(name), opinion).unwrap_err()),
+                    expected
+                );
+            }
+        }
+    }
 
     #[test]
     fn optional_application_name() {

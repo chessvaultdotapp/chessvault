@@ -1,6 +1,6 @@
 # Platform directories
 
-`platform-dirs` resolves the user's state-directory base and optionally appends
+`platform-dirs` resolves user state and log directories, optionally appending
 an application name. The desktop passes `Some("chessvault")` and creates the
 directory; the library only resolves paths.
 
@@ -20,6 +20,18 @@ colons, and NUL bytes are rejected on every platform. A
 successful result identifies a path, not a guarantee that it exists or is
 writable. Non-Unicode paths are preserved; display strings should not be used
 to reconstruct paths.
+
+### Log directory
+
+`platform_dirs::user_log_dir(app_name: Option<&str>, opinion: Option<bool>)` returns
+`anyhow::Result<PathBuf>`. It delegates to `user_state_dir(app_name)` and appends
+`log` for `None` or `Some(true)`. `Some(false)` returns the state directory unchanged.
+Both arguments must be supplied explicitly in Rust; `None` selects the default opinion.
+
+For example, `user_log_dir(Some("chessvault"), None)` returns
+`<current working directory>/.local/state/chessvault/log` under the development override.
+Application-name validation and resolution errors are inherited from `user_state_dir`.
+The function only resolves the path; it does not create the directory or write logs.
 
 ### Development override
 
@@ -58,7 +70,8 @@ for those platforms.
 Linux tests inject environment values and a home-directory lookup into
 `resolve_user_state_dir`. Follow that pattern instead of mutating process-wide
 environment variables. Coverage includes XDG precedence, fallback behavior,
-invalid homes, and non-Unicode paths.
+invalid homes, and non-Unicode paths. Log-directory tests cover all opinion values,
+optional application names, and propagation of invalid-name errors.
 
 Follow [Testing](../development/testing.md#platform-and-feature-variants), using
 `-p platform-dirs` and checking the no-default-features configuration as well.

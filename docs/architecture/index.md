@@ -21,7 +21,7 @@ are omitted.
 | --- | --- | --- |
 | `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../../apps/chessvault/src/main.rs) |
 | `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
-| `platform-dirs` | Platform-specific user state-directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
+| `platform-dirs` | Platform-specific user state and log directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
 
 The chess core has no dependency on the GUI or platform directory library.
 Platform resolution accepts an optional application name; the desktop passes
