@@ -2,10 +2,15 @@ use std::collections::{BTreeMap, VecDeque};
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 
+use anyhow::{Context, Result};
+use chrono::Local;
+use tracing_appender::rolling;
 use tracing_log::NormalizeEvent;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, format};
+use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, format, layer};
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Layer, registry};
 
 const MAX_ENTRIES: usize = 2_000;
 
@@ -40,22 +45,49 @@ impl Default for LogStore {
 }
 
 impl Logs {
-    pub fn init() -> Self {
+    pub fn init() -> Result<Self> {
         let logs = Self::default();
 
+        let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
         #[cfg(debug_assertions)]
-        let terminal = tracing_subscriber::fmt::writer::BoxMakeWriter::new(io::stderr);
-        #[cfg(not(debug_assertions))]
-        let terminal = tracing_subscriber::fmt::writer::BoxMakeWriter::new(io::sink);
+        let terminal_layer = layer().with_ansi(true).with_writer(io::stderr);
 
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        let log_dir =
+            platform_dirs::user_log_dir(Some("chessvault"), None).context("Failed to resolve application log dir")?;
+        let local_time = Local::now().format("%Y-%m-%dT%H-%M-%S-%f%z").to_string();
+
+        let file_appender = rolling::RollingFileAppender::builder()
+            .rotation(rolling::Rotation::NEVER)
+            .filename_prefix(format!("{local_time}.log"))
+            .build(&log_dir)
+            .with_context(|| format!("Failed to initialize log file in {}", log_dir.display()))?;
+
+        let file_layer = layer()
+            .json()
+            .flatten_event(true)
             .with_ansi(false)
-            .event_format(LogFormatter(logs.clone()))
-            .with_writer(terminal)
-            .init();
+            .with_writer(file_appender);
 
-        logs
+        let subscriber = registry().with(env_filter).with(logs.capture_layer()).with(file_layer);
+        #[cfg(debug_assertions)]
+        let subscriber = subscriber.with(terminal_layer);
+        subscriber
+            .try_init()
+            .context("Failed to initialize logging subscriber")?;
+
+        Ok(logs)
+    }
+
+    // A dedicated formatting layer preserves tracing's field/span formatting while
+    // capturing complete events independently of terminal and file output.
+    fn capture_layer<S>(&self) -> impl Layer<S>
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    {
+        layer()
+            .with_ansi(false)
+            .event_format(LogFormatter(self.clone()))
+            .with_writer(io::sink)
     }
 
     fn writer(&self, target: &str) -> LogWriter {
@@ -171,11 +203,7 @@ mod tests {
     #[test]
     fn captures_formatted_events_and_clears_history() {
         let logs = Logs::default();
-        let subscriber = tracing_subscriber::fmt()
-            .with_ansi(false)
-            .event_format(LogFormatter(logs.clone()))
-            .with_writer(io::sink)
-            .finish();
+        let subscriber = registry().with(logs.capture_layer());
 
         tracing::subscriber::with_default(subscriber, || {
             tracing::info!(answer = 42, "Console capture test");
@@ -189,6 +217,25 @@ mod tests {
 
         logs.clear();
         assert!(logs.snapshot().is_empty());
+    }
+
+    #[test]
+    fn capture_and_json_layers_share_the_filter_without_duplicate_capture() {
+        let logs = Logs::default();
+        let subscriber = registry()
+            .with(EnvFilter::new("info"))
+            .with(logs.capture_layer())
+            .with(layer().json().with_writer(io::sink));
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::debug!("filtered event");
+            tracing::info!("captured once");
+        });
+
+        let snapshot = logs.snapshot();
+        assert_eq!(snapshot.lines().count(), 1);
+        assert!(snapshot.contains("captured once"));
+        assert!(!snapshot.contains("filtered event"));
     }
 
     #[test]
@@ -211,10 +258,7 @@ mod tests {
     #[case::calloop("calloop", "calloop")]
     fn bridged_logs_follow_the_original_source_when_log_is_disabled(#[case] target: &str, #[case] source: &str) {
         let logs = Logs::default();
-        let subscriber = tracing_subscriber::fmt()
-            .event_format(LogFormatter(logs.clone()))
-            .with_writer(io::sink)
-            .finish();
+        let subscriber = registry().with(logs.capture_layer());
 
         tracing::subscriber::with_default(subscriber, || {
             log::Log::log(
@@ -242,10 +286,7 @@ mod tests {
     #[test]
     fn filters_sources_and_can_reveal_previously_hidden_events() {
         let logs = Logs::default();
-        let subscriber = tracing_subscriber::fmt()
-            .event_format(LogFormatter(logs.clone()))
-            .with_writer(io::sink)
-            .finish();
+        let subscriber = registry().with(logs.capture_layer());
         tracing::subscriber::with_default(subscriber, || {
             tracing::info!(target: "chessvault::game", "visible event");
             tracing::info!(target: "iced_winit::window", "hidden window event");

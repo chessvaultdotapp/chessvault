@@ -18,8 +18,8 @@ mod game_status;
 mod icon;
 mod logs;
 
-fn main() -> iced::Result {
-    let logs = logs::Logs::init();
+fn main() -> Result<()> {
+    let logs = logs::Logs::init()?;
     info!("ChessVault started");
 
     let mut window_settings = window::Settings {
@@ -54,6 +54,8 @@ fn main() -> iced::Result {
     .exit_on_close_request(false)
     .subscription(ChessVault::subscription)
     .run()
+    .context("Failed to run ChessVault")
+    .inspect_err(|err| error!(error = ?err, "Application exited with an error"))
 }
 
 struct ChessVault {
