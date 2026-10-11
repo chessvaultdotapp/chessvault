@@ -10,7 +10,7 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
-use chess_core::{Game, GameStatus, Position, Side, Square};
+use chess_core::{Game, GameStatus, Move, Piece, Position, Side, Square};
 
 mod board;
 mod fs;
@@ -66,6 +66,7 @@ struct ChessVault {
     sources_open: bool,
     game: Game,
     selected_square: Option<Square>,
+    pending_promotion: Option<Move>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -172,6 +173,7 @@ mod resignation_tests {
                 sources_open: false,
                 game: Game::new(Position::standard()),
                 selected_square: Some(Square::E2),
+                pending_promotion: None,
             };
             let _ = app.update(Message::Resign(side));
             assert_eq!(app.game.status(), GameStatus::Resigned(side));
@@ -188,9 +190,105 @@ mod resignation_tests {
     }
 }
 
+#[cfg(test)]
+mod promotion_tests {
+    use super::*;
+
+    fn ready() -> ChessVault {
+        use Square::{A2, A4, A5, A6, B7, B8, C6, F3, G1, G2, H3, H4, H5, H7};
+        let mut app = ChessVault {
+            logs: logs::Logs::default(),
+            console_open: false,
+            log_text: String::new(),
+            log_content: text_editor::Content::new(),
+            sources_open: false,
+            game: Game::new(Position::standard()),
+            selected_square: None,
+            pending_promotion: None,
+        };
+        for (from, to) in [
+            (G1, F3),
+            (B8, C6),
+            (A2, A4),
+            (H7, H5),
+            (A4, A5),
+            (H5, H4),
+            (A5, A6),
+            (H4, H3),
+            (A6, B7),
+            (H3, G2),
+        ] {
+            assert!(app.game.position.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        app
+    }
+
+    #[test]
+    fn choices_map_to_legal_moves_for_both_sides_and_capture_types() {
+        use Square::{A8, B1, B7, B8, C3, E2, E4, G1, G2, H1};
+        for piece in [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight] {
+            for capture in [false, true] {
+                for side in [Side::White, Side::Black] {
+                    let mut app = ready();
+                    let (from, to) = if side == Side::White {
+                        (B7, if capture { A8 } else { B8 })
+                    } else {
+                        assert!(app.game.position.play(Move {
+                            from: B1,
+                            to: C3,
+                            promotion: None
+                        }));
+                        (G2, if capture { H1 } else { G1 })
+                    };
+                    let before = app.game.position.legal_moves();
+                    let _ = app.update(Message::SelectSquare(from));
+                    let _ = app.update(Message::SelectSquare(to));
+                    assert!(app.pending_promotion.is_some());
+                    assert_eq!(app.game.position.legal_moves(), before);
+                    let _ = app.update(Message::SelectSquare(E2));
+                    let _ = app.update(Message::SelectSquare(E4));
+                    assert_eq!(app.selected_square, Some(from));
+                    assert_eq!(app.game.position.legal_moves(), before);
+                    let _ = app.update(Message::Promote(piece));
+                    assert_eq!(app.game.position.piece_at(to), Some((piece, side)));
+                    assert_eq!(app.game.position.piece_at(from), None);
+                    assert_eq!(app.selected_square, None);
+                    assert_eq!(app.pending_promotion, None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cancellation_and_stale_choices_do_not_mutate_position() {
+        let mut app = ready();
+        let before = app.game.position.legal_moves();
+        let _ = app.update(Message::SelectSquare(Square::B7));
+        let _ = app.update(Message::SelectSquare(Square::A8));
+        let _ = app.update(Message::Promote(Piece::King));
+        assert!(app.pending_promotion.is_some());
+        let _ = app.update(Message::CancelPromotion);
+        let _ = app.update(Message::Promote(Piece::Queen));
+        assert_eq!(app.pending_promotion, None);
+        assert_eq!(app.selected_square, Some(Square::B7));
+        assert_eq!(app.game.position.legal_moves(), before);
+        let _ = app.update(Message::SelectSquare(Square::A8));
+        let _ = app.update(Message::Resign(Side::White));
+        let _ = app.update(Message::Promote(Piece::Queen));
+        assert_eq!(app.pending_promotion, None);
+        assert_eq!(app.game.position.legal_moves(), before);
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Message {
     SelectSquare(Square),
+    Promote(Piece),
+    CancelPromotion,
     Resign(Side),
     ToggleConsole,
     ClearLogs,
@@ -212,6 +310,7 @@ impl ChessVault {
             sources_open: false,
             game: Game::new(Position::standard()),
             selected_square: None,
+            pending_promotion: None,
         };
 
         if let Err(err) = app.initialize() {
@@ -234,13 +333,36 @@ impl ChessVault {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::SelectSquare(square) => {
-                if self.game.status() == GameStatus::Ongoing {
-                    self.selected_square = board::click(&mut self.game.position, self.selected_square, square);
+                if self.game.status() == GameStatus::Ongoing && self.pending_promotion.is_none() {
+                    self.pending_promotion =
+                        self.game.position.legal_moves().into_iter().find(|mv| {
+                            Some(mv.from) == self.selected_square && mv.to == square && mv.promotion.is_some()
+                        });
+                    if self.pending_promotion.is_none() {
+                        self.selected_square = board::click(&mut self.game.position, self.selected_square, square);
+                    }
                 }
+            }
+            Message::Promote(piece) => {
+                if let Some(mv) = self.pending_promotion
+                    && self.game.status() == GameStatus::Ongoing
+                    && self.game.position.play(Move {
+                        promotion: Some(piece),
+                        ..mv
+                    })
+                {
+                    self.pending_promotion = None;
+                    self.selected_square = None;
+                }
+            }
+            Message::CancelPromotion => {
+                // Keep the pawn selected so another destination can be chosen.
+                self.pending_promotion = None;
             }
             Message::Resign(side) => {
                 if self.game.resign(side) {
                     self.selected_square = None;
+                    self.pending_promotion = None;
                 }
             }
             Message::ToggleConsole => {
@@ -301,6 +423,11 @@ impl ChessVault {
                 repeat: false,
                 ..
             }) => Some(Message::ToggleConsole),
+            iced::Event::Keyboard(keyboard::Event::KeyPressed {
+                key: Key::Named(Named::Escape),
+                repeat: false,
+                ..
+            }) => Some(Message::CancelPromotion),
             _ => None,
         });
 
@@ -342,7 +469,14 @@ impl ChessVault {
         let content = column![
             container(
                 row![
-                    board::view(&self.game.position, self.selected_square, Message::SelectSquare),
+                    board::view(
+                        &self.game.position,
+                        self.selected_square,
+                        Message::SelectSquare,
+                        self.pending_promotion,
+                        Message::Promote,
+                        Message::CancelPromotion,
+                    ),
                     container(controls).width(220).center_y(Fill),
                 ]
                 .spacing(24)

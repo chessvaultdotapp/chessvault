@@ -62,7 +62,8 @@
 - Construct public positions with `Position::standard()`; `Position::empty()` is crate-private and there is no `Default`.
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
-  all four promotions; desktop `board::click` currently chooses a queen.
+  all four promotions; desktop defers promotion until a piece is chosen in the on-board picker.
+  Clicking outside or Escape keeps the pawn selected without changing the position; board moves are blocked while choosing.
 
 ## State paths
 

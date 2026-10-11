@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
-use chess_core::{Piece, Position, Side, Square};
-use iced::widget::{Space, column, container, mouse_area, responsive, row, stack, svg, text};
+use chess_core::{Move, Piece, Position, Side, Square};
+use iced::widget::{Space, button, column, container, mouse_area, responsive, row, stack, svg, text};
 use iced::{Color, Element, Fill};
 
 const LIGHT: Color = Color::from_rgb8(230, 230, 230);
@@ -39,13 +39,13 @@ fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
 }
 
 /// Applies a legal destination click, otherwise retaining the selection behavior.
-/// Promotions default to a queen until a promotion chooser is available.
+/// Promotion destinations are handled by the application's deferred picker.
 pub fn click(position: &mut Position, selected: Option<Square>, square: Square) -> Option<Square> {
     if let Some(from) = selected {
         let mv = position
             .legal_moves()
             .into_iter()
-            .find(|mv| mv.from == from && mv.to == square && matches!(mv.promotion, None | Some(Piece::Queen)));
+            .find(|mv| mv.from == from && mv.to == square && mv.promotion.is_none());
         if let Some(mv) = mv
             && position.play(mv)
         {
@@ -83,6 +83,9 @@ pub fn view<'a, Message: Clone + 'a>(
     position: &'a Position,
     selected: Option<Square>,
     on_select: impl Fn(Square) -> Message + 'a,
+    promotion: Option<Move>,
+    on_promote: impl Fn(Piece) -> Message + 'a,
+    on_cancel: Message,
 ) -> Element<'a, Message> {
     let destinations = legal_destinations(position, selected);
     let checked = checked_king(position);
@@ -132,9 +135,11 @@ pub fn view<'a, Message: Clone + 'a>(
                     let marker = svg(CHECK_MARKER.clone()).width(diameter).height(diameter);
                     layers = layers.push(container(marker).center_x(Fill).center_y(Fill));
                 }
-                if let Some(handle) = position
-                    .piece_at(square)
-                    .and_then(|(piece, side)| piece_handle(piece, side))
+                // Hide the promoting pawn while choosing, without changing the position.
+                if promotion.is_none_or(|mv| mv.from != square)
+                    && let Some(handle) = position
+                        .piece_at(square)
+                        .and_then(|(piece, side)| piece_handle(piece, side))
                 {
                     layers = layers.push(
                         container(svg(handle).width(square_size * 0.8).height(square_size * 0.8))
@@ -174,7 +179,63 @@ pub fn view<'a, Message: Clone + 'a>(
             board = board.push(squares);
         }
 
-        container(board).center_x(Fill).center_y(Fill).into()
+        let mut layers = stack![board].width(side).height(side);
+        if let Some(mv) = promotion {
+            // Consume outside clicks instead of forwarding them to the board.
+            layers = layers.push(
+                mouse_area(
+                    container(Space::new())
+                        .width(Fill)
+                        .height(Fill)
+                        .style(|_| container::Style::default().background(Color::from_rgba(0.0, 0.0, 0.0, 0.55))),
+                )
+                .on_press(on_cancel.clone()),
+            );
+            let white = position.side_to_move() == Side::White;
+            let mut choices = [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop];
+            if !white {
+                choices.reverse();
+            }
+            let mut picker = column![];
+            for piece in choices {
+                let handle = piece_handle(piece, position.side_to_move()).expect("valid promotion piece and side");
+                picker = picker.push(
+                    button(
+                        container(svg(handle).width(square_size * 0.8).height(square_size * 0.8))
+                            .center_x(Fill)
+                            .center_y(Fill),
+                    )
+                    .padding(0)
+                    .width(square_size)
+                    .height(square_size)
+                    .style(move |_, status| button::Style {
+                        background: Some(
+                            if status == button::Status::Hovered {
+                                Color::from_rgb8(225, 225, 225)
+                            } else {
+                                Color::from_rgb8(180, 180, 180)
+                            }
+                            .into(),
+                        ),
+                        border: iced::Border {
+                            radius: (square_size / 2.0).into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .on_press(on_promote(piece)),
+                );
+            }
+            let left = (mv.to as u8 % 8) as f32 * square_size;
+            let top = if white { 0.0 } else { 4.0 * square_size };
+            layers = layers.push(container(picker).padding(iced::Padding {
+                top,
+                left,
+                right: 0.0,
+                bottom: 0.0,
+            }));
+        }
+        container(layers).center_x(Fill).center_y(Fill).into()
     })
     .into()
 }
@@ -286,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn promotion_click_defaults_to_queen() {
+    fn promotion_click_does_not_automatically_play() {
         use Square::*;
         let mut position = Position::standard();
         for (from, to) in [
@@ -298,11 +359,13 @@ mod tests {
             (H4, H3),
             (A6, B7),
             (H3, G2),
-            (B7, A8),
         ] {
             play_clicks(&mut position, from, to);
         }
-        assert_eq!(position.piece_at(A8), Some((Piece::Queen, Side::White)));
+        let moves = position.legal_moves();
+        click(&mut position, Some(B7), A8);
+        assert_eq!(position.legal_moves(), moves);
+        assert_eq!(position.piece_at(B7), Some((Piece::Pawn, Side::White)));
     }
 
     #[test]
