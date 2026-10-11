@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "chessvault"
-version = "0.0.0+26w41b"
+version = "0.0.0+26w41c"
 dependencies = [
  "anyhow",
  "chess-core",
