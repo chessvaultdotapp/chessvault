@@ -625,7 +625,7 @@ impl ChessVault {
                             Message::Promote,
                             Message::CancelPromotion,
                         ),
-                        container(text("← Previous · → Next · ↑ Start · ↓ Latest").size(14)).center_x(Fill),
+                        container(text("← Previous · → Next · ↑/Home Start · ↓/End Latest").size(14)).center_x(Fill),
                     ]
                     .spacing(12)
                     .width(Fill)
