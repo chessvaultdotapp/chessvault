@@ -244,6 +244,28 @@ It defaults to version `1.5.5`; its optional `version` input accepts an exact
 release version without the `v` prefix. It supports Linux, macOS, and Windows
 on x64 and ARM64, using Bash (Git Bash on Windows).
 
+## Shell checks
+
+Use [shfmt](../tools/shfmt.md) and [ShellCheck](../tools/shellcheck.md) to format
+and lint tracked shell scripts from the workspace root:
+
+<!-- rumdl-disable MD014 -->
+```console
+$ git ls-files -z '*.sh' | xargs -0 -r shfmt -d
+$ git ls-files -z '*.sh' | xargs -0 -r shellcheck
+```
+<!-- rumdl-enable MD014 -->
+
+`shfmt -d` prints formatting differences without modifying files. Run `shfmt -w`
+with the paths you changed to apply formatting. shfmt reads the shared
+[EditorConfig](../../.editorconfig), so `*.sh` files use four-space indentation,
+indented `case` labels, and a space after redirections.
+
+The [Shell workflow](../../.github/workflows/shell.yml) mirrors these commands. It
+runs on pushes and pull requests that change `*.sh` files, `.editorconfig`, or the
+workflow itself, and checks all tracked shell scripts rather than only changed
+ones.
+
 ## Desktop interaction checks
 
 Automated tests do not replace launching the app for visible desktop changes:

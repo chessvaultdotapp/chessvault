@@ -28,3 +28,5 @@ tab_width = 4
 [*.sh]
 indent_size = 4
 tab_width = 4
+switch_case_indent = true
+space_redirects = true

@@ -1,0 +1,17 @@
+name: Setup ShellCheck
+description: Install official ShellCheck prebuilt binaries on Linux, macOS, and Windows
+
+inputs:
+  version:
+    description: Exact ShellCheck release version, without the v prefix
+    default: '0.11.0'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install ShellCheck
+      shell: bash
+      env:
+        SHELLCHECK_VERSION: ${{ inputs.version }}
+        SETUP_SHELLCHECK_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_SHELLCHECK_ACTION_PATH/install.sh"

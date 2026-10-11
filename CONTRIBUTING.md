@@ -68,6 +68,13 @@ The action defaults to version `0.2.75`; its optional `version` input accepts an
 exact release version without the `v` prefix. It supports Linux and macOS on x64
 and ARM64, and Windows on x64, using Bash (Git Bash on Windows).
 
+The Shell workflow uses `.github/actions/setup-shfmt` and
+`.github/actions/setup-shellcheck` to download pinned shfmt and ShellCheck
+release binaries from their GitHub Releases pages. The actions default to
+versions `3.14.1` and `0.11.0`; their optional `version` inputs accept an exact
+release version without the `v` prefix. They support Linux, macOS, and Windows on
+x64 and ARM64 where upstream publishes a build.
+
 CI caches Cargo registry downloads, Git dependency data, and `target` build
 artifacts. Cache keys include the runner OS and architecture, pinned toolchain,
 manifests, lockfile, and commit. Restore prefixes reuse compatible caches from

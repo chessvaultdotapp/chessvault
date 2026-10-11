@@ -1,0 +1,32 @@
+name: Shell
+
+on:
+  push:
+    paths: &shell-paths
+      - '**/*.sh'
+      - '.editorconfig'
+      - '.github/workflows/shell.yml'
+  pull_request:
+    paths: *shell-paths
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install shfmt
+        uses: ./.github/actions/setup-shfmt
+
+      - name: Install ShellCheck
+        uses: ./.github/actions/setup-shellcheck
+
+      - name: Check formatting of tracked shell scripts
+        run: git ls-files -z '*.sh' | xargs -0 -r shfmt -d
+
+      - name: Lint tracked shell scripts
+        run: git ls-files -z '*.sh' | xargs -0 -r shellcheck

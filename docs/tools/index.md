@@ -25,6 +25,8 @@ optional documentation and artwork tools.
 | [actionlint](actionlint.md) | Check GitHub Actions workflows |
 | [Tombi](tombi.md) | Format and lint TOML |
 | [rumdl](rumdl.md) | Lint Markdown |
+| [shfmt](shfmt.md) | Format shell scripts |
+| [ShellCheck](shellcheck.md) | Lint shell scripts |
 | [Ruff](ruff.md) | Lint and format Python |
 | [ty](ty.md) | Check Python types |
 | [GitHub CLI](github-cli.md) | Manage pull requests, issues, and Actions runs |

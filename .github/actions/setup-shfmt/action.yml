@@ -1,0 +1,17 @@
+name: Setup shfmt
+description: Install official shfmt prebuilt binaries on Linux, macOS, and Windows
+
+inputs:
+  version:
+    description: Exact shfmt release version, without the v prefix
+    default: '3.14.1'
+
+runs:
+  using: composite
+  steps:
+    - name: Download and install shfmt
+      shell: bash
+      env:
+        SHFMT_VERSION: ${{ inputs.version }}
+        SETUP_SHFMT_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SETUP_SHFMT_ACTION_PATH/install.sh"
