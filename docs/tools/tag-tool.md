@@ -142,7 +142,8 @@ host requirements, and the manual release acceptance checklist. Packaging valida
 the extracted image and enforces a maximum glibc requirement of 2.35.
 
 The `chessvault-<dev-tag>-linux-x86_64.tar.gz` archive remains available and contains
-`bin/chessvault` and `share/applications/chessvault.desktop`, staged by the
+`bin/chessvault`, the desktop entry and icon assets under `share/`, and the
+`install-linux.sh` installer, staged by the
 [distribution preparation tool](dist-prepare.md). This unbundled executable needs
 compatible system libraries.
 

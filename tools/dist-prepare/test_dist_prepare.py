@@ -45,6 +45,7 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
     ) == [
         "bin",
         "bin/chessvault",
+        "install-linux.sh",
         "share",
         "share/applications",
         "share/applications/chessvault.desktop",
@@ -61,8 +62,11 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
     assert staged_icon.read_bytes() == icon.read_bytes()
     scalable_icon = output / "share/icons/hicolor/scalable/apps/chessvault.svg"
     assert scalable_icon.read_bytes() == dist_prepare.SCALABLE_ICON.read_bytes()
+    installer = output / "install-linux.sh"
+    assert installer.read_bytes() == dist_prepare.INSTALL_SCRIPT.read_bytes()
     if os.name == "posix":
         assert staged.stat().st_mode & 0o777 == 0o755
+        assert installer.stat().st_mode & 0o777 == 0o755
         assert desktop.stat().st_mode & 0o777 == 0o644
         assert staged_icon.stat().st_mode & 0o777 == 0o644
         assert scalable_icon.stat().st_mode & 0o777 == 0o644
@@ -122,7 +126,7 @@ def test_copy_failure_cleans_staging(tmp_path: Path) -> None:
     assert list(output.parent.iterdir()) == []
 
 
-@pytest.mark.parametrize("asset", ["DESKTOP_ENTRY", "SCALABLE_ICON"])
+@pytest.mark.parametrize("asset", ["DESKTOP_ENTRY", "SCALABLE_ICON", "INSTALL_SCRIPT"])
 def test_missing_asset_cleans_staging(tmp_path: Path, asset: str) -> None:
     binary = tmp_path / "binary"
     binary.write_bytes(b"binary")
@@ -149,6 +153,7 @@ def test_cli_from_another_directory(tmp_path: Path) -> None:
     assert (
         tmp_path / "dist/package/share/applications/chessvault.desktop"
     ).read_bytes() == dist_prepare.DESKTOP_ENTRY.read_bytes()
+    assert (tmp_path / "dist/package/install-linux.sh").is_file()
     assert "Prepared" in result.stdout
 
 

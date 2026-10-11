@@ -1,9 +1,9 @@
 # Distribution preparation tool
 
 [`tools/dist-prepare/main.py`](../../tools/dist-prepare/main.py) stages a built
-ChessVault binary and the repository's desktop entry in a directory ready for
-creating a native release tarball. It does not build binaries, create archives,
-install files, or publish releases.
+ChessVault binary, the repository's desktop entry, and the Linux installer in a
+directory ready for creating a native release tarball. It does not build
+binaries, create archives, install files, or publish releases.
 
 Commands follow our [shell command conventions](../reference.md#shell-commands).
 Run the examples from the workspace root. Output is illustrative; repository
@@ -66,6 +66,7 @@ The resulting package contains:
 dist/package/
 ├── bin/
 │   └── chessvault
+├── install-linux.sh
 └── share/
     ├── applications/
     │   └── chessvault.desktop
@@ -76,8 +77,11 @@ dist/package/
             └── chessvault.svg
 ```
 
-The binary is copied with mode `0755`; the desktop entry and both icons use `0644`.
-The scalable SVG is copied from the repository's `apps/chessvault/assets/logo.svg`.
+The binary and the installer are copied with mode `0755`; the desktop entry and
+both icons use `0644`. The installer is copied from
+[`scripts/install-linux.sh`](../../scripts/install-linux.sh) and must sit next to
+`bin/` for `$package_dir` resolution. The scalable SVG is copied from the
+repository's `apps/chessvault/assets/logo.svg`.
 Source contents and permissions are not changed. No libraries or additional
 assets are bundled, and the tool does not validate the binary's architecture
 or runtime dependencies. The executable needs compatible system libraries.
@@ -88,9 +92,10 @@ Archive creation is a separate step. For example, after staging into the default
 output directory:
 
 ```console
-$ tar -czvf dist/chessvault-linux-x86_64.tar.gz -C dist/package bin share
+$ tar -czvf dist/chessvault-linux-x86_64.tar.gz -C dist/package bin install-linux.sh share
 bin/
 bin/chessvault
+install-linux.sh
 share/
 share/applications/
 share/applications/chessvault.desktop
@@ -113,7 +118,8 @@ Prepared dist/package
 ```
 
 CI uses the runner's Python without installing test dependencies. It archives
-`bin/` and `share/` as `chessvault-<dev-tag>-linux-x86_64.tar.gz`.
+`bin/`, `install-linux.sh`, and `share/` as
+`chessvault-<dev-tag>-linux-x86_64.tar.gz`.
 [AppImage packaging](../development/appimage.md) runs separately using the same
 built binary; it does not use this staging tool. See the
 [release tag tool](tag-tool.md#publish-on-github) for publication details.
@@ -136,7 +142,7 @@ Errors are printed to standard error and return exit status 1.
 ```console
 $ venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q
 ...
-10 passed in 0.10s
+14 passed in 0.10s
 ```
 
 Tests cover package layout, file contents and permissions, preservation of other

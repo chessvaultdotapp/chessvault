@@ -8,10 +8,11 @@ from pathlib import Path
 CHESSVAULT_ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
 SCALABLE_ICON = CHESSVAULT_ROOT / "apps/chessvault/assets/logo.svg"
+INSTALL_SCRIPT = CHESSVAULT_ROOT / "scripts/install-linux.sh"
 
 
 def prepare(binary: Path, output: Path) -> None:
-    """Stage the binary (0755), desktop entry and sibling chessvault.png (0644).
+    """Stage the binary and installer (0755), desktop entry and icons (0644).
 
     Existing output is rejected rather than mixing stale files into a release.
     Copy into a temporary sibling first so copy failures leave no partial package.
@@ -45,6 +46,9 @@ def prepare(binary: Path, output: Path) -> None:
         scalable_icon.parent.mkdir(parents=True)
         shutil.copyfile(SCALABLE_ICON, scalable_icon)
         scalable_icon.chmod(0o644)
+        installer = package / "install-linux.sh"
+        shutil.copyfile(INSTALL_SCRIPT, installer)
+        installer.chmod(0o755)
         package.rename(output)
 
 
