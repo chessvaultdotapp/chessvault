@@ -2,6 +2,11 @@
 
 ## Added
 
+- Added numbered move history in standard algebraic notation with first, previous, next, and latest navigation.
+  Use the buttons, click a move, or use Left/Right, Up/Home, and Down/End; shortcut hints appear below the board.
+  The viewed move is highlighted, and earlier positions are read-only to preserve the continuation. Return to latest
+  to resume play ([#19](https://github.com/chessvaultdotapp/chessvault/issues/19)).
+
 - Added an on-board promotion picker to choose a queen, knight, rook, or bishop instead of automatically promoting
   to a queen. Click outside the picker or press Escape to cancel
   ([#16](https://github.com/chessvaultdotapp/chessvault/issues/16)).
