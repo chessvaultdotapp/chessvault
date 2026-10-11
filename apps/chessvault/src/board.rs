@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use chess_core::{Move, Piece, Position, Side, Square};
+use chess_core::{Game, Move, Piece, Position, Side, Square};
 use iced::widget::{Space, button, column, container, mouse_area, responsive, row, stack, svg, text};
 use iced::{Color, Element, Fill};
 
@@ -40,19 +40,20 @@ fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
 
 /// Applies a legal destination click, otherwise retaining the selection behavior.
 /// Promotion destinations are handled by the application's deferred picker.
-pub fn click(position: &mut Position, selected: Option<Square>, square: Square) -> Option<Square> {
+pub fn click(game: &mut Game, selected: Option<Square>, square: Square) -> Option<Square> {
     if let Some(from) = selected {
-        let mv = position
+        let mv = game
+            .position()
             .legal_moves()
             .into_iter()
             .find(|mv| mv.from == from && mv.to == square && mv.promotion.is_none());
         if let Some(mv) = mv
-            && position.play(mv)
+            && game.play(mv)
         {
             return None;
         }
     }
-    select(position, selected, square)
+    select(game.position(), selected, square)
 }
 
 fn select(position: &Position, selected: Option<Square>, square: Square) -> Option<Square> {
@@ -247,24 +248,24 @@ mod tests {
     #[test]
     fn check_marker_follows_moves_and_replacement() {
         use Square::{D1, D8, E1, E2, E4, E5, E7, E8, F2, F3, F6, F7, G2, G4, G6, G7, H4, H5};
-        let mut position = Position::standard();
-        assert_eq!(checked_king(&position), None);
+        let mut position = Game::new(Position::standard());
+        assert_eq!(checked_king(position.position()), None);
         // 1. e4 f6 2. Qh5+ g6
         for (from, to) in [(E2, E4), (F7, F6), (D1, H5)] {
             assert_eq!(click(&mut position, Some(from), to), None);
         }
-        assert_eq!(checked_king(&position), Some(E8));
+        assert_eq!(checked_king(position.position()), Some(E8));
         assert_eq!(click(&mut position, Some(G7), G6), None);
-        assert_eq!(checked_king(&position), None);
+        assert_eq!(checked_king(position.position()), None);
 
-        position = Position::standard();
+        position = Game::new(Position::standard());
         // Fool's mate keeps the check marker on the checkmated king.
         for (from, to) in [(F2, F3), (E7, E5), (G2, G4), (D8, H4)] {
             assert_eq!(click(&mut position, Some(from), to), None);
         }
-        assert_eq!(checked_king(&position), Some(E1));
-        position = Position::standard();
-        assert_eq!(checked_king(&position), None);
+        assert_eq!(checked_king(position.position()), Some(E1));
+        position = Game::new(Position::standard());
+        assert_eq!(checked_king(position.position()), None);
     }
 
     fn destinations(position: &Position, selected: Option<Square>) -> Vec<Square> {
@@ -310,46 +311,57 @@ mod tests {
         assert!(destinations(&position, Some(A2)).is_empty());
     }
 
-    fn play_clicks(position: &mut Position, from: Square, to: Square) {
-        let selected = click(position, None, from);
+    fn play_clicks(game: &mut Game, from: Square, to: Square) {
+        let selected = click(game, None, from);
         assert_eq!(selected, Some(from));
-        let side = position.side_to_move();
-        assert_eq!(click(position, selected, to), None);
-        assert_ne!(position.side_to_move(), side);
-        assert_eq!(position.piece_at(from), None);
+        let side = game.position().side_to_move();
+        let count = game.moves().len();
+        assert_eq!(click(game, selected, to), None);
+        assert_ne!(game.position().side_to_move(), side);
+        assert_eq!(game.position().piece_at(from), None);
+        assert_eq!(game.moves().len(), count + 1);
+        assert_eq!(
+            game.moves().last(),
+            Some(&Move {
+                from,
+                to,
+                promotion: None
+            })
+        );
     }
 
     #[test]
     fn destination_clicks_play_moves_and_captures_for_both_sides() {
         use Square::*;
-        let mut position = Position::standard();
-        play_clicks(&mut position, E2, E4);
-        assert_eq!(position.piece_at(E4), Some((Piece::Pawn, Side::White)));
-        assert!(destinations(&position, Some(E4)).is_empty());
-        assert_eq!(destinations(&position, Some(D7)), vec![D5, D6]);
-        play_clicks(&mut position, D7, D5);
-        play_clicks(&mut position, E4, D5);
-        assert_eq!(position.piece_at(D5), Some((Piece::Pawn, Side::White)));
+        let mut game = Game::new(Position::standard());
+        play_clicks(&mut game, E2, E4);
+        assert_eq!(game.position().piece_at(E4), Some((Piece::Pawn, Side::White)));
+        assert!(destinations(game.position(), Some(E4)).is_empty());
+        assert_eq!(destinations(game.position(), Some(D7)), vec![D5, D6]);
+        play_clicks(&mut game, D7, D5);
+        play_clicks(&mut game, E4, D5);
+        assert_eq!(game.position().piece_at(D5), Some((Piece::Pawn, Side::White)));
     }
 
     #[test]
     fn illegal_clicks_do_not_move_pieces_or_change_turn() {
         use Square::*;
-        let mut position = Position::standard();
+        let mut position = Game::new(Position::standard());
         assert_eq!(click(&mut position, Some(E2), E5), Option::None);
         assert_eq!(click(&mut position, Some(D7), D5), Option::None);
         assert_eq!(click(&mut position, Some(E2), D2), Some(D2));
         assert_eq!(click(&mut position, Some(E2), E2), Option::None);
-        assert_eq!(position.side_to_move(), Side::White);
-        assert_eq!(position.piece_at(E2), Some((Piece::Pawn, Side::White)));
-        assert_eq!(position.piece_at(D7), Some((Piece::Pawn, Side::Black)));
-        assert_eq!(position.legal_moves().len(), 20);
+        assert_eq!(position.position().side_to_move(), Side::White);
+        assert_eq!(position.position().piece_at(E2), Some((Piece::Pawn, Side::White)));
+        assert_eq!(position.position().piece_at(D7), Some((Piece::Pawn, Side::Black)));
+        assert_eq!(position.position().legal_moves().len(), 20);
+        assert!(position.moves().is_empty());
     }
 
     #[test]
     fn promotion_click_does_not_automatically_play() {
         use Square::*;
-        let mut position = Position::standard();
+        let mut position = Game::new(Position::standard());
         for (from, to) in [
             (A2, A4),
             (H7, H5),
@@ -362,10 +374,11 @@ mod tests {
         ] {
             play_clicks(&mut position, from, to);
         }
-        let moves = position.legal_moves();
+        let moves = position.position().legal_moves();
         click(&mut position, Some(B7), A8);
-        assert_eq!(position.legal_moves(), moves);
-        assert_eq!(position.piece_at(B7), Some((Piece::Pawn, Side::White)));
+        assert_eq!(position.position().legal_moves(), moves);
+        assert_eq!(position.position().piece_at(B7), Some((Piece::Pawn, Side::White)));
+        assert_eq!(position.moves().len(), 8);
     }
 
     #[test]

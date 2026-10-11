@@ -181,8 +181,8 @@ mod resignation_tests {
             let _ = app.update(Message::SelectSquare(Square::E2));
             let _ = app.update(Message::SelectSquare(Square::E4));
             assert_eq!(app.selected_square, None);
-            assert!(app.game.position.piece_at(Square::E2).is_some());
-            assert!(app.game.position.piece_at(Square::E4).is_none());
+            assert!(app.game.position().piece_at(Square::E2).is_some());
+            assert!(app.game.position().piece_at(Square::E4).is_none());
             let _ = app.update(Message::Resign(Side::White));
             let _ = app.update(Message::Resign(Side::Black));
             assert_eq!(app.game.status(), GameStatus::Resigned(side));
@@ -218,7 +218,7 @@ mod promotion_tests {
             (A6, B7),
             (H3, G2),
         ] {
-            assert!(app.game.position.play(Move {
+            assert!(app.game.play(Move {
                 from,
                 to,
                 promotion: None
@@ -237,25 +237,36 @@ mod promotion_tests {
                     let (from, to) = if side == Side::White {
                         (B7, if capture { A8 } else { B8 })
                     } else {
-                        assert!(app.game.position.play(Move {
+                        assert!(app.game.play(Move {
                             from: B1,
                             to: C3,
                             promotion: None
                         }));
                         (G2, if capture { H1 } else { G1 })
                     };
-                    let before = app.game.position.legal_moves();
+                    let before = app.game.position().legal_moves();
+                    let history_len = app.game.moves().len();
                     let _ = app.update(Message::SelectSquare(from));
                     let _ = app.update(Message::SelectSquare(to));
                     assert!(app.pending_promotion.is_some());
-                    assert_eq!(app.game.position.legal_moves(), before);
+                    assert_eq!(app.game.position().legal_moves(), before);
+                    assert_eq!(app.game.moves().len(), history_len);
                     let _ = app.update(Message::SelectSquare(E2));
                     let _ = app.update(Message::SelectSquare(E4));
                     assert_eq!(app.selected_square, Some(from));
-                    assert_eq!(app.game.position.legal_moves(), before);
+                    assert_eq!(app.game.position().legal_moves(), before);
                     let _ = app.update(Message::Promote(piece));
-                    assert_eq!(app.game.position.piece_at(to), Some((piece, side)));
-                    assert_eq!(app.game.position.piece_at(from), None);
+                    assert_eq!(app.game.position().piece_at(to), Some((piece, side)));
+                    assert_eq!(app.game.position().piece_at(from), None);
+                    assert_eq!(app.game.moves().len(), history_len + 1);
+                    assert_eq!(
+                        app.game.moves().last(),
+                        Some(&Move {
+                            from,
+                            to,
+                            promotion: Some(piece)
+                        })
+                    );
                     assert_eq!(app.selected_square, None);
                     assert_eq!(app.pending_promotion, None);
                 }
@@ -266,7 +277,8 @@ mod promotion_tests {
     #[test]
     fn cancellation_and_stale_choices_do_not_mutate_position() {
         let mut app = ready();
-        let before = app.game.position.legal_moves();
+        let before = app.game.position().legal_moves();
+        let history = app.game.moves().to_vec();
         let _ = app.update(Message::SelectSquare(Square::B7));
         let _ = app.update(Message::SelectSquare(Square::A8));
         let _ = app.update(Message::Promote(Piece::King));
@@ -275,12 +287,14 @@ mod promotion_tests {
         let _ = app.update(Message::Promote(Piece::Queen));
         assert_eq!(app.pending_promotion, None);
         assert_eq!(app.selected_square, Some(Square::B7));
-        assert_eq!(app.game.position.legal_moves(), before);
+        assert_eq!(app.game.position().legal_moves(), before);
+        assert_eq!(app.game.moves(), history);
         let _ = app.update(Message::SelectSquare(Square::A8));
         let _ = app.update(Message::Resign(Side::White));
         let _ = app.update(Message::Promote(Piece::Queen));
         assert_eq!(app.pending_promotion, None);
-        assert_eq!(app.game.position.legal_moves(), before);
+        assert_eq!(app.game.position().legal_moves(), before);
+        assert_eq!(app.game.moves(), history);
     }
 }
 
@@ -335,18 +349,18 @@ impl ChessVault {
             Message::SelectSquare(square) => {
                 if self.game.status() == GameStatus::Ongoing && self.pending_promotion.is_none() {
                     self.pending_promotion =
-                        self.game.position.legal_moves().into_iter().find(|mv| {
+                        self.game.position().legal_moves().into_iter().find(|mv| {
                             Some(mv.from) == self.selected_square && mv.to == square && mv.promotion.is_some()
                         });
                     if self.pending_promotion.is_none() {
-                        self.selected_square = board::click(&mut self.game.position, self.selected_square, square);
+                        self.selected_square = board::click(&mut self.game, self.selected_square, square);
                     }
                 }
             }
             Message::Promote(piece) => {
                 if let Some(mv) = self.pending_promotion
                     && self.game.status() == GameStatus::Ongoing
-                    && self.game.position.play(Move {
+                    && self.game.play(Move {
                         promotion: Some(piece),
                         ..mv
                     })
@@ -470,7 +484,7 @@ impl ChessVault {
             container(
                 row![
                     board::view(
-                        &self.game.position,
+                        self.game.position(),
                         self.selected_square,
                         Message::SelectSquare,
                         self.pending_promotion,

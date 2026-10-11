@@ -1,4 +1,4 @@
-use crate::{Position, PositionStatus, Side};
+use crate::{Move, Position, PositionStatus, Side};
 
 /// Game outcome, including results that cannot be inferred from the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,9 +11,10 @@ pub enum GameStatus {
     Resigned(Side),
 }
 
-/// A current position and its game-level resignation state.
+/// A current position, played moves, and game-level resignation state.
 pub struct Game {
-    pub position: Position,
+    position: Position,
+    moves: Vec<Move>,
     resigned: Option<Side>,
 }
 
@@ -22,8 +23,28 @@ impl Game {
     pub fn new(position: Position) -> Self {
         Self {
             position,
+            moves: Vec::new(),
             resigned: None,
         }
+    }
+
+    /// Returns the current position without allowing history to be bypassed.
+    pub fn position(&self) -> &Position {
+        &self.position
+    }
+
+    /// Moves successfully played since this game was created, in play order.
+    pub fn moves(&self) -> &[Move] {
+        &self.moves
+    }
+
+    /// Plays and records a legal move. Finished games reject further moves.
+    pub fn play(&mut self, mv: Move) -> bool {
+        if self.status() != GameStatus::Ongoing || !self.position.play(mv) {
+            return false;
+        }
+        self.moves.push(mv);
+        true
     }
 
     /// Records resignation by a player. Rejects the empty-side sentinel.
@@ -61,7 +82,7 @@ mod tests {
         let mut game = Game::new(Position::standard());
         assert_eq!(game.status(), GameStatus::Ongoing);
         for (from, to) in [(F2, F3), (E7, E5), (G2, G4), (D8, H4)] {
-            assert!(game.position.play(Move {
+            assert!(game.play(Move {
                 from,
                 to,
                 promotion: None
@@ -78,13 +99,47 @@ mod tests {
         use crate::Square::*;
         let mut game = Game::new(Position::standard());
         for (from, to) in [(E2, E4), (E7, E5), (F1, C4), (B8, C6), (D1, H5), (G8, F6), (H5, F7)] {
-            assert!(game.position.play(Move {
+            assert!(game.play(Move {
                 from,
                 to,
                 promotion: Option::None
             }));
         }
         assert_eq!(game.status(), GameStatus::Checkmate(Side::Black));
+    }
+
+    #[test]
+    fn history_records_only_successful_moves() {
+        use crate::Square::{E2, E4};
+        let mut game = Game::new(Position::standard());
+        assert!(game.moves().is_empty());
+        let white = Move {
+            from: E2,
+            to: E4,
+            promotion: None,
+        };
+        let black = Move {
+            from: E7,
+            to: E5,
+            promotion: None,
+        };
+        assert!(!game.play(black));
+        assert!(game.moves().is_empty());
+        assert!(game.play(white));
+        assert!(!game.play(white));
+        assert!(game.play(black));
+        assert_eq!(game.moves(), &[white, black]);
+        assert!(game.resign(Side::White));
+        let before = game.position().legal_moves();
+        assert!(!game.play(Move {
+            from: G2,
+            to: G4,
+            promotion: None
+        }));
+        assert_eq!(game.position().legal_moves(), before);
+        assert_eq!(game.moves(), &[white, black]);
+        game = Game::new(Position::standard());
+        assert!(game.moves().is_empty());
     }
 
     #[test]
