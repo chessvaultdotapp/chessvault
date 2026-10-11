@@ -7,10 +7,10 @@ head=$2
 event=$3
 
 if [[ "$event" == pull_request ]]; then
-  base=$(git merge-base "$base" "$head")
+    base=$(git merge-base "$base" "$head")
 elif [[ "$base" =~ ^0+$ ]]; then
-  # A new branch has no before commit; treat its files as additions.
-  base=$(git hash-object -t tree /dev/null)
+    # A new branch has no before commit; treat its files as additions.
+    base=$(git hash-object -t tree /dev/null)
 fi
 
 # Disable rename detection so moved workflows are checked as new files.
@@ -18,23 +18,23 @@ fi
 changed=$(mktemp)
 trap 'rm -f "$changed"' EXIT
 git diff --name-only --no-renames --diff-filter=ACMRT -z "$base" "$head" -- \
-  .github/workflows/ .github/actions/ > "$changed"
+    .github/workflows/ .github/actions/ > "$changed"
 
 workflows=()
 while IFS= read -r -d '' path; do
-  case "$path" in
-    .github/workflows/*.yml|.github/workflows/*.yaml)
-      workflows+=("$path")
-      ;;
-    .github/actions/*)
-      printf 'Not checked by actionlint (action implementation): %s\n' "$path"
-      ;;
-  esac
+    case "$path" in
+        .github/workflows/*.yml | .github/workflows/*.yaml)
+            workflows+=("$path")
+            ;;
+        .github/actions/*)
+            printf 'Not checked by actionlint (action implementation): %s\n' "$path"
+            ;;
+    esac
 done < "$changed"
 
-if (( ${#workflows[@]} == 0 )); then
-  echo 'No added or modified workflow YAML files to check.'
-  exit 0
+if ((${#workflows[@]} == 0)); then
+    echo 'No added or modified workflow YAML files to check.'
+    exit 0
 fi
 
 # Keep the checks identical regardless of optional analyzers on the runner.

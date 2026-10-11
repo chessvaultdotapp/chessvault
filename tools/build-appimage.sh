@@ -28,7 +28,10 @@ if [[ -z $binary ]]; then
     tools+=(cargo python3)
 fi
 for tool in "${tools[@]}"; do
-    command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
+    command -v "$tool" > /dev/null || {
+        echo "Missing required tool: $tool" >&2
+        exit 1
+    }
 done
 
 # This linuxdeploy release includes its AppImage output plugin.
@@ -54,8 +57,8 @@ if [[ ! -f "$runtime" ]]; then
         --output "$runtime.part"
     mv -- "$runtime.part" "$runtime"
 fi
-printf '%s  %s\n' '2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d' "$runtime" \
-    | sha256sum --check --status
+printf '%s  %s\n' '2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d' "$runtime" |
+    sha256sum --check --status
 export LDAI_RUNTIME_FILE="$runtime"
 
 desktop="$root/apps/chessvault/data/chessvault.desktop"
@@ -69,7 +72,8 @@ if [[ -z $binary ]]; then
     cargo build -p chessvault --release --locked --target "$triple" --target-dir "$root/target" \
         --message-format=json > "$stage/build-messages.jsonl"
     binary="$root/target/$triple/release/chessvault"
-    icon=$(python3 - "$stage/build-messages.jsonl" <<'PY'
+    icon=$(
+        python3 - "$stage/build-messages.jsonl" << 'PY'
 import json
 import pathlib
 import sys
@@ -108,7 +112,7 @@ cd "$stage"
     --icon-file "$stage/chessvault.svg" \
     --output appimage
 # Exercise the generated runtime without FUSE and check the packaged entry point.
-"$OUTPUT" --appimage-extract >/dev/null
+"$OUTPUT" --appimage-extract > /dev/null
 test -x squashfs-root/AppRun
 test -x squashfs-root/usr/bin/chessvault
 desktop-file-validate squashfs-root/chessvault.desktop
@@ -116,8 +120,8 @@ test -s squashfs-root/usr/share/licenses/chessvault/LICENSE
 test -s squashfs-root/usr/share/icons/hicolor/256x256/apps/chessvault.png
 test -s squashfs-root/usr/share/icons/hicolor/scalable/apps/chessvault.svg
 # Record the actual glibc requirement for release review (including bundled libraries).
-find squashfs-root -type f -exec readelf --version-info {} \; 2>/dev/null \
-    | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu > "$stage/glibc-requirements.txt"
+find squashfs-root -type f -exec readelf --version-info {} \; 2> /dev/null |
+    grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu > "$stage/glibc-requirements.txt"
 cp -- "$stage/glibc-requirements.txt" "$root/dist/ChessVault-x86_64.glibc.txt"
 chmod 755 "$OUTPUT"
 mv -- "$OUTPUT" "$root/dist/ChessVault-x86_64.AppImage"

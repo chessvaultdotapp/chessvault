@@ -6,6 +6,8 @@ action=install
 dry_run=false
 
 usage() {
+    # Literal "$HOME" and "$XDG_DATA_HOME" names are shown in the help text.
+    # shellcheck disable=SC2016
     printf '%s\n' \
         'Usage: install-linux.sh [--prefix PATH] [--uninstall] [--dry-run]' \
         '       install-linux.sh --help' \
@@ -69,7 +71,9 @@ if ! resolved_prefix=$(realpath -m -- "$prefix"); then
 fi
 
 case "$resolved_prefix" in
-    /|/usr|/usr/*|/opt|/opt/*|/bin|/bin/*|/sbin|/sbin/*|/lib|/lib/*|/lib64|/lib64/*)
+    / | /usr | /usr/* | /opt | /opt/* | /bin | /bin/* | /sbin | /sbin/* | /lib | /lib/* | /lib64 | /lib64/*)
+        # The suggested prefix is shown literally in the error message.
+        # shellcheck disable=SC2016
         printf '%s\n' \
             'Error: this script does not support system-wide installation.' \
             'The ChessVault developers do not recommend system-wide installation.' \
@@ -96,7 +100,7 @@ if [ "$action" = install ] && [ "$dry_run" = false ] &&
         exit 1
     fi
     case "$answer" in
-        y|Y|yes|YES|Yes)
+        y | Y | yes | YES | Yes)
             printf '%s\n' \
                 'Warning: a custom prefix may not be on PATH, so terminal commands and tools' \
                 'that search PATH may not find ChessVault.' \
@@ -125,8 +129,7 @@ if [ "$action" = install ]; then
         "$binary_source" \
         "$desktop_source" \
         "$png_source" \
-        "$svg_source"
-    do
+        "$svg_source"; do
         if [ ! -f "$source" ] || [ ! -r "$source" ]; then
             printf 'Error: missing or unreadable package file: %s\n' \
                 "$source" >&2
@@ -186,7 +189,7 @@ svg_destination="$data_home/icons/hicolor/scalable/apps/chessvault.svg"
 # Desktop entries cannot represent literal line breaks in an Exec value.
 case "$binary_destination" in
     *'
-'*|*"$(printf '\r')"*)
+'* | *"$(printf '\r')"*)
         printf '%s\n' 'Error: the executable path must not contain line breaks.' >&2
         exit 1
         ;;
@@ -198,8 +201,7 @@ for destination in \
     "$binary_destination" \
     "$desktop_destination" \
     "$png_destination" \
-    "$svg_destination"
-do
+    "$svg_destination"; do
     if [ -e "$destination" ] || [ -L "$destination" ]; then
         printf 'Error: refusing to overwrite existing path: %s\n' "$destination" >&2
         exit 1
@@ -257,7 +259,11 @@ install_file() {
     destination=$3
     run mkdir -p -- "$(dirname -- "$destination")"
     # noclobber also protects against files created since the preflight check.
-    if ! (set -C; umask 077; : > "$destination"); then
+    if ! (
+        set -C
+        umask 077
+        : > "$destination"
+    ); then
         printf 'Error: could not reserve destination: %s\n' "$destination" >&2
         exit 1
     fi
@@ -274,11 +280,11 @@ install_file 0644 "$png_source" "$png_destination"
 install_file 0644 "$svg_source" "$svg_destination"
 
 # Cache refresh is optional and must not turn a completed install into failure.
-if command -v update-desktop-database >/dev/null 2>&1; then
+if command -v update-desktop-database > /dev/null 2>&1; then
     run update-desktop-database "$data_home/applications" ||
         printf '%s\n' 'Warning: could not refresh the desktop database.' >&2
 fi
-if command -v gtk-update-icon-cache >/dev/null 2>&1 &&
+if command -v gtk-update-icon-cache > /dev/null 2>&1 &&
     [ -f "$data_home/icons/hicolor/index.theme" ]; then
     run gtk-update-icon-cache -f "$data_home/icons/hicolor" ||
         printf '%s\n' 'Warning: could not refresh the icon cache.' >&2
