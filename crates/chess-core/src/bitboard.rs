@@ -8,7 +8,7 @@ use crate::square::Square;
 ///
 /// Each set bit marks a square in the set. The default is an empty set,
 /// equivalent to [`Bitboard::empty`].
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Bitboard(u64);
 
 impl BitAnd for Bitboard {

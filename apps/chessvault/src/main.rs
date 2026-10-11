@@ -15,7 +15,10 @@ use chess_core::{Game, GameStatus, Move, Piece, Position, Side, Square};
 mod board;
 mod fs;
 mod game_status;
+mod history;
 mod icon;
+
+use history::{History, Navigation};
 mod logs;
 
 fn main() -> Result<()> {
@@ -65,6 +68,7 @@ struct ChessVault {
     log_content: text_editor::Content,
     sources_open: bool,
     game: Game,
+    history: History,
     selected_square: Option<Square>,
     pending_promotion: Option<Move>,
 }
@@ -172,6 +176,7 @@ mod resignation_tests {
                 log_content: text_editor::Content::new(),
                 sources_open: false,
                 game: Game::new(Position::standard()),
+                history: History::default(),
                 selected_square: Some(Square::E2),
                 pending_promotion: None,
             };
@@ -197,6 +202,7 @@ mod promotion_tests {
     fn ready() -> ChessVault {
         use Square::{A2, A4, A5, A6, B7, B8, C6, F3, G1, G2, H3, H4, H5, H7};
         let mut app = ChessVault {
+            history: History::default(),
             logs: logs::Logs::default(),
             console_open: false,
             log_text: String::new(),
@@ -298,8 +304,105 @@ mod promotion_tests {
     }
 }
 
+#[cfg(test)]
+mod navigation_tests {
+    use super::*;
+
+    fn app() -> ChessVault {
+        ChessVault {
+            logs: logs::Logs::default(),
+            console_open: false,
+            log_text: String::new(),
+            log_content: text_editor::Content::new(),
+            sources_open: false,
+            game: Game::new(Position::standard()),
+            history: History::default(),
+            selected_square: None,
+            pending_promotion: None,
+        }
+    }
+
+    #[test]
+    fn review_clears_selection_blocks_play_and_resignation_then_resumes_latest() {
+        use Square::{E2, E4, E5, E7};
+        let mut app = app();
+        let _ = app.update(Message::SelectSquare(E2));
+        let _ = app.update(Message::SelectSquare(E4));
+        let _ = app.update(Message::SelectSquare(E7));
+        assert_eq!(app.selected_square, Some(E7));
+        let _ = app.update(Message::Navigate(Navigation::First));
+        assert_eq!(app.selected_square, None);
+        assert_eq!(app.history.position(&app.game), &Position::standard());
+        let live = app.game.position().clone();
+        for message in [
+            Message::SelectSquare(E2),
+            Message::SelectSquare(E4),
+            Message::Resign(Side::White),
+            Message::Promote(Piece::Queen),
+        ] {
+            let _ = app.update(message);
+        }
+        assert_eq!(app.selected_square, None);
+        assert_eq!(app.game.position(), &live);
+        assert_eq!(app.game.moves().len(), 1);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        let _ = app.update(Message::Navigate(Navigation::Latest));
+        let _ = app.update(Message::SelectSquare(E7));
+        let _ = app.update(Message::SelectSquare(E5));
+        assert_eq!(app.history.ply(&app.game), 2);
+        assert_eq!(app.game.moves().len(), 2);
+    }
+
+    #[test]
+    fn console_and_promotion_picker_block_navigation() {
+        use Square::{E2, E4};
+        let mut app = app();
+        let _ = app.update(Message::SelectSquare(E2));
+        let _ = app.update(Message::SelectSquare(E4));
+        for console in [true, false] {
+            app.console_open = console;
+            app.pending_promotion = (!console).then_some(Move {
+                from: Square::B7,
+                to: Square::A8,
+                promotion: Some(Piece::Queen),
+            });
+            app.selected_square = Some(Square::B7);
+            for navigation in [
+                Navigation::First,
+                Navigation::Previous,
+                Navigation::Next,
+                Navigation::Latest,
+                Navigation::Ply(0),
+            ] {
+                let _ = app.update(Message::Navigate(navigation));
+                assert!(!app.history.is_reviewing());
+                assert_eq!(app.selected_square, Some(Square::B7));
+                assert_eq!(app.pending_promotion.is_some(), !console);
+            }
+        }
+    }
+
+    #[test]
+    fn reviewing_mate_does_not_show_the_live_result_on_earlier_positions() {
+        use Square::{D8, E5, E7, F2, F3, G2, G4, H4};
+        let mut app = app();
+        for (from, to) in [(F2, F3), (E7, E5), (G2, G4), (D8, H4)] {
+            assert!(app.game.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        let _ = app.update(Message::Navigate(Navigation::Previous));
+        assert_eq!(app.history.status(&app.game), GameStatus::Ongoing);
+        let _ = app.update(Message::Navigate(Navigation::Next));
+        assert_eq!(app.history.status(&app.game), GameStatus::Checkmate(Side::White));
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Message {
+    Navigate(Navigation),
     SelectSquare(Square),
     Promote(Piece),
     CancelPromotion,
@@ -317,6 +420,7 @@ enum Message {
 impl ChessVault {
     fn boot(logs: logs::Logs) -> Self {
         let mut app = Self {
+            history: History::default(),
             logs,
             console_open: false,
             log_text: String::new(),
@@ -345,9 +449,21 @@ impl ChessVault {
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        let previous_move_count = self.game.moves().len();
         match message {
+            Message::Navigate(navigation) => {
+                if !self.console_open && self.pending_promotion.is_none() {
+                    self.history.sync(&self.game);
+                    self.history.navigate(&self.game, navigation);
+                    self.selected_square = None;
+                    return self.history.scroll_to_current(&self.game);
+                }
+            }
             Message::SelectSquare(square) => {
-                if self.game.status() == GameStatus::Ongoing && self.pending_promotion.is_none() {
+                if !self.history.is_reviewing()
+                    && self.game.status() == GameStatus::Ongoing
+                    && self.pending_promotion.is_none()
+                {
                     self.pending_promotion =
                         self.game.position().legal_moves().into_iter().find(|mv| {
                             Some(mv.from) == self.selected_square && mv.to == square && mv.promotion.is_some()
@@ -359,6 +475,7 @@ impl ChessVault {
             }
             Message::Promote(piece) => {
                 if let Some(mv) = self.pending_promotion
+                    && !self.history.is_reviewing()
                     && self.game.status() == GameStatus::Ongoing
                     && self.game.play(Move {
                         promotion: Some(piece),
@@ -374,7 +491,7 @@ impl ChessVault {
                 self.pending_promotion = None;
             }
             Message::Resign(side) => {
-                if self.game.resign(side) {
+                if !self.history.is_reviewing() && self.game.resign(side) {
                     self.selected_square = None;
                     self.pending_promotion = None;
                 }
@@ -417,6 +534,10 @@ impl ChessVault {
                 });
             }
         }
+        self.history.sync(&self.game);
+        if self.game.moves().len() != previous_move_count {
+            return self.history.scroll_to_current(&self.game);
+        }
         Task::none()
     }
 
@@ -431,7 +552,7 @@ impl ChessVault {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let keyboard = iced::event::listen_with(|event, _status, _window| match event {
+        let keyboard = iced::event::listen_with(|event, status, _window| match event {
             iced::Event::Keyboard(keyboard::Event::KeyPressed {
                 key: Key::Named(Named::F12),
                 repeat: false,
@@ -442,6 +563,13 @@ impl ChessVault {
                 repeat: false,
                 ..
             }) => Some(Message::CancelPromotion),
+            iced::Event::Keyboard(keyboard::Event::KeyPressed {
+                key: Key::Named(key),
+                modifiers,
+                ..
+            }) if status == iced::event::Status::Ignored && modifiers.is_empty() => {
+                Navigation::from_key(key).map(Message::Navigate)
+            }
             _ => None,
         });
 
@@ -459,8 +587,9 @@ impl ChessVault {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let game_status = self.game.status();
-        let ongoing = game_status == GameStatus::Ongoing;
+        let game_status = self.history.status(&self.game);
+        let ongoing = !self.history.is_reviewing() && game_status == GameStatus::Ongoing;
+        let navigation_enabled = !self.console_open && self.pending_promotion.is_none();
         let label = game_status::label(game_status);
         let status = container(text(label).size(24)).padding(16).width(Fill);
         let status = if label.is_empty() {
@@ -477,21 +606,31 @@ impl ChessVault {
             button("White resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::White)))
                 .width(Fill),
+            text("Move history").size(20),
+            self.history.controls(&self.game, navigation_enabled),
+            self.history.move_list(&self.game, navigation_enabled),
         ]
-        .spacing(12);
+        .spacing(12)
+        .height(Fill);
 
         let content = column![
             container(
                 row![
-                    board::view(
-                        self.game.position(),
-                        self.selected_square,
-                        Message::SelectSquare,
-                        self.pending_promotion,
-                        Message::Promote,
-                        Message::CancelPromotion,
-                    ),
-                    container(controls).width(220).center_y(Fill),
+                    column![
+                        board::view(
+                            self.history.position(&self.game),
+                            self.selected_square,
+                            Message::SelectSquare,
+                            self.pending_promotion,
+                            Message::Promote,
+                            Message::CancelPromotion,
+                        ),
+                        container(text("← Previous · → Next · ↑ Start · ↓ Latest").size(14)).center_x(Fill),
+                    ]
+                    .spacing(12)
+                    .width(Fill)
+                    .height(Fill),
+                    container(controls).width(260).height(Fill),
                 ]
                 .spacing(24)
             )

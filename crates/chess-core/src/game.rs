@@ -13,6 +13,7 @@ pub enum GameStatus {
 
 /// A current position, played moves, and game-level resignation state.
 pub struct Game {
+    initial_position: Position,
     position: Position,
     moves: Vec<Move>,
     resigned: Option<Side>,
@@ -22,6 +23,7 @@ impl Game {
     /// Starts a game from a position without a resignation result.
     pub fn new(position: Position) -> Self {
         Self {
+            initial_position: position.clone(),
             position,
             moves: Vec::new(),
             resigned: None,
@@ -31,6 +33,17 @@ impl Game {
     /// Returns the current position without allowing history to be bypassed.
     pub fn position(&self) -> &Position {
         &self.position
+    }
+
+    /// Reconstructs the position after `ply` recorded moves without changing the game.
+    /// Zero returns the supplied starting position; out-of-range indices return `None`.
+    pub fn position_at(&self, ply: usize) -> Option<Position> {
+        let moves = self.moves.get(..ply)?;
+        let mut position = self.initial_position.clone();
+        for &mv in moves {
+            assert!(position.play(mv), "recorded moves must remain legal");
+        }
+        Some(position)
     }
 
     /// Moves successfully played since this game was created, in play order.
@@ -140,6 +153,71 @@ mod tests {
         assert_eq!(game.moves(), &[white, black]);
         game = Game::new(Position::standard());
         assert!(game.moves().is_empty());
+    }
+
+    #[test]
+    fn history_round_trips_special_moves_and_all_position_state() {
+        use crate::{Piece, Square::*};
+        let sequences = [
+            vec![(E2, E4), (E7, E5), (G1, F3), (B8, C6), (F1, C4), (G8, F6), (E1, G1)],
+            vec![(E2, E4), (A7, A6), (E4, E5), (D7, D5), (E5, D6)],
+            vec![
+                (A2, A4),
+                (H7, H5),
+                (A4, A5),
+                (H5, H4),
+                (A5, A6),
+                (H4, H3),
+                (A6, B7),
+                (H3, G2),
+            ],
+        ];
+        for sequence in sequences {
+            for promotion in [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight] {
+                let mut game = Game::new(Position::standard());
+                let mut expected = vec![game.position().clone()];
+                for &(from, to) in &sequence {
+                    assert!(game.play(Move {
+                        from,
+                        to,
+                        promotion: Option::None
+                    }));
+                    expected.push(game.position().clone());
+                }
+                if sequence.last() == Some(&(H3, G2)) {
+                    assert!(game.play(Move {
+                        from: B7,
+                        to: A8,
+                        promotion: Some(promotion)
+                    }));
+                    expected.push(game.position().clone());
+                }
+                for (ply, position) in expected.iter().enumerate().rev() {
+                    assert_eq!(game.position_at(ply).as_ref(), Some(position));
+                }
+                assert_eq!(game.position_at(expected.len()), Option::None);
+                assert_eq!(game.position(), expected.last().unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn history_starts_at_the_supplied_position_not_the_standard_board() {
+        use crate::Square::{E2, E4};
+        let mut initial = Position::standard();
+        assert!(initial.play(Move {
+            from: E2,
+            to: E4,
+            promotion: None
+        }));
+        let mut game = Game::new(initial.clone());
+        assert!(game.play(Move {
+            from: E7,
+            to: E5,
+            promotion: None
+        }));
+        assert_eq!(game.position_at(0), Some(initial));
+        assert_eq!(game.position_at(1).as_ref(), Some(game.position()));
     }
 
     #[test]

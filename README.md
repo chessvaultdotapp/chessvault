@@ -7,10 +7,14 @@ This repository contains the desktop app and its supporting Rust libraries.
 
 - Play both sides on an interactive board with legal-move hints. Click a piece,
   then a highlighted destination to move.
-- Legal moves include castling, en passant, and promotion. Promotions currently
-  default to a queen; there is no promotion chooser yet.
+- Legal moves include castling, en passant, and promotion with an on-board piece chooser.
 - Checkmate, stalemate, and resignation end the game, with the result displayed
   beside the board. Other draw rules are not yet adjudicated.
+- Review numbered moves in standard algebraic notation. Use **Left/Right** for
+  previous/next, **Up/Home** for the starting position, and **Down/End** for latest,
+  or click the navigation buttons or a move. Shortcut hints appear below the board.
+  Review is read-only: return to latest to resume play. Navigation is disabled
+  while the console or promotion picker is open.
 - Window dimensions are saved between launches. Press **F12** to toggle the
   developer console.
 

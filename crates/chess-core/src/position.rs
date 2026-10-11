@@ -7,8 +7,10 @@ use crate::{
 };
 
 pub(crate) mod movegen;
+mod notation;
 
 /// Occupancy bitboards, side to move, castling rights, and move counts.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Position {
     /// Six piece-type bitboards, indexed by Pawn through King.
     /// The [`Piece::Empty`](crate::piece::Piece::Empty) sentinel has no entry and is not a valid index.
@@ -29,6 +31,11 @@ pub struct Position {
 }
 
 impl Position {
+    /// The fullmove number (one at the standard starting position).
+    pub fn fullmove_number(&self) -> u32 {
+        self.fullmove_count
+    }
+
     /// Returns the piece type and side occupying a square.
     ///
     /// Empty squares and [`Square::None`] return `None`.
