@@ -50,7 +50,7 @@ checked even when the public entry point uses the development override.
 
 ![Log-directory opinion handling and shared base-state resolution, including fallbacks and errors](resolution.svg)
 
-The [resolution diagram source](resolution.dot) uses ovals for entry and return
+The [Mermaid resolution diagram source](resolution.mmd) uses rounded shapes for entry and return
 points, rectangles for actions, and diamonds for decisions. Blue decisions and
 dashed edges show compile-time selection, not runtime configuration checks.
 Home lookup checks for an absolute path value, not whether the directory exists
@@ -63,10 +63,10 @@ state-directory errors unchanged.
 Callers create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`. The package's
-documentation CI workflow also runs Graphviz followed by one SVGO pass before
-building the site. It uses the fresh SVGs without requiring byte-for-byte
-agreement with committed assets, since Graphviz versions can produce different
-layouts. Regenerate locally and commit the SVGs when changing diagram sources
+documentation CI workflow also runs Graphviz and Mermaid CLI followed by one
+SVGO pass before building the site. It uses the fresh SVGs without requiring
+byte-for-byte agreement with committed assets, since renderer versions can produce
+different layouts. Regenerate locally and commit the SVGs when changing diagram sources
 so repository previews stay current.
 
 ## Linux resolution
