@@ -1,6 +1,7 @@
 # Node.js
 
-[Node.js](https://nodejs.org/en/download) runs [SVGO](svgo.md), our SVG optimizer.
+[Node.js](https://nodejs.org/en/download) runs [Mermaid CLI](mermaid.md), our diagram
+renderer, and [SVGO](svgo.md), our SVG optimizer.
 It is only needed for artwork and documentation tooling, not to build, test,
 or run Chessvault.
 

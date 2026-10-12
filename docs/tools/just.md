@@ -35,7 +35,7 @@ Available recipes:
 | `just run` | Launch the desktop application. |
 | `just run-debug` | Launch with `RUST_LOG=chessvault=debug`. |
 | `just fmt` | Apply Rust formatting across the workspace. |
-| `just optimize-assets` | Optimize desktop SVG artwork in place, recursively. |
+| `just optimize-assets` | Optimize desktop SVG artwork and regenerate documentation diagrams. |
 
 Check recipes follow the [ordered verification sequence](../development/testing.md#ordered-checks),
 stop on failure, and require [cargo-nextest](cargo-nextest.md). They run
@@ -47,7 +47,7 @@ If nextest is unavailable, use the manual Cargo fallback described in the
 [testing guide](../development/testing.md#ordered-checks).
 
 `just optimize-assets` checks that Node.js and pnpm are available. Install the
-[asset-tooling dependencies](svgo.md) first; the recipe does not
+[SVGO](svgo.md) and [Mermaid CLI](mermaid.md) dependencies first; the recipe does not
 install them automatically. Optimization is manual and modifies SVGs in place;
 review the diff and follow the [visual verification workflow](../components/desktop.md#optimizing-svg-artwork).
 
