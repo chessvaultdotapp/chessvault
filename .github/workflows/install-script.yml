@@ -1,0 +1,129 @@
+name: Linux installer
+
+on:
+  push:
+    paths: &installer-paths
+      - 'scripts/install-linux.sh'
+      - 'scripts/tests/**'
+      - 'scripts/package-tests/**'
+      - 'tools/dist-prepare/**'
+      - 'apps/chessvault/data/chessvault.desktop'
+      - 'apps/chessvault/assets/logo.svg'
+      - 'venvs/install-script.requirements.txt'
+      - 'venvs/justfile'
+      - '.github/workflows/install-script.yml'
+      - '.github/actions/setup-uv/**'
+      - '.github/actions/setup-just/**'
+  pull_request:
+    paths: *installer-paths
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test installer with fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check installer syntax
+        run: sh -n scripts/install-linux.sh
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
+      - name: Install Python and test dependencies
+        env:
+          UV_PYTHON: '3.14.5'
+        run: |
+          uv python install "$UV_PYTHON"
+          just --justfile venvs/justfile install-script
+
+      - name: Test installer
+        run: venvs/install-script/bin/python -m pytest scripts/tests -q
+
+  build-package:
+    name: Build Linux package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      # Match the native development-release build and archive layout.
+      - name: Build Linux binary and collect generated icon
+        run: |
+          cargo build -p chessvault --bin chessvault --release --locked \
+            --target x86_64-unknown-linux-gnu --message-format=json > build-messages.jsonl
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          messages = [json.loads(line) for line in pathlib.Path("build-messages.jsonl").read_text().splitlines()]
+          outputs = [pathlib.Path(message["out_dir"]) for message in messages
+                     if message["reason"] == "build-script-executed"
+                     and pathlib.Path(message["out_dir"], "chessvault.png").is_file()]
+          if len(outputs) != 1:
+              raise SystemExit(f"Expected one generated ChessVault icon, found {len(outputs)}")
+          shutil.copyfile(outputs[0] / "chessvault.png",
+                          "target/x86_64-unknown-linux-gnu/release/chessvault.png")
+          PY
+
+      - name: Stage and archive Linux package
+        run: |
+          python3 tools/dist-prepare/main.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
+          tar -czf dist/chessvault-linux-x86_64.tar.gz -C dist/package bin install-linux.sh share
+
+      # Transfer the archive, not loose files, to preserve Unix permissions.
+      - name: Upload package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: installer-linux-package
+          path: dist/chessvault-linux-x86_64.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  test-package:
+    name: Test installer with built package
+    needs: build-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: installer-linux-package
+          path: dist
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
+      - name: Install Python and test dependencies
+        env:
+          UV_PYTHON: '3.14.5'
+        run: |
+          uv python install "$UV_PYTHON"
+          just --justfile venvs/justfile install-script
+
+      - name: Test packaged installer
+        env:
+          CHESSVAULT_PACKAGE: ${{ github.workspace }}/dist/chessvault-linux-x86_64.tar.gz
+        run: venvs/install-script/bin/python -m pytest scripts/package-tests -q

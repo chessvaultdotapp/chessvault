@@ -266,6 +266,53 @@ runs on pushes and pull requests that change `*.sh` files, `.editorconfig`, or t
 workflow itself, and checks all tracked shell scripts rather than only changed
 ones.
 
+### Linux installer tests
+
+The [Linux installer workflow](../../.github/workflows/install-script.yml) checks shell syntax
+and runs pytest integration tests when the installer, tests, packaging tool, desktop entry
+or SVG icon, test environment, or workflow dependencies change. Two jobs start in parallel:
+
+- Fixture tests use a fake package and require no Rust build or release download.
+- The package build compiles the current checkout in release mode on Ubuntu 22.04,
+  stages it with `tools/dist-prepare/main.py`, and uploads a tar archive. This matches
+  the native development-release layout and preserves executable permissions.
+
+A third job waits for the package build, downloads the archive on a fresh Ubuntu runner,
+and runs the packaged installer. It does not depend on the fixture job.
+All installer tests require Linux and use isolated home/data directories. Optional
+cache tools are stubbed so tests do not touch host caches.
+
+Create the dedicated environment and run the fixture tests locally:
+
+```console
+$ just --justfile venvs/justfile install-script
+...
+$ venvs/install-script/bin/python -m pytest scripts/tests -q
+...
+39 passed in 0.54s
+```
+
+Coverage includes installed contents and permissions, desktop-entry escaping, XDG paths,
+dry runs, interactive custom-prefix confirmation, rejected system prefixes and invalid
+arguments, missing payloads, overwrite protection (including dangling symlinks), and
+nonfatal cache-refresh failures.
+
+To smoke-test a native package archive locally, use the same environment:
+
+```console
+$ CHESSVAULT_PACKAGE=/absolute/path/to/chessvault-linux-x86_64.tar.gz \
+    venvs/install-script/bin/python -m pytest scripts/package-tests -q
+...
+2 passed in 0.51s
+```
+
+Use an archive built from the current checkout: tests compare the shipped installer,
+desktop template, and SVG with repository sources. Missing archives fail rather than skip.
+Smoke tests extract the archive, check the ELF binary and PNG signatures, execute the
+installer directly, and verify installed contents, permissions, launcher paths, dry runs,
+and overwrite refusal with both default and custom XDG data directories. These tests
+verify packaging and installation, not GUI startup.
+
 ## Desktop interaction checks
 
 Automated tests do not replace launching the app for visible desktop changes:
