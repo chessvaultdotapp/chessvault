@@ -51,8 +51,8 @@ Run these tasks from `crates/platform-dirs` using the crate's [justfile](../just
 
 - `just check`: run the workspace-defined checks for this package.
 - `just check-native`: check with default features disabled.
-- `just diagram`: regenerate the documentation SVGs with Graphviz and Mermaid CLI,
-  then optimize them with SVGO. Requires Graphviz, Node.js, pnpm, and the shared tooling dependencies
+- `just diagram`: regenerate the documentation SVGs with Mermaid CLI,
+  then optimize them with SVGO. Requires Node.js, pnpm, and the shared tooling dependencies
   installed with `pnpm install --frozen-lockfile` at the workspace root.
 - `just diagram-generate`: generate the SVGs without optimizing them.
 - `just diagram-optimize`: optimize the existing SVGs without regenerating them.

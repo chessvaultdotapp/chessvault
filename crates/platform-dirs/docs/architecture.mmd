@@ -1,0 +1,23 @@
+flowchart TB
+    subgraph package["platform-dirs"]
+        log_api["<b>Public API</b><br/>user_log_dir(app_name, opinion)<br/>Calls user_state_dir(app_name)<br/>Appends log unless opinion is Some(false)"]
+        state_api["user_state_dir(app_name)<br/>Resolves base, then validates and appends application name"]
+        development["<b>Development override</b><br/>Debug assertions +<br/>development feature"]
+        native["<b>Native platform resolution</b><br/>Otherwise"]
+        all_platforms["<b>All platforms</b><br/>Working directory<br/>+ .local/state"]
+        linux["<b>Linux</b><br/>XDG state directory<br/>or home fallback"]
+        other["<b>Other OSes</b><br/>Unsupported error"]
+
+        log_api --> state_api
+        state_api --> development
+        state_api --> native
+        development --> all_platforms
+        native --> linux
+        native --> other
+    end
+
+    classDef default fill:#ffffff,stroke:#475569,color:#0f172a
+    classDef selection fill:#f1f5f9,stroke:#475569,color:#0f172a
+    class development,native selection
+    style package fill:transparent,stroke:#475569,color:#0f172a
+    linkStyle default stroke:#475569

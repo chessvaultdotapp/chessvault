@@ -2,7 +2,7 @@
 
 ![Public API, development override, and native platform support in platform-dirs](architecture.svg)
 
-The diagram is generated from [Graphviz source](architecture.dot) and optimized
+The diagram is generated from [Mermaid source](architecture.mmd) and optimized
 with SVGO. Run `just diagram` from `crates/platform-dirs` to regenerate it, or
 `just --justfile crates/platform-dirs/justfile diagram` from the workspace root.
 See [Development tasks](index.md#development-tasks) for prerequisites.
@@ -63,7 +63,7 @@ state-directory errors unchanged.
 Callers create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`. The package's
-documentation CI workflow also runs Graphviz and Mermaid CLI followed by one
+documentation CI workflow also runs Mermaid CLI followed by one
 SVGO pass before building the site. It uses the fresh SVGs without requiring
 byte-for-byte agreement with committed assets, since renderer versions can produce
 different layouts. Regenerate locally and commit the SVGs when changing diagram sources
