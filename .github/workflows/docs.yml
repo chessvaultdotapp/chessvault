@@ -52,11 +52,8 @@ jobs:
         with:
           version: '12.5.1'
 
-      - name: Install Graphviz and SVG tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes graphviz
-          pnpm install --frozen-lockfile
+      - name: Install diagram and SVG tooling
+        run: pnpm install --frozen-lockfile
 
       - name: Install just
         uses: ./.github/actions/setup-just

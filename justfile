@@ -34,11 +34,10 @@ run:
 run-debug:
     RUST_LOG=chessvault=debug cargo run -p chessvault --locked
 
-# Optimize SVG artwork and regenerate documentation diagrams (requires pnpm dependencies and Graphviz).
+# Optimize SVG artwork and regenerate documentation diagrams (requires pnpm dependencies).
 optimize-assets:
     @command -v node >/dev/null 2>&1 || { echo "Node.js is required: https://nodejs.org/en/download" >&2; exit 1; }
     @command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required: https://pnpm.io/installation" >&2; exit 1; }
-    @command -v dot >/dev/null 2>&1 || { echo "Graphviz is required: https://graphviz.org/download/" >&2; exit 1; }
     just --justfile apps/chessvault/justfile optimize-svgs
     just --justfile crates/platform-dirs/justfile diagram
 

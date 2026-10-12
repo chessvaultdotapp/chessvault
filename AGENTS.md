@@ -33,7 +33,7 @@
 - Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
   omit file arguments to check all workflows. CI checks only changed workflow YAML, not composite actions or installers.
 - `pnpm install --frozen-lockfile` installs SVG tooling. `just optimize-assets` optimizes desktop SVGs and regenerates
-  documentation diagrams; it requires Graphviz. Edit diagram `.dot` sources, then run
+  documentation diagrams with Mermaid CLI. Edit diagram `.mmd` sources, then run
   `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update.
 - `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
   `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
