@@ -36,9 +36,12 @@ $ just --justfile crates/platform-dirs/justfile diagram
 ```
 
 This renders both diagrams with transparent backgrounds, then optimizes the SVGs
-with [SVGO](svgo.md). Review the rendered diagrams and commit the source and SVG
-changes together. `just optimize-assets` also regenerates these diagrams while
-optimizing desktop artwork.
+with [SVGO](svgo.md). Generate diagrams before building or previewing the
+documentation site. Review the rendered diagrams and commit only the `.mmd`
+source changes; the generated SVGs are ignored by Git. GitHub Markdown previews
+will not display these untracked diagrams; use the built documentation site.
+`just optimize-assets` also regenerates these diagrams while optimizing desktop
+artwork.
 
 To render one source directly:
 

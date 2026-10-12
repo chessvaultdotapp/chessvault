@@ -64,10 +64,10 @@ Callers create directories as needed.
 
 Both diagrams are regenerated and optimized by `just diagram`. The package's
 documentation CI workflow also runs Mermaid CLI followed by one
-SVGO pass before building the site. It uses the fresh SVGs without requiring
-byte-for-byte agreement with committed assets, since renderer versions can produce
-different layouts. Regenerate locally and commit the SVGs when changing diagram sources
-so repository previews stay current.
+SVGO pass before building the site. Generated diagram SVGs are ignored by Git;
+commit only the Mermaid sources. Generate diagrams locally before building or
+previewing the documentation site. GitHub Markdown previews will not display
+these untracked diagrams; use the built site to view them.
 
 ## Linux resolution
 
