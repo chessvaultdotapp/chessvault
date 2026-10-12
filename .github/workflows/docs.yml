@@ -52,6 +52,14 @@ jobs:
         with:
           version: '12.5.1'
 
+      # The runner's Chrome has a supported sandbox; downloaded Chrome is blocked
+      # by Ubuntu's AppArmor user-namespace restrictions. Keep sandboxing enabled.
+      - name: Select runner Chrome for Mermaid
+        run: |
+          chrome="$(readlink -f "$(command -v google-chrome)")"
+          "$chrome" --version
+          echo "PUPPETEER_EXECUTABLE_PATH=$chrome" >> "$GITHUB_ENV"
+
       - name: Install diagram and SVG tooling
         run: pnpm install --frozen-lockfile
 
