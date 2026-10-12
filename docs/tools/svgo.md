@@ -20,8 +20,9 @@ Usage: svgo [options] [INPUT...]
 
 Output is abbreviated. SVGO is not part of the Cargo build. Desktop artwork
 optimization is manual; the platform-dirs documentation workflow regenerates
-and optimizes its diagrams before building the site.
+and optimizes its [Mermaid diagrams](mermaid.md) before building the site.
 
 See the [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
 for usage and visual verification. With [just](just.md) installed,
-`just optimize-assets` optimizes desktop artwork in place.
+`just optimize-assets` optimizes desktop artwork in place and regenerates the
+documentation diagrams.

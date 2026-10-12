@@ -16,8 +16,9 @@ optional documentation and artwork tools.
 | Tool | Purpose |
 | --- | --- |
 | [just](just.md) | Run repository development tasks |
-| [Node.js](nodejs.md) | Run SVG tooling |
-| [pnpm](pnpm.md) | Install shared SVG-tooling dependencies |
+| [Node.js](nodejs.md) | Run diagram and SVG tooling |
+| [pnpm](pnpm.md) | Install shared diagram and SVG-tooling dependencies |
+| [Mermaid CLI](mermaid.md) | Render documentation diagrams from `.mmd` sources |
 | [SVGO](svgo.md) | Optimize SVG artwork and diagrams |
 | [uv](uv.md) | Manage Python installations, environments, and tools |
 | [Python](python.md) | Run Python-based documentation and release tooling |
