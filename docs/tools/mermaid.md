@@ -35,8 +35,10 @@ $ just --justfile crates/platform-dirs/justfile diagram
 ...
 ```
 
-This renders both diagrams with transparent backgrounds, then optimizes the SVGs
-with [SVGO](svgo.md). Generate diagrams before building or previewing the
+This renders both diagrams with transparent backgrounds and no embedded fonts,
+then optimizes the SVGs with [SVGO](svgo.md). Disabling font embedding keeps files
+small; viewers use locally available fonts and fallbacks instead.
+Generate diagrams before building or previewing the
 documentation site. Review the rendered diagrams and commit only the `.mmd`
 source changes; the generated SVGs are ignored by Git. GitHub Markdown previews
 will not display these untracked diagrams; use the built documentation site.
@@ -46,7 +48,8 @@ artwork.
 To render one source directly:
 
 ```console
-$ pnpm exec mmdc -i crates/platform-dirs/docs/architecture.mmd -o crates/platform-dirs/docs/architecture.svg -b transparent
+$ cd crates/platform-dirs
+$ pnpm exec mmdc -i docs/architecture.mmd -o docs/architecture.svg -b transparent --no-font-embed
 Generating single mermaid chart
 ```
 
