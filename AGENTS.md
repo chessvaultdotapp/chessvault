@@ -34,7 +34,8 @@
   omit file arguments to check all workflows. CI checks only changed workflow YAML, not composite actions or installers.
 - `pnpm install --frozen-lockfile` installs SVG tooling. `just optimize-assets` optimizes desktop SVGs and regenerates
   documentation diagrams with Mermaid CLI. Edit diagram `.mmd` sources, then run
-  `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update.
+  `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update. The two generated documentation
+  SVGs are ignored by Git; commit `.mmd` sources, not generated diagrams. Application SVG assets remain tracked.
 - `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
   `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
 - Documentation has two Zensical roots. Build both with `venvs/zensical/bin/zensical build --config-file zensical.toml`

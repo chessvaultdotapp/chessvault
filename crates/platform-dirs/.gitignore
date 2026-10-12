@@ -1,1 +1,5 @@
 site/
+
+# Generated Mermaid diagrams.
+/docs/architecture.svg
+/docs/resolution.svg
