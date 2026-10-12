@@ -1,0 +1,66 @@
+flowchart TB
+    subgraph log_wrapper["Log directory wrapper"]
+        log_start(["user_log_dir(app_name, opinion)"])
+        state_call["Call user_state_dir(app_name)<br/>Resolve base, then validate and<br/>append optional application name"]
+        state_ok{"Resolution and<br/>validation succeeded?"}
+        opinion{"opinion.unwrap_or(true)?"}
+        append_log["Append log"]
+        log_result(["Return PathBuf"])
+        log_error(["Propagate error unchanged"])
+
+        log_start --> state_call
+        state_call --> state_ok
+        state_ok -->|Yes| opinion
+        state_ok -->|No| log_error
+        opinion -->|"None or Some(true)"| append_log
+        opinion -->|"Some(false)"| log_result
+        append_log --> log_result
+    end
+
+    start(["Base state directory"])
+    select{"Debug assertions +<br/>development feature?<br/>(compile time)"}
+    platform{"Linux target?<br/>(compile time)"}
+
+    cwd["Read current<br/>working directory"]
+    cwd_ok{"Lookup succeeded?"}
+    local["Append .local/state"]
+
+    read_xdg["Read XDG_STATE_HOME"]
+    xdg{"Absolute path?"}
+    use_xdg["Use XDG_STATE_HOME"]
+    home["Look up home directory"]
+    valid_home{"Absolute home<br/>path available?"}
+    fallback["Append .local/state<br/>to home path"]
+
+    error(["Return error"])
+    result(["Return PathBuf"])
+
+    start --> select
+    select -.->|Yes| cwd
+    select -.->|No| platform
+    platform -.->|Yes| read_xdg
+    platform -.->|"No: unsupported"| error
+
+    cwd --> cwd_ok
+    cwd_ok -->|Yes| local
+    cwd_ok -->|No| error
+    local --> result
+
+    read_xdg --> xdg
+    xdg -->|Yes| use_xdg
+    xdg -->|No| home
+    use_xdg --> result
+    home --> valid_home
+    valid_home -->|Yes| fallback
+    valid_home -->|No| error
+    fallback --> result
+
+    classDef default fill:#ffffff,stroke:#475569,color:#0f172a
+    classDef entry fill:#dbeafe,stroke:#475569,color:#0f172a
+    classDef success fill:#dcfce7,stroke:#475569,color:#0f172a
+    classDef failure fill:#fee2e2,stroke:#475569,color:#0f172a
+    class log_start,start,select,platform entry
+    class log_result,result success
+    class log_error,error failure
+    style log_wrapper fill:transparent,stroke:#94a3b8,color:#0f172a
+    linkStyle default stroke:#475569

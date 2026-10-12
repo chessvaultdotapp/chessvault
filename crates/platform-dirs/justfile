@@ -13,10 +13,10 @@ check-native:
 # Regenerate and optimize the documentation SVGs.
 diagram: diagram-generate diagram-optimize
 
-# Generate the documentation SVGs (requires Graphviz).
+# Generate the documentation SVGs (requires Graphviz and root pnpm dependencies).
 diagram-generate:
     dot -Tsvg docs/architecture.dot -o docs/architecture.svg
-    dot -Tsvg docs/resolution.dot -o docs/resolution.svg
+    pnpm exec mmdc -i docs/resolution.mmd -o docs/resolution.svg -b transparent
 
 # Optimize the existing documentation SVGs (requires root pnpm dependencies).
 diagram-optimize:
