@@ -1,23 +1,28 @@
-flowchart TB
-    subgraph package["platform-dirs"]
-        log_api["<b>Public API</b><br/>user_log_dir(app_name, opinion)<br/>Calls user_state_dir(app_name)<br/>Appends log unless opinion is Some(false)"]
-        state_api["user_state_dir(app_name)<br/>Resolves base, then validates and appends application name"]
-        development["<b>Development override</b><br/>Debug assertions +<br/>development feature"]
-        native["<b>Native platform resolution</b><br/>Otherwise"]
-        all_platforms["<b>All platforms</b><br/>Working directory<br/>+ .local/state"]
-        linux["<b>Linux</b><br/>XDG state directory<br/>or home fallback"]
-        other["<b>Other OSes</b><br/>Unsupported error"]
-
-        log_api --> state_api
-        state_api --> development
-        state_api --> native
-        development --> all_platforms
-        native --> linux
-        native --> other
+block-beta
+    columns 1
+    block:comptime
+        columns 2
+        title["<b>platform-dirs: directory resolution</b><br/>Implementation selected at compile time, not while the app runs"]:2
+        block:development
+            columns 1
+            development_title["<b>Development override</b><br/>When debug assertions are enabled<br/>AND the development feature is enabled"]
+            development_path["<b>On every OS</b><br/>Project-local directories<br/>State: current working directory + .local/state"]
+        end
+        block:native
+            columns 2
+            native_title["<b>OS-specific resolution</b><br/>In release builds, or when the development feature is disabled"]:2
+            linux["<b>Linux</b><br/><br/>XDG directory conventions<br/>State: absolute XDG_STATE_HOME<br/>or home directory + .local/state"]
+            other["<b>Other operating systems</b><br/><br/>Not supported yet<br/>Returns an error"]
+        end
     end
 
     classDef default fill:#ffffff,stroke:#475569,color:#0f172a
-    classDef selection fill:#f1f5f9,stroke:#475569,color:#0f172a
-    class development,native selection
-    style package fill:transparent,stroke:#475569,color:#0f172a
-    linkStyle default stroke:#475569
+    style title fill:transparent,stroke:none,color:#0f172a
+    style development_title fill:transparent,stroke:none,color:#0f172a
+    style native_title fill:transparent,stroke:none,color:#0f172a
+    style comptime fill:transparent,stroke:#475569,color:#0f172a
+    style development fill:transparent,stroke:#475569,color:#0f172a
+    style development_path fill:#dbeafe,stroke:#2563eb,color:#0f172a
+    style native fill:transparent,stroke:#475569,color:#0f172a
+    style linux fill:#ecfdf5,stroke:#059669,color:#0f172a
+    style other fill:#fff7ed,stroke:#ea580c,color:#0f172a
