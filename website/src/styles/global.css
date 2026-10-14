@@ -1,3 +1,5 @@
+@import "@fontsource-variable/nunito";
+
 :root {
   color-scheme: light;
   --color-cream: #f2e7ce;
@@ -11,7 +13,7 @@
   --color-border: #cfb99e;
   --color-selection-text: var(--color-cream);
   --color-selection-background: var(--color-chestnut);
-  font-family: system-ui, sans-serif;
+  font-family: "Nunito Variable", system-ui, sans-serif;
   color: var(--color-text);
   background: var(--color-background);
 }
@@ -48,7 +50,6 @@ main {
 
 h1 {
   margin: 0;
-  font-family: Georgia, serif;
   font-size: clamp(2.5rem, 7vw, 4.5rem);
   line-height: 1.15;
 }
