@@ -10,6 +10,9 @@ import Separator from "./Separator.astro";
   <nav aria-label="Main navigation">
     <a href="/">Chessvault</a>
     <div class="header-actions">
+      <a class="nav-button" href="/docs">Documentation</a>
+      <a class="nav-button" href="/download">Download</a>
+      <Separator orientation="vertical" />
       <button id="theme-preference" type="button" aria-label="Theme: system. Switch to light theme">
         <span class="theme-icon light" aria-hidden="true" set:html={sun} />
         <span class="theme-icon dark" aria-hidden="true" set:html={moon} />
@@ -66,6 +69,15 @@ import Separator from "./Separator.astro";
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-button {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
   }
 
   .github-link {
