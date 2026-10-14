@@ -2,25 +2,18 @@ name: Markdown
 
 on:
   push:
-    paths:
+    paths: &markdown-paths
       - '**/*.md'
       - 'crates/platform-dirs/docs/*.mmd'
       - 'crates/platform-dirs/justfile'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/markdown.yml'
       - '.github/actions/setup-just/**'
       - '.github/actions/setup-rumdl/**'
   pull_request:
-    paths:
-      - '**/*.md'
-      - 'crates/platform-dirs/docs/*.mmd'
-      - 'crates/platform-dirs/justfile'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/markdown.yml'
-      - '.github/actions/setup-just/**'
-      - '.github/actions/setup-rumdl/**'
+    paths: *markdown-paths
 
 permissions:
   contents: read
@@ -50,7 +43,7 @@ jobs:
           echo "PUPPETEER_EXECUTABLE_PATH=$chrome" >> "$GITHUB_ENV"
 
       - name: Install diagram and SVG tooling
-        run: pnpm install --frozen-lockfile
+        run: pnpm --filter . install --frozen-lockfile
 
       - name: Install just
         uses: ./.github/actions/setup-just
