@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light;
+  --color-cream: #f2e7ce;
+  --color-chestnut: #925e42;
+  --color-text: #38271e;
+  --color-border: #cfb99e;
+  font-family: system-ui, sans-serif;
+  color: var(--color-text);
+  background: var(--color-cream);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+}
+
+main {
+  flex: 1;
+  width: min(100% - 3rem, 70rem);
+  margin-inline: auto;
+  padding-block: 4rem;
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  line-height: 1.15;
+}
+
+a {
+  color: var(--color-chestnut);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-chestnut);
+  outline-offset: 4px;
+}
+
+::selection {
+  color: var(--color-cream);
+  background: var(--color-chestnut);
+}
