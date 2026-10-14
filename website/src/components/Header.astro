@@ -2,16 +2,24 @@
 import sun from "@phosphor-icons/core/assets/regular/sun.svg?raw";
 import moon from "@phosphor-icons/core/assets/regular/moon.svg?raw";
 import devices from "@phosphor-icons/core/assets/regular/devices.svg?raw";
+import github from "@phosphor-icons/core/assets/regular/github-logo.svg?raw";
+import Separator from "./Separator.astro";
 ---
 
 <header>
   <nav aria-label="Main navigation">
     <a href="/">Chessvault</a>
-    <button id="theme-preference" type="button" aria-label="Theme: system. Switch to light theme">
-      <span class="theme-icon light" aria-hidden="true" set:html={sun} />
-      <span class="theme-icon dark" aria-hidden="true" set:html={moon} />
-      <span class="theme-icon system" aria-hidden="true" set:html={devices} />
-    </button>
+    <div class="header-actions">
+      <button id="theme-preference" type="button" aria-label="Theme: system. Switch to light theme">
+        <span class="theme-icon light" aria-hidden="true" set:html={sun} />
+        <span class="theme-icon dark" aria-hidden="true" set:html={moon} />
+        <span class="theme-icon system" aria-hidden="true" set:html={devices} />
+      </button>
+      <Separator orientation="vertical" />
+      <a class="github-link" href="https://github.com/chevaultdotapp" aria-label="GitHub" title="GitHub">
+        <span aria-hidden="true" set:html={github} />
+      </a>
+    </div>
   </nav>
 </header>
 
@@ -52,6 +60,32 @@ import devices from "@phosphor-icons/core/assets/regular/devices.svg?raw";
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .github-link {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .github-link span {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .github-link :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
   }
 
   button {
