@@ -2,11 +2,27 @@
   color-scheme: light;
   --color-cream: #f2e7ce;
   --color-chestnut: #925e42;
-  --color-text: #38271e;
+  --color-deep-chestnut: #38271e;
+
+  --color-background: var(--color-cream);
+  --color-text: var(--color-deep-chestnut);
+  --color-accent: var(--color-chestnut);
   --color-border: #cfb99e;
+  --color-selection-text: var(--color-cream);
+  --color-selection-background: var(--color-chestnut);
   font-family: system-ui, sans-serif;
   color: var(--color-text);
-  background: var(--color-cream);
+  background: var(--color-background);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-background: var(--color-deep-chestnut);
+  --color-text: var(--color-cream);
+  --color-accent: var(--color-cream);
+  --color-border: var(--color-chestnut);
+  --color-selection-text: var(--color-deep-chestnut);
+  --color-selection-background: var(--color-cream);
 }
 
 * {
@@ -37,7 +53,7 @@ h1 {
 }
 
 a {
-  color: var(--color-chestnut);
+  color: var(--color-accent);
   text-underline-offset: 0.2em;
 }
 
@@ -46,11 +62,11 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-chestnut);
+  outline: 2px solid var(--color-accent);
   outline-offset: 4px;
 }
 
 ::selection {
-  color: var(--color-cream);
-  background: var(--color-chestnut);
+  color: var(--color-selection-text);
+  background: var(--color-selection-background);
 }
