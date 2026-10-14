@@ -3,6 +3,7 @@
   --color-cream: #f2e7ce;
   --color-chestnut: #925e42;
   --color-deep-chestnut: #38271e;
+  --color-light-chestnut: #d4a483;
 
   --color-background: var(--color-cream);
   --color-text: var(--color-deep-chestnut);
@@ -19,7 +20,7 @@
   color-scheme: dark;
   --color-background: var(--color-deep-chestnut);
   --color-text: var(--color-cream);
-  --color-accent: var(--color-cream);
+  --color-accent: var(--color-light-chestnut);
   --color-border: var(--color-chestnut);
   --color-selection-text: var(--color-deep-chestnut);
   --color-selection-background: var(--color-cream);

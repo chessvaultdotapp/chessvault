@@ -1,8 +1,42 @@
+---
+import sun from "@phosphor-icons/core/assets/regular/sun.svg?raw";
+import moon from "@phosphor-icons/core/assets/regular/moon.svg?raw";
+import devices from "@phosphor-icons/core/assets/regular/devices.svg?raw";
+---
+
 <header>
   <nav aria-label="Main navigation">
     <a href="/">Chessvault</a>
+    <button id="theme-preference" type="button" aria-label="Theme: system. Switch to light theme">
+      <span class="theme-icon light" aria-hidden="true" set:html={sun} />
+      <span class="theme-icon dark" aria-hidden="true" set:html={moon} />
+      <span class="theme-icon system" aria-hidden="true" set:html={devices} />
+    </button>
   </nav>
 </header>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>("#theme-preference");
+  const themes = ["light", "dark", "system"];
+
+  if (button) {
+    const updateLabel = () => {
+      const current = document.documentElement.dataset.themePreference ?? "system";
+      const next = themes[(themes.indexOf(current) + 1) % themes.length];
+      const label = `Theme: ${current}. Switch to ${next} theme`;
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    };
+
+    updateLabel();
+    button.addEventListener("click", () => {
+      const current = document.documentElement.dataset.themePreference ?? "system";
+      const next = themes[(themes.indexOf(current) + 1) % themes.length];
+      document.dispatchEvent(new CustomEvent("theme-change", { detail: next }));
+      updateLabel();
+    });
+  }
+</script>
 
 <style>
   header {
@@ -13,6 +47,45 @@
     width: min(100% - 3rem, 70rem);
     margin-inline: auto;
     padding-block: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    font: inherit;
+    color: var(--color-text);
+    background: var(--color-background);
+    cursor: pointer;
+  }
+
+  .theme-icon {
+    display: none;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .theme-icon :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+
+  :global(:root[data-theme-preference="light"]) .light,
+  :global(:root[data-theme-preference="dark"]) .dark,
+  :global(:root[data-theme-preference="system"]) .system,
+  :global(:root:not([data-theme-preference])) .system {
+    display: block;
   }
 
   a {

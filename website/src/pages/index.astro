@@ -12,6 +12,37 @@ import Footer from "../components/Footer.astro";
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <title>Chessvault</title>
+    <script is:inline>
+      (() => {
+        const media = window.matchMedia("(prefers-color-scheme: dark)");
+        let preference = "system";
+        try {
+          const saved = localStorage.getItem("chessvault-theme");
+          if (["light", "dark", "system"].includes(saved)) preference = saved;
+        } catch {
+          // Theme switching still works when storage is unavailable.
+        }
+
+        const apply = () => {
+          document.documentElement.dataset.theme =
+            preference === "system" ? (media.matches ? "dark" : "light") : preference;
+          document.documentElement.dataset.themePreference = preference;
+        };
+
+        apply();
+        media.addEventListener("change", apply);
+        document.addEventListener("theme-change", (event) => {
+          if (!["light", "dark", "system"].includes(event.detail)) return;
+          preference = event.detail;
+          try {
+            localStorage.setItem("chessvault-theme", preference);
+          } catch {
+            // Keep the preference for this page even if it cannot be saved.
+          }
+          apply();
+        });
+      })();
+    </script>
   </head>
   <body>
     <Header />

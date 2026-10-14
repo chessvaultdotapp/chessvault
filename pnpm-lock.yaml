@@ -17,6 +17,9 @@ importers:
 
   website:
     dependencies:
+      '@phosphor-icons/core':
+        specifier: ^2.1.1
+        version: 2.1.1
       astro:
         specifier: ^7.3.8
         version: 7.3.8(yaml@2.9.1)
@@ -565,6 +568,9 @@ packages:
 
   '@oxc-project/types@0.153.0':
     resolution: {integrity: sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==}
+
+  '@phosphor-icons/core@2.1.1':
+    resolution: {integrity: sha512-v4ARvrip4qBCImOE5rmPUylOEK4iiED9ZyKjcvzuezqMaiRASCHKcRIuvvxL/twvLpkfnEODCOJp5dM4eZilxQ==}
 
   '@puppeteer/browsers@3.2.4':
     resolution: {integrity: sha512-okJ6yQMc0SBexOKxMi966omwAV1uAPwgF/YMZdb04gZQPXVjWHl9bmXjZYtIcsN1+PN3Bz4iFfGK3g+c6lZJ0Q==}
@@ -2518,6 +2524,8 @@ snapshots:
   '@oslojs/encoding@1.1.0': {}
 
   '@oxc-project/types@0.153.0': {}
+
+  '@phosphor-icons/core@2.1.1': {}
 
   '@puppeteer/browsers@3.2.4':
     dependencies:
