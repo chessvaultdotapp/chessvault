@@ -715,10 +715,13 @@ impl ChessVault {
             status.style(container::rounded_box)
         };
 
-        let mut controls = column![].spacing(12).height(Fill);
-        if !self.game.moves().is_empty() {
-            controls = controls.push(button("New game").on_press(Message::NewGame).width(Fill));
-        }
+        let controls = column![
+            button("New game")
+                .on_press_maybe((!self.game.moves().is_empty()).then_some(Message::NewGame))
+                .width(Fill)
+        ]
+        .spacing(12)
+        .height(Fill);
         let controls = controls.extend([
             button("Black resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))
