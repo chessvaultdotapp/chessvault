@@ -48,11 +48,30 @@ A successful installation also creates `$XDG_DATA_HOME/chessvault/install-manife
 (default: `$HOME/.local/share/chessvault/install-manifest-v1`) with owner-only permissions.
 It records the executable prefix, data directory, and SHA-256 checksums and permissions of the five installed files.
 The desktop entry checksum covers the generated launcher, not the package template.
-Uninstall uses this metadata to verify files before removing them. Automatic upgrades are not implemented yet.
+Reinstall, upgrade, and uninstall use this metadata to verify files before changing them.
 Do not edit the manifest. Installation paths must not contain tabs or line breaks.
 
-The installer currently refuses to overwrite existing files, including files from an earlier ChessVault installation.
-Remove those files and the installation manifest before installing a newer version.
+## Reinstall or upgrade
+
+Extract the desired package into a new directory, then run its installer with the same prefix and
+`XDG_DATA_HOME` used for the existing installation:
+
+```sh
+./install-linux.sh --dry-run
+./install-linux.sh
+```
+
+Running again reinstalls the packaged files or upgrades them when the package has changed.
+Missing recorded files are restored. Modified files, symlinks, invalid manifests, different prefixes,
+and untracked destination files are refused; inspect conflicts and move them aside before retrying.
+Installations without a manifest require manual removal before installing again.
+
+After validation, the installer backs up every existing managed file and the manifest, preserving permissions,
+before staging replacements. If backup fails, the existing installation is left unchanged.
+Backups are temporary and removed on success. If replacement fails, the installer attempts rollback.
+If rollback fails, it reports the retained backup directory and affected destinations for manual recovery.
+Do not delete retained backups until recovery is complete. Abrupt termination can also require manual recovery.
+User state and unrelated files are preserved. Do not run installers concurrently or edit installed files during an operation.
 
 ## Remove an installation
 

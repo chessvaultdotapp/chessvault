@@ -232,7 +232,7 @@ def test_non_directory_parent_fails_before_installing(installer):
     obstruction = installer.home / ".local/share/applications"
     obstruction.parent.mkdir(parents=True)
     obstruction.write_text("keep me")
-    failure(installer.run(), "not a writable directory")
+    failure(installer.run(), "unsafe destination parent")
     assert not (installer.home / ".local/bin").exists()
     assert obstruction.read_text() == "keep me"
 
@@ -274,7 +274,7 @@ def test_existing_manifest_is_preserved(installer, symlink):
         manifest.symlink_to(installer.root / "missing manifest")
     else:
         manifest.write_text("unrecognized record\n")
-    failure(installer.run(), "refusing to overwrite")
+    failure(installer.run(), "installation manifest")
     assert not (installer.home / ".local/bin/chessvault").exists()
     if symlink:
         assert manifest.is_symlink()
@@ -390,6 +390,149 @@ def test_uninstall_rejects_invalid_manifest(installer, change):
         manifest.write_text("\n".join(lines) + "\n")
     failure(installer.run("--uninstall"), "Error:")
     assert (installer.home / ".local/bin/chessvault").exists()
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_reinstall_and_upgrade_back_up_before_replacing(installer, custom):
+    prefix = installer.root / "custom prefix" if custom else installer.home / ".local"
+    data = installer.root / "custom data" if custom else installer.home / ".local/share"
+    args = ("--prefix", prefix) if custom else ()
+    if custom:
+        installer.env["XDG_DATA_HOME"] = str(data)
+    success(installer.run(*args, answer="yes" if custom else None))
+    success(installer.run(*args, answer="yes" if custom else None))
+    installer.verify(prefix=prefix, data=data)
+    command = installer.root / "commands/install"
+    command.write_text(
+        "#!/bin/sh\ntransaction=${4%/*}\n"
+        "for id in binary desktop png svg license manifest; do\n"
+        '  test -f "$transaction/old-$id" || exit 99\n'
+        'done\nexec /usr/bin/install "$@"\n'
+    )
+    command.chmod(0o755)
+    copy = installer.root / "commands/cp"
+    copy.write_text(
+        '#!/bin/sh\ncase "$3" in */new-binary)\n'
+        "transaction=${3%/*}\n"
+        "for id in binary desktop png svg license manifest; do\n"
+        '  test -f "$transaction/old-$id" || exit 99\n'
+        'done ;; esac\nexec /bin/cp "$@"\n'
+    )
+    copy.chmod(0o755)
+    (installer.package / "bin/chessvault").write_text("upgraded binary\n")
+    (installer.package / PAYLOAD[2]).write_text("upgraded icon\n")
+    before = {p: p.read_bytes() for p in installer.home.rglob("*") if p.is_file()}
+    success(installer.run(*args, "--dry-run"))
+    assert {p: p.read_bytes() for p in before} == before
+    success(installer.run(*args, answer="yes" if custom else None))
+    installer.verify(prefix=prefix, data=data)
+    command.unlink()
+    success(installer.run(*args, "--uninstall"))
+
+
+@pytest.mark.parametrize("name", PAYLOAD)
+def test_upgrade_restores_missing_files(installer, name):
+    success(installer.run())
+    (installer.home / ".local" / name).unlink()
+    success(installer.run())
+    installer.verify()
+
+
+@pytest.mark.parametrize("phase", ["backup", "stage", "binary", "desktop", "manifest"])
+def test_upgrade_failure_preserves_previous_installation(installer, phase):
+    success(installer.run())
+    before = {
+        p: (p.read_bytes(), p.stat().st_mode)
+        for p in installer.home.rglob("*")
+        if p.is_file()
+    }
+    (installer.package / "bin/chessvault").write_text("new binary")
+    if phase in ("backup", "stage"):
+        command = installer.root / "commands/cp"
+        pattern = "*/old-desktop" if phase == "backup" else "*/new-binary"
+        command.write_text(
+            f'#!/bin/sh\ncase "$*" in {pattern}) exit 1 ;; esac\nexec /bin/cp "$@"\n'
+        )
+    else:
+        command = installer.root / "commands/install"
+        command.write_text(
+            f'#!/bin/sh\ncase "$4" in */new-{phase}) exit 1 ;; esac\n'
+            'exec /usr/bin/install "$@"\n'
+        )
+    command.chmod(0o755)
+    result = installer.run()
+    assert result.returncode != 0
+    assert {p: (p.read_bytes(), p.stat().st_mode) for p in before} == before
+    command.unlink()
+    success(installer.run("--uninstall"))
+
+
+def test_failed_upgrade_removes_restored_missing_file(installer):
+    success(installer.run())
+    binary = installer.home / ".local/bin/chessvault"
+    binary.unlink()
+    command = installer.root / "commands/install"
+    command.write_text(
+        '#!/bin/sh\ncase "$4" in */new-desktop) exit 1 ;; esac\n'
+        'exec /usr/bin/install "$@"\n'
+    )
+    command.chmod(0o755)
+    assert installer.run().returncode != 0
+    assert not binary.exists()
+    command.unlink()
+    success(installer.run())
+    installer.verify()
+
+
+def test_rollback_failure_retains_backups(installer):
+    success(installer.run())
+    original = (installer.home / ".local/bin/chessvault").read_bytes()
+    (installer.package / "bin/chessvault").write_text("new binary")
+    command = installer.root / "commands/install"
+    command.write_text(
+        '#!/bin/sh\ncase "$4" in */new-desktop) exit 1 ;; esac\n'
+        'exec /usr/bin/install "$@"\n'
+    )
+    command.chmod(0o755)
+    rename = installer.root / "commands/mv"
+    rename.write_text(
+        '#!/bin/sh\ncase "$3" in */old-binary) exit 1 ;; esac\nexec /bin/mv "$@"\n'
+    )
+    rename.chmod(0o755)
+    result = installer.run()
+    failure(result, "recovery backups retained")
+    prefix = "Existing installation backed up to: "
+    backup = Path(
+        next(
+            line.removeprefix(prefix)
+            for line in result.stdout.splitlines()
+            if line.startswith(prefix)
+        )
+    )
+    assert (backup / "old-binary").read_bytes() == original
+    assert backup.stat().st_mode & 0o777 == 0o700
+
+
+@pytest.mark.parametrize("change", ["content", "mode", "symlink", "manifest", "prefix"])
+def test_upgrade_refuses_conflicts_without_changes(installer, change):
+    success(installer.run())
+    binary = installer.home / ".local/bin/chessvault"
+    manifest = installer.home / ".local/share/chessvault/install-manifest-v1"
+    args = ()
+    if change == "content":
+        binary.write_text("edited")
+    elif change == "mode":
+        binary.chmod(0o600)
+    elif change == "symlink":
+        binary.unlink()
+        binary.symlink_to(installer.package / "bin/chessvault")
+    elif change == "manifest":
+        manifest.write_text("invalid")
+    else:
+        args = ("--prefix", installer.root / "other prefix")
+    before = {p: p.read_bytes() for p in installer.home.rglob("*") if p.is_file()}
+    failure(installer.run(*args, answer="yes" if args else None), "Error:")
+    assert {p: p.read_bytes() for p in before} == before
 
 
 def test_uninstall_without_manifest_preserves_untracked_files(installer):

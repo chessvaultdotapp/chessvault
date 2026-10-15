@@ -129,9 +129,23 @@ def test_install_built_package(tmp_path, custom_data):
 
     before = {path: digest(path) for path in [*destinations, desktop, manifest]}
     repeated = run()
-    assert repeated.returncode != 0
-    assert "refusing to overwrite" in repeated.stderr
+    assert repeated.returncode == 0, repeated.stdout + repeated.stderr
     assert {path: digest(path) for path in before} == before
+
+    # Simulate a new package revision without requiring a second Rust build.
+    revised_icon = package / "share/icons/hicolor/scalable/apps/chessvault.svg"
+    revised_icon.write_bytes(
+        revised_icon.read_bytes() + b"\n<!-- upgrade fixture -->\n"
+    )
+    upgraded = run()
+    assert upgraded.returncode == 0, upgraded.stdout + upgraded.stderr
+    installed_icon = data / "icons/hicolor/scalable/apps/chessvault.svg"
+    assert digest(installed_icon) == digest(revised_icon)
+    assert (
+        f"file\tsvg\t0644\t{digest(installed_icon).hex()}"
+        in manifest.read_text().splitlines()
+    )
+    before = {path: digest(path) for path in before}
 
     for source in (package / "bin", package / "share"):
         # Uninstall must not depend on retaining the original package payload.
