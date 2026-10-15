@@ -2,17 +2,12 @@
 
 :root {
   color-scheme: light;
-  --color-cream: #f2e7ce;
-  --color-chestnut: #925e42;
-  --color-deep-chestnut: #38271e;
-  --color-light-chestnut: #d4a483;
-
-  --color-background: var(--color-cream);
-  --color-text: var(--color-deep-chestnut);
-  --color-accent: var(--color-chestnut);
-  --color-border: #cfb99e;
-  --color-selection-text: var(--color-cream);
-  --color-selection-background: var(--color-chestnut);
+  --color-background: #f2e7ce;
+  --color-text: #38271e;
+  --color-accent: #925e42;
+  --color-surface: #d4a483;
+  --color-border: #d4a483;
+  --color-surface-elevated: #f9f2e5;
   font-family: "Nunito Variable", system-ui, sans-serif;
   color: var(--color-text);
   background: var(--color-background);
@@ -20,12 +15,12 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-background: var(--color-deep-chestnut);
-  --color-text: var(--color-cream);
-  --color-accent: var(--color-light-chestnut);
-  --color-border: var(--color-chestnut);
-  --color-selection-text: var(--color-deep-chestnut);
-  --color-selection-background: var(--color-cream);
+  --color-background: #38271e;
+  --color-text: #f2e7ce;
+  --color-accent: #d4a483;
+  --color-surface: #925e42;
+  --color-border: #925e42;
+  --color-surface-elevated: #493328;
 }
 
 * {
@@ -34,33 +29,19 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  padding: 1rem;
   line-height: 1.6;
-}
-
-main {
-  flex: 1;
-  width: min(100% - 3rem, 70rem);
-  margin-inline: auto;
-  padding-block: 4rem;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(2.5rem, 7vw, 4.5rem);
-  line-height: 1.15;
 }
 
 a {
   color: var(--color-accent);
-  text-underline-offset: 0.2em;
 }
 
-a:hover {
+button {
+  font: inherit;
   color: var(--color-text);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
 }
 
 :focus-visible {
@@ -69,6 +50,6 @@ a:hover {
 }
 
 ::selection {
-  color: var(--color-selection-text);
-  background: var(--color-selection-background);
+  color: var(--color-background);
+  background: var(--color-text);
 }
