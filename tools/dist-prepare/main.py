@@ -10,10 +10,11 @@ DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
 SCALABLE_ICON = CHESSVAULT_ROOT / "apps/chessvault/assets/logo.svg"
 INSTALL_SCRIPT = CHESSVAULT_ROOT / "scripts/install-linux.sh"
 LICENSE = CHESSVAULT_ROOT / "LICENSE"
+README = CHESSVAULT_ROOT / "apps/chessvault/data/README.md"
 
 
 def prepare(binary: Path, output: Path) -> None:
-    """Stage binary and installer (0755), desktop entry, icons and license (0644).
+    """Stage binary and installer (0755), desktop entry, icons and docs (0644).
 
     Existing output is rejected rather than mixing stale files into a release.
     Copy into a temporary sibling first so copy failures leave no partial package.
@@ -53,6 +54,9 @@ def prepare(binary: Path, output: Path) -> None:
         license_file = package / "LICENSE"
         shutil.copyfile(LICENSE, license_file)
         license_file.chmod(0o644)
+        readme = package / "README.md"
+        shutil.copyfile(README, readme)
+        readme.chmod(0o644)
         package.rename(output)
 
 

@@ -44,6 +44,7 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
         path.relative_to(output).as_posix() for path in output.rglob("*")
     ) == [
         "LICENSE",
+        "README.md",
         "bin",
         "bin/chessvault",
         "install-linux.sh",
@@ -67,10 +68,13 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
     assert installer.read_bytes() == dist_prepare.INSTALL_SCRIPT.read_bytes()
     license_file = output / "LICENSE"
     assert license_file.read_bytes() == dist_prepare.LICENSE.read_bytes()
+    readme = output / "README.md"
+    assert readme.read_bytes() == dist_prepare.README.read_bytes()
     if os.name == "posix":
         assert staged.stat().st_mode & 0o777 == 0o755
         assert installer.stat().st_mode & 0o777 == 0o755
         assert license_file.stat().st_mode & 0o777 == 0o644
+        assert readme.stat().st_mode & 0o777 == 0o644
         assert desktop.stat().st_mode & 0o777 == 0o644
         assert staged_icon.stat().st_mode & 0o777 == 0o644
         assert scalable_icon.stat().st_mode & 0o777 == 0o644
