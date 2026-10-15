@@ -122,6 +122,7 @@ binary_source="$package_dir/bin/chessvault"
 desktop_source="$package_dir/share/applications/chessvault.desktop"
 png_source="$package_dir/share/icons/hicolor/256x256/apps/chessvault.png"
 svg_source="$package_dir/share/icons/hicolor/scalable/apps/chessvault.svg"
+license_source="$package_dir/share/licenses/chessvault/LICENSE"
 
 # Uninstall should not require the original payload.
 if [ "$action" = install ]; then
@@ -129,7 +130,8 @@ if [ "$action" = install ]; then
         "$binary_source" \
         "$desktop_source" \
         "$png_source" \
-        "$svg_source"; do
+        "$svg_source" \
+        "$license_source"; do
         if [ ! -f "$source" ] || [ ! -r "$source" ]; then
             printf 'Error: missing or unreadable package file: %s\n' \
                 "$source" >&2
@@ -185,6 +187,7 @@ binary_destination="$resolved_prefix/bin/chessvault"
 desktop_destination="$data_home/applications/chessvault.desktop"
 png_destination="$data_home/icons/hicolor/256x256/apps/chessvault.png"
 svg_destination="$data_home/icons/hicolor/scalable/apps/chessvault.svg"
+license_destination="$data_home/licenses/chessvault/LICENSE"
 
 # Desktop entries cannot represent literal line breaks in an Exec value.
 case "$binary_destination" in
@@ -201,7 +204,8 @@ for destination in \
     "$binary_destination" \
     "$desktop_destination" \
     "$png_destination" \
-    "$svg_destination"; do
+    "$svg_destination" \
+    "$license_destination"; do
     if [ -e "$destination" ] || [ -L "$destination" ]; then
         printf 'Error: refusing to overwrite existing path: %s\n' "$destination" >&2
         exit 1
@@ -243,6 +247,7 @@ if [ "$dry_run" = true ]; then
     printf 'Would install desktop entry: %s\n' "$desktop_destination"
     printf 'Would install PNG icon: %s\n' "$png_destination"
     printf 'Would install SVG icon: %s\n' "$svg_destination"
+    printf 'Would install license: %s\n' "$license_destination"
     printf '%s\n' 'Generated desktop entry:'
     render_desktop
     exit 0
@@ -278,6 +283,7 @@ install_file 0755 "$binary_source" "$binary_destination"
 install_file 0644 "$temporary_desktop" "$desktop_destination"
 install_file 0644 "$png_source" "$png_destination"
 install_file 0644 "$svg_source" "$svg_destination"
+install_file 0644 "$license_source" "$license_destination"
 
 # Cache refresh is optional and must not turn a completed install into failure.
 if command -v update-desktop-database > /dev/null 2>&1; then

@@ -14,6 +14,7 @@ PAYLOAD = (
     "share/applications/chessvault.desktop",
     "share/icons/hicolor/256x256/apps/chessvault.png",
     "share/icons/hicolor/scalable/apps/chessvault.svg",
+    "share/licenses/chessvault/LICENSE",
 )
 
 
