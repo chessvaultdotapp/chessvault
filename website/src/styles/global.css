@@ -1,17 +1,38 @@
 @import "@fontsource-variable/nunito";
 
+/* Primitive colors: raw palette values, independent of UI roles.
+   Shade numbers run from light to dark; use semantic tokens in components. */
+:root {
+  --cream-100: #f9f2e5;
+  --cream-200: #f2e7ce;
+  --brown-300: #d4a483;
+  --brown-500: #925e42;
+  --brown-800: #493328;
+  --brown-900: #38271e;
+  --green-300: #8fbc92;
+  --green-700: #467855;
+  --blue-300: #8fb7cf;
+  --blue-700: #456e86;
+  --amber-300: #e0b66e;
+  --amber-700: #946515;
+  --red-300: #e39a90;
+  --red-700: #a3453e;
+}
+
+/* Semantic colors: theme-aware UI roles referencing the primitive palette.
+   Status colors communicate meaning, not decoration; pair them with text or icons. */
 :root {
   color-scheme: light;
-  --color-background: #f2e7ce;
-  --color-text: #38271e;
-  --color-accent: #925e42;
-  --color-success: #467855;
-  --color-info: #456e86;
-  --color-warning: #946515;
-  --color-danger: #a3453e;
-  --color-surface: #d4a483;
-  --color-border: #d4a483;
-  --color-surface-elevated: #f9f2e5;
+  --color-background: var(--cream-200);
+  --color-text: var(--brown-900);
+  --color-accent: var(--brown-500);
+  --color-success: var(--green-700);
+  --color-info: var(--blue-700);
+  --color-warning: var(--amber-700);
+  --color-danger: var(--red-700);
+  --color-surface: var(--brown-300);
+  --color-border: var(--brown-300);
+  --color-surface-elevated: var(--cream-100);
   font-family: "Nunito Variable", system-ui, sans-serif;
   color: var(--color-text);
   background: var(--color-background);
@@ -19,16 +40,16 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-background: #38271e;
-  --color-text: #f2e7ce;
-  --color-accent: #d4a483;
-  --color-success: #8fbc92;
-  --color-info: #8fb7cf;
-  --color-warning: #e0b66e;
-  --color-danger: #e39a90;
-  --color-surface: #925e42;
-  --color-border: #925e42;
-  --color-surface-elevated: #493328;
+  --color-background: var(--brown-900);
+  --color-text: var(--cream-200);
+  --color-accent: var(--brown-300);
+  --color-success: var(--green-300);
+  --color-info: var(--blue-300);
+  --color-warning: var(--amber-300);
+  --color-danger: var(--red-300);
+  --color-surface: var(--brown-500);
+  --color-border: var(--brown-500);
+  --color-surface-elevated: var(--brown-800);
 }
 
 * {
