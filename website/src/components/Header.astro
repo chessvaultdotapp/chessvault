@@ -8,12 +8,12 @@ import Separator from "./Separator.astro";
 
 <header>
   <nav aria-label="Main navigation">
-    <a href="/">Chessvault</a>
+    <a href={import.meta.env.BASE_URL}>Chessvault</a>
     <div class="header-actions">
-      <a class="nav-button" href="/docs">
+      <a class="nav-button" href="https://chessvaultdotapp.github.io/chessvault/dev/docs/">
         Documentation
       </a>
-      <a class="nav-button" href="/download">
+      <a class="nav-button" href={`${import.meta.env.BASE_URL}download/`}>
         Download
       </a>
       <Separator orientation="vertical" />

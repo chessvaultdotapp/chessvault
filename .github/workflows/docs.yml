@@ -1,9 +1,11 @@
-name: Documentation
+name: Website and documentation
 
 on:
   push:
     branches: [main]
     paths:
+      - 'website/**'
+      - 'pnpm-workspace.yaml'
       - 'venvs/justfile'
       - 'zensical.toml'
       - 'docs/**'
@@ -18,6 +20,8 @@ on:
       - '.github/actions/setup-just/**'
   pull_request:
     paths:
+      - 'website/**'
+      - 'pnpm-workspace.yaml'
       - 'venvs/justfile'
       - 'zensical.toml'
       - 'docs/**'
@@ -37,7 +41,7 @@ permissions:
 
 jobs:
   build:
-    name: Build documentation
+    name: Build website and documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +67,9 @@ jobs:
       - name: Install diagram and SVG tooling
         run: pnpm install --frozen-lockfile
 
+      - name: Build website
+        run: pnpm --filter website build --site https://chessvaultdotapp.github.io --base /chessvault/
+
       - name: Install just
         uses: ./.github/actions/setup-just
 
@@ -87,21 +94,10 @@ jobs:
 
       - name: Assemble Pages site
         run: |
-          mkdir -p _site/docs
-          cp -a site/. _site/docs/
-          mkdir -p _site/docs/crates/platform-dirs
-          cp -a crates/platform-dirs/site/. _site/docs/crates/platform-dirs/
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <meta http-equiv="refresh" content="0; url=docs/">
-              <title>Chessvault documentation</title>
-            </head>
-            <body><a href="docs/">Go to the documentation</a></body>
-          </html>
-          HTML
+          mkdir -p _site/dev/docs/crates/platform-dirs
+          cp -a website/dist/. _site/
+          cp -a site/. _site/dev/docs/
+          cp -a crates/platform-dirs/site/. _site/dev/docs/crates/platform-dirs/
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
