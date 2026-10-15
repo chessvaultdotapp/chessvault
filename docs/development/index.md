@@ -11,8 +11,8 @@
 
 ## Native Linux distribution
 
-- [Installation manifest](install-manifest.md) — metadata format, file identities, and safety requirements
-  for future native installer uninstall and upgrade support.
+- [Installation manifest](install-manifest.md) — metadata format, file identities, and native installer
+  uninstall validation and safety requirements.
 
 ## Testing
 

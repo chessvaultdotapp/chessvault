@@ -15,8 +15,8 @@ usage() {
         'Options:' \
         '  --prefix PATH  Install only the executable into PATH/bin (default: $HOME/.local).' \
         '                 Does not change desktop entry or icon locations.' \
-        '  --dry-run      Preview installation without changing files.' \
-        '  --uninstall    Not implemented yet.' \
+        '  --dry-run      Preview installation or removal without changing files.' \
+        '  --uninstall    Remove an unchanged, recorded installation; preserve user state.' \
         '  --help         Show this help.' \
         '' \
         'Desktop entries and icons use $XDG_DATA_HOME (default: $HOME/.local/share).' \
@@ -158,11 +158,6 @@ run() {
     fi
 }
 
-if [ "$action" = uninstall ]; then
-    printf '%s\n' 'Error: uninstall is not implemented yet.' >&2
-    exit 1
-fi
-
 # XDG requires absolute paths; ignore relative values as the specification says.
 case "${XDG_DATA_HOME:-}" in
     /*) data_home=$XDG_DATA_HOME ;;
@@ -203,6 +198,106 @@ done
 if ! command -v sha256sum > /dev/null 2>&1; then
     printf '%s\n' 'Error: sha256sum is required to record installed files.' >&2
     exit 1
+fi
+
+# Reject redirected parent directories before trusting installation metadata.
+check_parents() {
+    parent=$(dirname -- "$1")
+    while [ "$parent" != / ]; do
+        if [ -L "$parent" ] || { [ -e "$parent" ] && [ ! -d "$parent" ]; }; then
+            printf 'Error: unsafe destination parent: %s\n' "$parent" >&2
+            exit 1
+        fi
+        parent=$(dirname -- "$parent")
+    done
+}
+
+refresh_caches() {
+    if command -v update-desktop-database > /dev/null 2>&1; then
+        run update-desktop-database "$data_home/applications" ||
+            printf '%s\n' 'Warning: could not refresh the desktop database.' >&2
+    fi
+    if command -v gtk-update-icon-cache > /dev/null 2>&1 &&
+        [ -f "$data_home/icons/hicolor/index.theme" ]; then
+        run gtk-update-icon-cache -f "$data_home/icons/hicolor" ||
+            printf '%s\n' 'Warning: could not refresh the icon cache.' >&2
+    fi
+}
+
+uninstall_error() {
+    printf 'Error: %s; no further files removed.\n' "$1" >&2
+    exit 1
+}
+
+# Parse records strictly as data. Fixed identifiers determine all destinations.
+check_record() {
+    identifier=$1
+    mode=$2
+    destination=$3
+    IFS= read -r line <&3 || uninstall_error 'incomplete installation manifest'
+    tab=$(printf '\t')
+    checksum=${line##*"$tab"}
+    case "$checksum" in
+        *[!0-9a-f]* | '') uninstall_error 'invalid manifest checksum' ;;
+    esac
+    [ "${#checksum}" -eq 64 ] || uninstall_error 'invalid manifest checksum'
+    expected=$(printf 'file\t%s\t%s\t%s' "$identifier" "$mode" "$checksum")
+    [ "$line" = "$expected" ] || uninstall_error 'invalid installation manifest record'
+    check_parents "$destination"
+    if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+        uninstall_error "not a regular installed file: $destination"
+    fi
+    if [ -f "$destination" ]; then
+        actual=$(sha256sum < "$destination")
+        actual=${actual%% *}
+        permissions=$(stat -c '%a' -- "$destination")
+        if [ "$actual" != "$checksum" ] || [ "0$permissions" != "$mode" ]; then
+            uninstall_error "installed file was modified: $destination"
+        fi
+    fi
+}
+
+if [ "$action" = uninstall ]; then
+    check_parents "$manifest_destination"
+    if [ -L "$manifest_destination" ] || [ ! -f "$manifest_destination" ]; then
+        uninstall_error "no regular installation manifest at $manifest_destination"
+    fi
+    exec 3< "$manifest_destination"
+    IFS= read -r line <&3 || uninstall_error 'empty installation manifest'
+    [ "$line" = "$(printf 'chessvault-install-manifest\t1')" ] ||
+        uninstall_error 'unsupported installation manifest'
+    IFS= read -r line <&3 || uninstall_error 'missing manifest prefix'
+    [ "$line" = "$(printf 'prefix\t%s' "$resolved_prefix")" ] ||
+        uninstall_error 'manifest prefix differs; use the original --prefix'
+    IFS= read -r line <&3 || uninstall_error 'missing manifest data-home'
+    [ "$line" = "$(printf 'data-home\t%s' "$data_home")" ] ||
+        uninstall_error 'manifest data-home differs; use the original XDG_DATA_HOME'
+    check_record binary 0755 "$binary_destination"
+    check_record desktop 0644 "$desktop_destination"
+    check_record png 0644 "$png_destination"
+    check_record svg 0644 "$svg_destination"
+    check_record license 0644 "$license_destination"
+    line=
+    if IFS= read -r line <&3 || [ -n "$line" ]; then
+        uninstall_error 'unexpected trailing manifest data'
+    fi
+    exec 3<&-
+    # Retain the manifest on partial failure, allowing missing files on retry.
+    for destination in \
+        "$binary_destination" "$desktop_destination" "$png_destination" \
+        "$svg_destination" "$license_destination"; do
+        if [ -e "$destination" ]; then
+            run rm -- "$destination" || uninstall_error "could not remove $destination; retry uninstall"
+        fi
+    done
+    run rm -- "$manifest_destination" || uninstall_error 'could not remove manifest; retry uninstall'
+    refresh_caches
+    if [ "$dry_run" = true ]; then
+        printf '%s\n' 'Uninstall preview complete; no files changed.'
+    else
+        printf '%s\n' 'ChessVault uninstall complete (user state and directories preserved).'
+    fi
+    exit 0
 fi
 
 # Check every destination before modifying anything. Until upgrade support is
@@ -323,15 +418,7 @@ temporary_manifest=$(mktemp)
 install_file 0600 "$temporary_manifest" "$manifest_destination"
 
 # Cache refresh is optional and must not turn a completed install into failure.
-if command -v update-desktop-database > /dev/null 2>&1; then
-    run update-desktop-database "$data_home/applications" ||
-        printf '%s\n' 'Warning: could not refresh the desktop database.' >&2
-fi
-if command -v gtk-update-icon-cache > /dev/null 2>&1 &&
-    [ -f "$data_home/icons/hicolor/index.theme" ]; then
-    run gtk-update-icon-cache -f "$data_home/icons/hicolor" ||
-        printf '%s\n' 'Warning: could not refresh the icon cache.' >&2
-fi
+refresh_caches
 
 printf 'Installed ChessVault: %s\n' "$binary_destination"
 case ":${PATH:-}:" in

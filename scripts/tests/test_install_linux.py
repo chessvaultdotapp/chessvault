@@ -188,7 +188,6 @@ def test_system_prefixes_are_rejected(installer, prefix):
         (("--prefix",), "requires a path"),
         (("--prefix", ""), "requires a path"),
         (("--prefix", "relative"), "must be an absolute path"),
-        (("--uninstall",), "uninstall is not implemented"),
     ],
 )
 def test_invalid_arguments(installer, args, message):
@@ -290,6 +289,148 @@ def test_manifest_delimiters_in_data_home_are_rejected(installer, character):
     failure(installer.run(), "must not contain tabs or line breaks")
     assert not data.exists()
     assert list(installer.home.iterdir()) == []
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_uninstall_without_payload_preserves_state(installer, custom):
+    prefix = installer.root / "custom prefix" if custom else installer.home / ".local"
+    data = installer.root / "custom data" if custom else installer.home / ".local/share"
+    args = ("--prefix", prefix) if custom else ()
+    if custom:
+        installer.env["XDG_DATA_HOME"] = str(data)
+    success(installer.run(*args, answer="yes" if custom else None))
+    state = installer.home / ".local/state/chessvault/recreate"
+    state.parent.mkdir(parents=True)
+    state.write_text("keep state")
+    unrelated = data / "applications/other.desktop"
+    unrelated.write_text("keep launcher")
+    for name in PAYLOAD:
+        (installer.package / name).unlink()
+    before = {p: p.read_bytes() for p in installer.home.rglob("*") if p.is_file()}
+    success(installer.run(*args, "--uninstall", "--dry-run"))
+    assert {p: p.read_bytes() for p in before} == before
+    success(installer.run(*args, "--uninstall"))
+    assert not (prefix / "bin/chessvault").exists()
+    assert not (data / "chessvault/install-manifest-v1").exists()
+    for name in PAYLOAD[1:]:
+        assert not (data / name.removeprefix("share/")).exists()
+    assert state.read_text() == "keep state"
+    assert unrelated.read_text() == "keep launcher"
+    assert (data / "applications").is_dir()
+    failure(installer.run(*args, "--uninstall"), "no regular installation manifest")
+
+
+@pytest.mark.parametrize("name", PAYLOAD)
+@pytest.mark.parametrize(
+    "change", ["content", "mode", "symlink", "directory", "missing"]
+)
+def test_uninstall_checks_all_files_before_removal(installer, name, change):
+    success(installer.run())
+    destination = installer.home / ".local" / name
+    if change == "content":
+        destination.write_text("modified")
+    elif change == "mode":
+        destination.chmod(0o600)
+    else:
+        destination.unlink()
+        if change == "symlink":
+            destination.symlink_to(installer.root / "missing target")
+        elif change == "directory":
+            destination.mkdir()
+    if change == "missing":
+        success(installer.run("--uninstall"))
+        return
+    before = {p: p.read_bytes() for p in installer.home.rglob("*") if p.is_file()}
+    failure(installer.run("--uninstall"), "Error:")
+    assert {p: p.read_bytes() for p in before} == before
+    assert (installer.home / ".local/share/chessvault/install-manifest-v1").exists()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "version",
+        "prefix",
+        "data-home",
+        "checksum",
+        "mode",
+        "duplicate",
+        "truncated",
+        "trailing",
+        "symlink",
+    ],
+)
+def test_uninstall_rejects_invalid_manifest(installer, change):
+    success(installer.run())
+    manifest = installer.home / ".local/share/chessvault/install-manifest-v1"
+    original = manifest.read_text()
+    lines = original.splitlines()
+    if change == "version":
+        lines[0] = "chessvault-install-manifest\t2"
+    elif change == "prefix":
+        lines[1] = "prefix\t/tmp/other"
+    elif change == "data-home":
+        lines[2] = "data-home\t/tmp/other"
+    elif change == "checksum":
+        lines[3] = "file\tbinary\t0755\t" + "z" * 64
+    elif change == "mode":
+        lines[3] = lines[3].replace("0755", "0777")
+    elif change == "duplicate":
+        lines[4] = lines[3]
+    elif change == "truncated":
+        lines.pop()
+    elif change == "trailing":
+        lines.append("extra")
+    if change == "symlink":
+        target = installer.root / "manifest target"
+        target.write_text(original)
+        manifest.unlink()
+        manifest.symlink_to(target)
+    else:
+        manifest.write_text("\n".join(lines) + "\n")
+    failure(installer.run("--uninstall"), "Error:")
+    assert (installer.home / ".local/bin/chessvault").exists()
+
+
+def test_uninstall_without_manifest_preserves_untracked_files(installer):
+    destination = installer.home / ".local/bin/chessvault"
+    destination.parent.mkdir(parents=True)
+    destination.write_text("untracked file")
+    failure(installer.run("--uninstall"), "no regular installation manifest")
+    assert destination.read_text() == "untracked file"
+
+
+def test_uninstall_rejects_unterminated_manifest(installer):
+    success(installer.run())
+    manifest = installer.home / ".local/share/chessvault/install-manifest-v1"
+    manifest.write_bytes(manifest.read_bytes().rstrip(b"\n"))
+    failure(installer.run("--uninstall"), "incomplete installation manifest")
+    assert (installer.home / ".local/bin/chessvault").exists()
+
+
+def test_uninstall_rejects_symlinked_parent(installer):
+    success(installer.run())
+    applications = installer.home / ".local/share/applications"
+    moved = installer.root / "moved applications"
+    applications.rename(moved)
+    applications.symlink_to(moved)
+    failure(installer.run("--uninstall"), "unsafe destination parent")
+    assert (moved / "chessvault.desktop").is_file()
+    assert (installer.home / ".local/bin/chessvault").exists()
+
+
+def test_uninstall_partial_failure_can_be_retried(installer):
+    success(installer.run())
+    command = installer.root / "commands/rm"
+    command.write_text(
+        '#!/bin/sh\ncase "$2" in *.desktop) exit 1 ;; esac\nexec /bin/rm "$@"\n'
+    )
+    command.chmod(0o755)
+    failure(installer.run("--uninstall"), "could not remove")
+    assert not (installer.home / ".local/bin/chessvault").exists()
+    assert (installer.home / ".local/share/chessvault/install-manifest-v1").exists()
+    command.unlink()
+    success(installer.run("--uninstall"))
 
 
 def test_cache_refresh_failures_are_nonfatal(installer):

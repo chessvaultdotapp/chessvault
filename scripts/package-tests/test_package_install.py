@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import shutil
 import subprocess
 import tarfile
 from pathlib import Path
@@ -131,3 +132,13 @@ def test_install_built_package(tmp_path, custom_data):
     assert repeated.returncode != 0
     assert "refusing to overwrite" in repeated.stderr
     assert {path: digest(path) for path in before} == before
+
+    for source in (package / "bin", package / "share"):
+        # Uninstall must not depend on retaining the original package payload.
+        shutil.rmtree(source)
+    preview = run("--uninstall", "--dry-run")
+    assert preview.returncode == 0, preview.stdout + preview.stderr
+    assert {path: digest(path) for path in before} == before
+    removed = run("--uninstall")
+    assert removed.returncode == 0, removed.stdout + removed.stderr
+    assert all(not path.exists() for path in before)
