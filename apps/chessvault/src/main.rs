@@ -71,6 +71,7 @@ struct ChessVault {
     history: History,
     selected_square: Option<Square>,
     pending_promotion: Option<Move>,
+    confirm_new_game: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -179,6 +180,7 @@ mod resignation_tests {
                 history: History::default(),
                 selected_square: Some(Square::E2),
                 pending_promotion: None,
+                confirm_new_game: false,
             };
             let _ = app.update(Message::Resign(side));
             assert_eq!(app.game.status(), GameStatus::Resigned(side));
@@ -211,6 +213,7 @@ mod promotion_tests {
             game: Game::new(Position::standard()),
             selected_square: None,
             pending_promotion: None,
+            confirm_new_game: false,
         };
         for (from, to) in [
             (G1, F3),
@@ -319,7 +322,66 @@ mod navigation_tests {
             history: History::default(),
             selected_square: None,
             pending_promotion: None,
+            confirm_new_game: false,
         }
+    }
+
+    #[test]
+    fn new_game_confirmation_cancels_without_changes_and_resets_on_acceptance() {
+        let mut app = app();
+        let _ = app.update(Message::SelectSquare(Square::E2));
+        let _ = app.update(Message::SelectSquare(Square::E4));
+        let _ = app.update(Message::Navigate(Navigation::First));
+        app.selected_square = Some(Square::B7);
+        app.pending_promotion = Some(Move {
+            from: Square::B7,
+            to: Square::B8,
+            promotion: Some(Piece::Queen),
+        });
+        app.sources_open = true;
+        let logs = app.logs.snapshot();
+        for cancel in [Message::CancelNewGame, Message::CancelPromotion] {
+            let _ = app.update(Message::NewGame);
+            assert!(app.confirm_new_game);
+            let _ = app.update(Message::Navigate(Navigation::Latest));
+            let _ = app.update(Message::Resign(Side::Black));
+            let _ = app.update(cancel);
+            assert!(!app.confirm_new_game);
+            assert_eq!(app.game.moves().len(), 1);
+            assert_eq!(app.game.status(), GameStatus::Ongoing);
+            assert!(app.history.is_reviewing());
+            assert_eq!(app.selected_square, Some(Square::B7));
+            assert!(app.pending_promotion.is_some());
+        }
+        let _ = app.update(Message::NewGame);
+        let _ = app.update(Message::ConfirmNewGame);
+        assert!(!app.confirm_new_game);
+        assert!(app.game.moves().is_empty());
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        assert!(!app.history.is_reviewing());
+        assert_eq!(app.selected_square, None);
+        assert_eq!(app.pending_promotion, None);
+        for square in [Square::E2, Square::E4, Square::E7] {
+            assert_eq!(
+                app.game.position().piece_at(square),
+                Position::standard().piece_at(square)
+            );
+        }
+        assert!(app.sources_open);
+        assert_eq!(app.logs.snapshot(), logs);
+    }
+
+    #[test]
+    fn new_game_resets_finished_and_unplayed_games_without_confirmation() {
+        let mut app = app();
+        app.selected_square = Some(Square::E2);
+        let _ = app.update(Message::NewGame);
+        assert!(!app.confirm_new_game);
+        assert_eq!(app.selected_square, None);
+        let _ = app.update(Message::Resign(Side::White));
+        let _ = app.update(Message::NewGame);
+        assert!(!app.confirm_new_game);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
     }
 
     #[test]
@@ -402,6 +464,9 @@ mod navigation_tests {
 
 #[derive(Debug, Clone)]
 enum Message {
+    NewGame,
+    ConfirmNewGame,
+    CancelNewGame,
     Navigate(Navigation),
     SelectSquare(Square),
     Promote(Piece),
@@ -429,6 +494,7 @@ impl ChessVault {
             game: Game::new(Position::standard()),
             selected_square: None,
             pending_promotion: None,
+            confirm_new_game: false,
         };
 
         if let Err(err) = app.initialize() {
@@ -449,8 +515,29 @@ impl ChessVault {
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        if self.confirm_new_game
+            && matches!(
+                message,
+                Message::Navigate(_) | Message::SelectSquare(_) | Message::Promote(_) | Message::Resign(_)
+            )
+        {
+            return Task::none();
+        }
         let previous_move_count = self.game.moves().len();
         match message {
+            Message::NewGame => {
+                if self.game.status() == GameStatus::Ongoing && !self.game.moves().is_empty() {
+                    self.confirm_new_game = true;
+                } else {
+                    self.reset_game();
+                }
+            }
+            Message::ConfirmNewGame => {
+                if self.confirm_new_game {
+                    self.reset_game();
+                }
+            }
+            Message::CancelNewGame => self.confirm_new_game = false,
             Message::Navigate(navigation) => {
                 if !self.console_open && self.pending_promotion.is_none() {
                     self.history.sync(&self.game);
@@ -487,8 +574,12 @@ impl ChessVault {
                 }
             }
             Message::CancelPromotion => {
-                // Keep the pawn selected so another destination can be chosen.
-                self.pending_promotion = None;
+                if self.confirm_new_game {
+                    self.confirm_new_game = false;
+                } else {
+                    // Keep the pawn selected so another destination can be chosen.
+                    self.pending_promotion = None;
+                }
             }
             Message::Resign(side) => {
                 if !self.history.is_reviewing() && self.game.resign(side) {
@@ -541,6 +632,14 @@ impl ChessVault {
         Task::none()
     }
 
+    fn reset_game(&mut self) {
+        self.game = Game::new(Position::standard());
+        self.history = History::default();
+        self.selected_square = None;
+        self.pending_promotion = None;
+        self.confirm_new_game = false;
+    }
+
     fn refresh_logs(&mut self) {
         let logs = self.logs.snapshot();
         if logs != self.log_text {
@@ -587,6 +686,24 @@ impl ChessVault {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        if self.confirm_new_game {
+            return container(
+                column![
+                    text("Start a new game?").size(24),
+                    text("The current game and its move history will be discarded."),
+                    row![
+                        button("Cancel").on_press(Message::CancelNewGame),
+                        button("Start new game").on_press(Message::ConfirmNewGame),
+                    ]
+                    .spacing(12),
+                ]
+                .spacing(16),
+            )
+            .padding(24)
+            .center_x(Fill)
+            .center_y(Fill)
+            .into();
+        }
         let game_status = self.history.status(&self.game);
         let ongoing = !self.history.is_reviewing() && game_status == GameStatus::Ongoing;
         let navigation_enabled = !self.console_open && self.pending_promotion.is_none();
@@ -598,20 +715,24 @@ impl ChessVault {
             status.style(container::rounded_box)
         };
 
-        let controls = column![
+        let mut controls = column![].spacing(12).height(Fill);
+        if !self.game.moves().is_empty() {
+            controls = controls.push(button("New game").on_press(Message::NewGame).width(Fill));
+        }
+        let controls = controls.extend([
             button("Black resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))
-                .width(Fill),
-            status,
+                .width(Fill)
+                .into(),
+            status.into(),
             button("White resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::White)))
-                .width(Fill),
-            text("Move history").size(20),
+                .width(Fill)
+                .into(),
+            text("Move history").size(20).into(),
             self.history.controls(&self.game, navigation_enabled),
             self.history.move_list(&self.game, navigation_enabled),
-        ]
-        .spacing(12)
-        .height(Fill);
+        ]);
 
         let content = column![
             container(
