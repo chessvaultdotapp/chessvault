@@ -19,6 +19,9 @@ usage() {
         '  --uninstall    Remove an unchanged, recorded installation; preserve user state.' \
         '  --help         Show this help.' \
         '' \
+        'Running again reinstalls or upgrades an unchanged recorded installation.' \
+        'Existing files are backed up before replacements are staged.' \
+        '' \
         'Desktop entries and icons use $XDG_DATA_HOME (default: $HOME/.local/share).' \
         'Relative XDG_DATA_HOME values are ignored.' \
         'If a custom XDG_DATA_HOME differs from your desktop session setting,' \
@@ -225,7 +228,7 @@ refresh_caches() {
 }
 
 uninstall_error() {
-    printf 'Error: %s; no further files removed.\n' "$1" >&2
+    printf 'Error: %s; operation stopped.\n' "$1" >&2
     exit 1
 }
 
@@ -257,7 +260,7 @@ check_record() {
     fi
 }
 
-if [ "$action" = uninstall ]; then
+validate_installation() {
     check_parents "$manifest_destination"
     if [ -L "$manifest_destination" ] || [ ! -f "$manifest_destination" ]; then
         uninstall_error "no regular installation manifest at $manifest_destination"
@@ -282,6 +285,10 @@ if [ "$action" = uninstall ]; then
         uninstall_error 'unexpected trailing manifest data'
     fi
     exec 3<&-
+}
+
+if [ "$action" = uninstall ]; then
+    validate_installation
     # Retain the manifest on partial failure, allowing missing files on retry.
     for destination in \
         "$binary_destination" "$desktop_destination" "$png_destination" \
@@ -300,8 +307,13 @@ if [ "$action" = uninstall ]; then
     exit 0
 fi
 
-# Check every destination before modifying anything. Until upgrade support is
-# implemented, even existing recorded ChessVault installations are refused.
+upgrade=false
+if [ -e "$manifest_destination" ] || [ -L "$manifest_destination" ]; then
+    validate_installation
+    upgrade=true
+fi
+
+# Untracked files are never adopted. Recorded files were validated above.
 for destination in \
     "$binary_destination" \
     "$desktop_destination" \
@@ -309,7 +321,8 @@ for destination in \
     "$svg_destination" \
     "$license_destination" \
     "$manifest_destination"; do
-    if [ -e "$destination" ] || [ -L "$destination" ]; then
+    check_parents "$destination"
+    if [ "$upgrade" = false ] && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
         printf 'Error: refusing to overwrite existing path: %s\n' "$destination" >&2
         exit 1
     fi
@@ -357,38 +370,86 @@ if [ "$dry_run" = true ]; then
     exit 0
 fi
 
-temporary_desktop=$(mktemp)
-temporary_manifest=
-trap 'rm -f -- "$temporary_desktop"; if [ -n "$temporary_manifest" ]; then rm -f -- "$temporary_manifest"; fi' EXIT
+# Back up the existing installation before staging any replacement payload.
+# Fixed identifiers keep transaction bookkeeping independent of path delimiters.
+umask 077
+transaction=$(mktemp -d)
+temporary_replacement=
+touched=
+committed=false
+
+destination_for() {
+    case "$1" in
+        binary) destination=$binary_destination ;;
+        desktop) destination=$desktop_destination ;;
+        png) destination=$png_destination ;;
+        svg) destination=$svg_destination ;;
+        license) destination=$license_destination ;;
+        manifest) destination=$manifest_destination ;;
+    esac
+}
+
+cleanup() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    rollback_failed=false
+    if [ "$committed" = false ]; then
+        for identifier in $touched; do
+            destination_for "$identifier"
+            if [ -f "$transaction/old-$identifier" ]; then
+                if ! mv -fT -- "$transaction/old-$identifier" "$destination"; then
+                    printf 'Error: could not restore %s\n' "$destination" >&2
+                    rollback_failed=true
+                fi
+            elif ! rm -f -- "$destination"; then
+                printf 'Error: could not remove new file %s\n' "$destination" >&2
+                rollback_failed=true
+            fi
+        done
+    fi
+    if [ -n "$temporary_replacement" ]; then
+        rm -f -- "$temporary_replacement" || :
+    fi
+    if [ "$rollback_failed" = true ]; then
+        printf 'Error: recovery backups retained at %s; restore old-* files to their recorded destinations.\n' "$transaction" >&2
+        status=1
+    else
+        rm -rf -- "$transaction"
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
-render_desktop > "$temporary_desktop"
+if [ "$upgrade" = true ]; then
+    for identifier in binary desktop png svg license manifest; do
+        destination_for "$identifier"
+        if [ -f "$destination" ]; then
+            if ! cp -p -- "$destination" "$transaction/old-$identifier"; then
+                printf 'Error: backup failed for %s; installation unchanged.\n' "$destination" >&2
+                exit 1
+            fi
+        fi
+    done
+    printf 'Existing installation backed up to: %s\n' "$transaction"
+fi
+render_desktop > "$transaction/new-desktop"
+cp -- "$binary_source" "$transaction/new-binary"
+cp -- "$png_source" "$transaction/new-png"
+cp -- "$svg_source" "$transaction/new-svg"
+cp -- "$license_source" "$transaction/new-license"
 
 install_file() {
     mode=$1
     source=$2
     destination=$3
-    run mkdir -p -- "$(dirname -- "$destination")"
-    # noclobber also protects against files created since the preflight check.
-    if ! (
-        set -C
-        umask 077
-        : > "$destination"
-    ); then
-        printf 'Error: could not reserve destination: %s\n' "$destination" >&2
-        exit 1
-    fi
-    if ! run install -m "$mode" -- "$source" "$destination"; then
-        printf 'Error: failed to install: %s\n' "$destination" >&2
-        printf '%s\n' 'Installation may be partial; inspect the reported destinations before retrying.' >&2
-        exit 1
-    fi
+    mkdir -p -- "$(dirname -- "$destination")"
+    temporary_replacement=$(mktemp "$(dirname -- "$destination")/.chessvault-install-XXXXXX")
+    install -m "$mode" -- "$source" "$temporary_replacement"
+    # Same-directory rename avoids truncating a running executable.
+    touched="$identifier $touched"
+    mv -fT -- "$temporary_replacement" "$destination"
+    temporary_replacement=
 }
-
-install_file 0755 "$binary_source" "$binary_destination"
-install_file 0644 "$temporary_desktop" "$desktop_destination"
-install_file 0644 "$png_source" "$png_destination"
-install_file 0644 "$svg_source" "$svg_destination"
-install_file 0644 "$license_source" "$license_destination"
 
 # Record only the five fixed file identifiers, never executable shell content.
 # Hash stdin so sha256sum does not escape unusual filenames in its output.
@@ -401,21 +462,40 @@ record_file() {
     printf 'file\t%s\t%s\t%s\n' "$identifier" "$mode" "$checksum"
 }
 
-# Publish the ownership record only after every payload file has been installed.
-# A failed publication leaves untracked files and must be reported, not concealed.
-umask 077
-temporary_manifest=$(mktemp)
+# Hash the staged content, including the newly rendered desktop entry.
 {
     printf 'chessvault-install-manifest\t1\n'
     printf 'prefix\t%s\n' "$resolved_prefix"
     printf 'data-home\t%s\n' "$data_home"
-    record_file binary 0755 "$binary_destination"
-    record_file desktop 0644 "$desktop_destination"
-    record_file png 0644 "$png_destination"
-    record_file svg 0644 "$svg_destination"
-    record_file license 0644 "$license_destination"
-} > "$temporary_manifest"
-install_file 0600 "$temporary_manifest" "$manifest_destination"
+    record_file binary 0755 "$transaction/new-binary"
+    record_file desktop 0644 "$transaction/new-desktop"
+    record_file png 0644 "$transaction/new-png"
+    record_file svg 0644 "$transaction/new-svg"
+    record_file license 0644 "$transaction/new-license"
+} > "$transaction/new-manifest"
+
+# Revalidate after staging before touching installed files.
+if [ "$upgrade" = true ]; then
+    validate_installation
+fi
+for identifier in binary desktop png svg license manifest; do
+    destination_for "$identifier"
+    check_parents "$destination"
+    if [ "$upgrade" = false ] && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
+        printf 'Error: destination appeared during installation: %s\n' "$destination" >&2
+        exit 1
+    fi
+done
+for identifier in binary desktop png svg license manifest; do
+    destination_for "$identifier"
+    case "$identifier" in
+        binary) mode=0755 ;;
+        manifest) mode=0600 ;;
+        *) mode=0644 ;;
+    esac
+    install_file "$mode" "$transaction/new-$identifier" "$destination"
+done
+committed=true
 
 # Cache refresh is optional and must not turn a completed install into failure.
 refresh_caches
