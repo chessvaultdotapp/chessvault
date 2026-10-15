@@ -8,7 +8,9 @@ import Separator from "./Separator.astro";
 
 <header>
   <nav aria-label="Main navigation">
-    <a href={import.meta.env.BASE_URL}>Chessvault</a>
+    <a class="brand" href={import.meta.env.BASE_URL}>
+      Chessvault
+    </a>
     <div class="header-actions">
       <a class="nav-button" href="https://chessvaultdotapp.github.io/chessvault/dev/docs/">
         Documentation
@@ -54,6 +56,62 @@ import Separator from "./Separator.astro";
 </script>
 
 <style>
+  header {
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 70rem;
+    margin-inline: auto;
+    padding-block: 0.5rem 1.5rem;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+  }
+
+  .brand {
+    color: var(--color-text);
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .nav-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  @media (max-width: 40rem) {
+    .header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .header-actions :global(.separator) {
+      display: none;
+    }
+  }
+
   .github-link {
     display: grid;
     place-items: center;
