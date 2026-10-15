@@ -139,7 +139,9 @@ modified files, symlinks, missing files, partial removal/retry, and state preser
 Reinstall and upgrade tests cover backup-before-replacement, custom roots, missing-file restoration,
 backup and replacement failures, rollback, and retained recovery backups. Real-package tests in
 [`scripts/package-tests/test_package_install.py`](../../scripts/package-tests/test_package_install.py)
-also verify manifest contents, unchanged checksums after reinstall, and uninstall of the built package.
+use independent scenarios for package contents, installation dry-run, installation and manifest creation,
+reinstall, upgrade, and uninstall. Each lifecycle scenario runs with fresh default and custom XDG data
+locations; only package-content validation is independent of installation paths.
 
 See [Testing](testing.md) for fixture and built-package test commands, and
 [Distribution preparation](../tools/dist-prepare.md) for package staging.
