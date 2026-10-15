@@ -64,4 +64,4 @@ You can also delete the extracted package when you no longer need it.
 - Project: <https://github.com/chessvaultdotapp/chessvault>
 - Report issues: <https://github.com/chessvaultdotapp/chessvault/issues>
 
-See the accompanying `LICENSE` file for license terms.
+See `share/licenses/chessvault/LICENSE` in this package for license terms.

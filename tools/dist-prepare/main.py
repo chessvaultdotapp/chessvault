@@ -51,7 +51,8 @@ def prepare(binary: Path, output: Path) -> None:
         installer = package / "install-linux.sh"
         shutil.copyfile(INSTALL_SCRIPT, installer)
         installer.chmod(0o755)
-        license_file = package / "LICENSE"
+        license_file = package / "share/licenses/chessvault/LICENSE"
+        license_file.parent.mkdir(parents=True)
         shutil.copyfile(LICENSE, license_file)
         license_file.chmod(0o644)
         readme = package / "README.md"

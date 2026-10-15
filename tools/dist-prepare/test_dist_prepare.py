@@ -43,7 +43,6 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
     assert sorted(
         path.relative_to(output).as_posix() for path in output.rglob("*")
     ) == [
-        "LICENSE",
         "README.md",
         "bin",
         "bin/chessvault",
@@ -59,6 +58,9 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
         "share/icons/hicolor/scalable",
         "share/icons/hicolor/scalable/apps",
         "share/icons/hicolor/scalable/apps/chessvault.svg",
+        "share/licenses",
+        "share/licenses/chessvault",
+        "share/licenses/chessvault/LICENSE",
     ]
     staged_icon = output / "share/icons/hicolor/256x256/apps/chessvault.png"
     assert staged_icon.read_bytes() == icon.read_bytes()
@@ -66,7 +68,7 @@ def test_prepare(tmp_path: Path, icon: Path) -> None:
     assert scalable_icon.read_bytes() == dist_prepare.SCALABLE_ICON.read_bytes()
     installer = output / "install-linux.sh"
     assert installer.read_bytes() == dist_prepare.INSTALL_SCRIPT.read_bytes()
-    license_file = output / "LICENSE"
+    license_file = output / "share/licenses/chessvault/LICENSE"
     assert license_file.read_bytes() == dist_prepare.LICENSE.read_bytes()
     readme = output / "README.md"
     assert readme.read_bytes() == dist_prepare.README.read_bytes()
