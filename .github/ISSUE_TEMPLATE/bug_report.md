@@ -2,7 +2,7 @@
 name: Bug report
 about: Report a bug, build failure, or known dependency vulnerability.
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 ---
 

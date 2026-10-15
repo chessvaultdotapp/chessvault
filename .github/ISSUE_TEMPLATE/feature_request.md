@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an improvement to Chessvault.
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 ---
 
