@@ -54,36 +54,6 @@ import Separator from "./Separator.astro";
 </script>
 
 <style>
-  header {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  nav {
-    width: min(100% - 3rem, 70rem);
-    margin-inline: auto;
-    padding-block: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .nav-button {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.25rem;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
   .github-link {
     display: grid;
     place-items: center;
@@ -114,7 +84,7 @@ import Separator from "./Separator.astro";
     border-radius: 0.25rem;
     font: inherit;
     color: var(--color-text);
-    background: var(--color-background);
+    background: var(--color-surface-elevated);
     cursor: pointer;
   }
 
@@ -136,11 +106,5 @@ import Separator from "./Separator.astro";
   :global(:root[data-theme-preference="system"]) .system,
   :global(:root:not([data-theme-preference])) .system {
     display: block;
-  }
-
-  a {
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-decoration: none;
   }
 </style>
