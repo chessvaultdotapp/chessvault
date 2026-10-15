@@ -2,11 +2,11 @@
 
 The native Linux installer writes an installation manifest after installing its five payload files.
 The manifest records their destinations indirectly through installation roots and fixed file identifiers,
-plus their content checksums and installed permission modes. It is intended to support safe uninstall
-and upgrade operations without requiring the original package.
+plus their content checksums and installed permission modes. Uninstall uses this record without
+requiring the original package payload.
 
-**Current status:** manifest creation is implemented; manifest reading, automatic uninstall, and upgrades
-are not. Existing files, including an existing manifest, still cause installation to fail.
+**Current status:** manifest creation and manifest-based uninstall are implemented; upgrades are not.
+Existing files, including an existing manifest, still cause installation to fail.
 
 ## Location and lifetime
 
@@ -82,9 +82,23 @@ An installation failure can leave partially installed files, a missing manifest,
 manifest destination. There is no transactional rollback or whole-installation atomicity. A manifest's
 presence alone is therefore not proof of a complete or unchanged installation.
 
-## Requirements for future readers
+## Uninstall validation
 
-These are safety requirements for subsequent uninstall and upgrade work, not current behavior:
+`--uninstall` requires a regular manifest and matching prefix and data-home settings. It validates
+all records in order and all remaining destinations before deleting any files. Symlinked parent
+directories, destination symlinks, non-regular files, changed content, and changed permission modes
+are rejected. Missing payload files are allowed, but a missing manifest is an error, including on
+a repeated uninstall after successful removal.
+
+`--uninstall --dry-run` performs the same validation and prints planned removals without changes.
+After successful validation, uninstall removes the remaining payload files, then the manifest.
+A removal failure retains the manifest for retry. Shared directories, unrelated files, and application
+state are left untouched. Optional desktop/icon cache refresh failures are warnings.
+
+Validation and removal are not an atomic operation and there is no concurrency lock; do not run
+multiple installers or modify the installed files during uninstall.
+
+The reader follows these safety rules, which also apply to future upgrade support:
 
 - Parse the manifest as data; never source it or evaluate its contents as shell commands.
 - Reject unsupported versions, malformed records, invalid hashes or modes, duplicate or missing identifiers,
@@ -99,12 +113,13 @@ These are safety requirements for subsequent uninstall and upgrade work, not cur
 
 ## Implementation and verification
 
-The writer is in [`scripts/install-linux.sh`](../../scripts/install-linux.sh).
+The writer and uninstall reader are in [`scripts/install-linux.sh`](../../scripts/install-linux.sh).
 Fixture tests in [`scripts/tests/test_install_linux.py`](../../scripts/tests/test_install_linux.py)
 verify the exact records, checksums, permissions, custom roots, delimiter rejection, and preservation
-of existing manifests. Real-package tests in
+of existing manifests. They also cover uninstall without payload, dry runs, malformed manifests,
+modified files, symlinks, missing files, partial removal/retry, and state preservation. Real-package tests in
 [`scripts/package-tests/test_package_install.py`](../../scripts/package-tests/test_package_install.py)
-also verify manifest contents and that a refused reinstall leaves it unchanged.
+also verify manifest contents, that a refused reinstall leaves it unchanged, and uninstall of the built package.
 
 See [Testing](testing.md) for fixture and built-package test commands, and
 [Distribution preparation](../tools/dist-prepare.md) for package staging.

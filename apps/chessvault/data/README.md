@@ -48,7 +48,7 @@ A successful installation also creates `$XDG_DATA_HOME/chessvault/install-manife
 (default: `$HOME/.local/share/chessvault/install-manifest-v1`) with owner-only permissions.
 It records the executable prefix, data directory, and SHA-256 checksums and permissions of the five installed files.
 The desktop entry checksum covers the generated launcher, not the package template.
-This metadata is intended for future safe upgrade and uninstall support; those operations are not implemented yet.
+Uninstall uses this metadata to verify files before removing them. Automatic upgrades are not implemented yet.
 Do not edit the manifest. Installation paths must not contain tabs or line breaks.
 
 The installer currently refuses to overwrite existing files, including files from an earlier ChessVault installation.
@@ -56,7 +56,21 @@ Remove those files and the installation manifest before installing a newer versi
 
 ## Remove an installation
 
-The installer's `--uninstall` option is not implemented yet. For a default installation, remove these files manually:
+Preview removal, then uninstall with the same prefix and `XDG_DATA_HOME` used for installation:
+
+```sh
+./install-linux.sh --uninstall --dry-run
+./install-linux.sh --uninstall
+```
+
+The original package payload is not required, but keep a copy of the installer script.
+Uninstall validates the manifest and checks every remaining file's content and permissions before deleting anything.
+Modified files, symlinks, malformed manifests, or mismatched installation roots cause removal to stop.
+Inspect and move modified files aside before retrying; missing installed files are allowed.
+If removal fails partway through, the manifest is retained so you can retry.
+User state, logs, unrelated files, and directories are preserved.
+
+Older installations without a manifest require manual removal. For a default installation:
 
 ```sh
 rm -- "$HOME/.local/bin/chessvault" \
