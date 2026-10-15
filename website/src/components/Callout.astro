@@ -1,0 +1,52 @@
+---
+interface Props {
+  kind?: "success" | "info" | "warning" | "danger";
+  title: string;
+  id: string;
+}
+
+const { kind = "info", title, id } = Astro.props;
+---
+
+<aside class:list={["callout", kind]} aria-labelledby={id}>
+  <h2 id={id}>{title}</h2>
+  <slot />
+</aside>
+
+<style>
+  .callout {
+    --callout-color: var(--color-info);
+    margin-block: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-inline-start: 4px solid var(--callout-color);
+    border-radius: 0.25rem;
+    background: var(--color-surface-elevated);
+    background: color-mix(in srgb, var(--callout-color) 8%, var(--color-surface-elevated));
+  }
+
+  .success {
+    --callout-color: var(--color-success);
+  }
+
+  .warning {
+    --callout-color: var(--color-warning);
+  }
+
+  .danger {
+    --callout-color: var(--color-danger);
+  }
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  .callout :global(p) {
+    margin: 0;
+  }
+
+  .callout :global(p + p) {
+    margin-top: 1rem;
+  }
+</style>

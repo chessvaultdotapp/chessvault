@@ -1,21 +1,20 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Callout from "../components/Callout.astro";
 ---
 
 <Layout title="Download — Chessvault">
   <h1>Download</h1>
-  <aside class="release-notice" aria-labelledby="release-notice-title">
-    <h2 id="release-notice-title">No stable releases yet</h2>
+  <Callout kind="warning" id="release-notice-title" title="No stable releases yet">
     <p>Chessvault is still in development. A stable release is not yet available to download.</p>
-  </aside>
+  </Callout>
 
-  <aside class="release-notice" aria-labelledby="platform-notice-title">
-    <h2 id="platform-notice-title">Platform availability</h2>
+  <Callout kind="info" id="platform-notice-title" title="Platform availability">
     <p id="platform-notice-message">
       Development previews are currently available for Linux only. Windows and macOS support is planned. Mobile releases
       are not currently being considered.
     </p>
-  </aside>
+  </Callout>
 
   <section class="development-previews" aria-labelledby="development-previews-title">
     <h2 id="development-previews-title">Try a Linux development preview</h2>
@@ -70,15 +69,6 @@ import Layout from "../layouts/Layout.astro";
 </script>
 
 <style>
-  .release-notice {
-    margin-block: 1.5rem;
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-inline-start: 4px solid var(--color-accent);
-    border-radius: 0.25rem;
-    background: var(--color-surface-elevated);
-  }
-
   .development-previews {
     margin-block: 2rem;
   }
