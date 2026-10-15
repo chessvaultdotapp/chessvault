@@ -4,9 +4,8 @@
 
 - Read `CONTRIBUTING.md` when preparing a PR; consult `docs/development/testing.md` for detailed verification. Visible
   desktop changes require launching the app in a graphical session and exercising the affected interaction.
-- Commit tags follow `docs/conventions/commit-messages.md`: `[desktop]`, `[chess-core]`, or
-  `[platform-dirs]` for the affected packages (including tests); add `[docs]` for documentation and `[ci]` for CI.
-  Combine applicable tags without spaces. Shared docs use `[docs]`; workspace-only infrastructure needs no package tag.
+- Commit subjects use adjacent tags: `[desktop]`, `[chess-core]`, `[platform-dirs]`, `[docs]`, `[ci]`.
+  Tests retain package tags; shared docs use `[docs]`. See `docs/conventions/commit-messages.md` for combinations.
 - Pin external GitHub Actions to full 40-character commit SHAs with release-version comments; verify both upstream when
   updating. Local actions use relative paths.
 
@@ -42,28 +41,24 @@
 
 - Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
   omit file arguments to check all workflows. CI checks only changed workflow YAML, not composite actions or installers.
-- `pnpm install --frozen-lockfile` installs asset tooling. `just optimize-assets` also regenerates diagrams. Edit `.mmd`
-  sources, then run
-  `just --justfile crates/platform-dirs/justfile diagram` for a diagram-only update. The two generated documentation
-  SVGs are ignored by Git; commit `.mmd` sources, not generated diagrams. Application SVG assets remain tracked.
+- After `pnpm install --frozen-lockfile`, `just optimize-assets` optimizes app SVGs and regenerates diagrams.
+  For diagrams only: `just --justfile crates/platform-dirs/justfile diagram`. Edit/commit `.mmd` sources;
+  generated documentation SVGs are ignored, whereas application SVGs are tracked.
 - `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
   `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
 - Documentation has two Zensical roots: run `venvs/zensical/bin/zensical build --config-file <config>` for both
   `zensical.toml` and `crates/platform-dirs/zensical.toml` after diagram generation. See `.github/workflows/docs.yml`
   for site assembly; cross-root links are not yet staged.
-- With uv installed: `just --justfile venvs/justfile development tag-tool dist-prepare zensical` creates Python environments.
-  Python checks use `venvs/development/bin/ruff check`, `venvs/development/bin/ruff format --check`, and
-  `venvs/development/bin/ty check --python venvs/tag-tool`, passing changed Python paths to each.
-  Test with `venvs/tag-tool/bin/python -m pytest tools/tag-tool -q` and
-  `venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q`; `.github/workflows/python.yml` is the source of truth.
+- With uv installed, `just --justfile venvs/justfile development tag-tool dist-prepare zensical` creates separate Python
+  environments. Ruff/ty run from `venvs/development/bin`; ty needs `--python venvs/tag-tool`. Use each tool's own
+  environment for pytest. Exact checks: `.github/workflows/python.yml` and `docs/development/testing.md`.
 - `tools/dist-prepare/main.py` only stages files: it requires `chessvault.png` beside the supplied binary and rejects an
   existing output directory. Building and archiving happen outside this tool.
 - Installer tests: `just --justfile venvs/justfile install-script`, then
   `venvs/install-script/bin/python -m pytest scripts/tests -q` (Linux; no Rust build). Package smoke tests additionally
   need `CHESSVAULT_PACKAGE` pointing to an archive from the current checkout; see the testing guide.
-- `tools/tag-tool/main.py` requires a clean tree and cached Cargo dependencies: it updates the desktop version and
-  lockfile offline, consumes committed `changelogs/unreleased.md` if present, then commits and tags locally.
-  Pushing a development tag triggers publication; see `docs/tools/tag-tool.md` for release and recovery instructions.
+- The tag tool requires a clean tree and cached Cargo dependencies, consumes committed `changelogs/unreleased.md` if present,
+  and commits/tags locally. Pushing its development tag publishes a release; read `docs/tools/tag-tool.md` first.
 - `just appimage` requires the setup in `docs/development/appimage.md`; release packaging lives in
   `.github/workflows/development-release.yml`.
 
@@ -90,10 +85,8 @@
   environment. Linux resolver tests are Linux-only.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
-- Desktop uses `Some("chessvault")`; `None` returns the base. App names must be one nonempty component, excluding
-  `.`, `..`, slashes, backslashes, colons, and NUL. Window dimensions are JSON in `recreate` (no extension), normally
-  `.local/state/chessvault/recreate` in development.
-  `user_log_dir` appends `log` unless its opinion argument is `Some(false)`.
+- Desktop state is normally `.local/state/chessvault/` in development; window dimensions are JSON in `recreate`
+  (no extension). `user_log_dir` appends `log` unless its opinion argument is `Some(false)`.
 
 ## App wiring
 
@@ -113,6 +106,7 @@
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
 - `RUST_LOG` controls capture (default `info`). Terminal output requires debug assertions; in-app capture works in release.
+- Logging also writes a per-launch JSON file under `user_log_dir`; failure to initialize that file aborts startup.
 - Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
   but preserves source settings. “Copy all” copies the filtered snapshot.
 - Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged
