@@ -9,10 +9,11 @@ CHESSVAULT_ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_ENTRY = CHESSVAULT_ROOT / "apps/chessvault/data/chessvault.desktop"
 SCALABLE_ICON = CHESSVAULT_ROOT / "apps/chessvault/assets/logo.svg"
 INSTALL_SCRIPT = CHESSVAULT_ROOT / "scripts/install-linux.sh"
+LICENSE = CHESSVAULT_ROOT / "LICENSE"
 
 
 def prepare(binary: Path, output: Path) -> None:
-    """Stage the binary and installer (0755), desktop entry and icons (0644).
+    """Stage binary and installer (0755), desktop entry, icons and license (0644).
 
     Existing output is rejected rather than mixing stale files into a release.
     Copy into a temporary sibling first so copy failures leave no partial package.
@@ -49,6 +50,9 @@ def prepare(binary: Path, output: Path) -> None:
         installer = package / "install-linux.sh"
         shutil.copyfile(INSTALL_SCRIPT, installer)
         installer.chmod(0o755)
+        license_file = package / "LICENSE"
+        shutil.copyfile(LICENSE, license_file)
+        license_file.chmod(0o644)
         package.rename(output)
 
 
