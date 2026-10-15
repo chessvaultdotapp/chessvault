@@ -44,8 +44,15 @@ If `XDG_DATA_HOME` is set to an absolute path, the desktop entry, icons, and lic
 `$HOME/.local/share`.
 Use the same setting as your desktop session so it can find the launcher and icons.
 
+A successful installation also creates `$XDG_DATA_HOME/chessvault/install-manifest-v1`
+(default: `$HOME/.local/share/chessvault/install-manifest-v1`) with owner-only permissions.
+It records the executable prefix, data directory, and SHA-256 checksums and permissions of the five installed files.
+The desktop entry checksum covers the generated launcher, not the package template.
+This metadata is intended for future safe upgrade and uninstall support; those operations are not implemented yet.
+Do not edit the manifest. Installation paths must not contain tabs or line breaks.
+
 The installer currently refuses to overwrite existing files, including files from an earlier ChessVault installation.
-Remove those files before installing a newer version.
+Remove those files and the installation manifest before installing a newer version.
 
 ## Remove an installation
 
@@ -56,7 +63,8 @@ rm -- "$HOME/.local/bin/chessvault" \
   "$HOME/.local/share/applications/chessvault.desktop" \
   "$HOME/.local/share/icons/hicolor/256x256/apps/chessvault.png" \
   "$HOME/.local/share/icons/hicolor/scalable/apps/chessvault.svg" \
-  "$HOME/.local/share/licenses/chessvault/LICENSE"
+  "$HOME/.local/share/licenses/chessvault/LICENSE" \
+  "$HOME/.local/share/chessvault/install-manifest-v1"
 ```
 
 If you used a custom prefix or `XDG_DATA_HOME`, adjust the paths accordingly.

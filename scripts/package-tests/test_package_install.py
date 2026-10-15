@@ -103,7 +103,30 @@ def test_install_built_package(tmp_path, custom_data):
     if custom_data:
         assert not (home / ".local/share").exists()
 
-    before = {path: digest(path) for path in [*destinations, desktop]}
+    manifest = data / "chessvault/install-manifest-v1"
+    assert manifest.stat().st_mode & 0o777 == 0o600
+    records = manifest.read_text().splitlines()
+    assert records[:3] == [
+        "chessvault-install-manifest\t1",
+        f"prefix\t{home / '.local'}",
+        f"data-home\t{data}",
+    ]
+    for record, identifier, mode, destination in zip(
+        records[3:],
+        ("binary", "desktop", "png", "svg", "license"),
+        ("0755", "0644", "0644", "0644", "0644"),
+        (
+            installed_binary,
+            desktop,
+            data / "icons/hicolor/256x256/apps/chessvault.png",
+            data / "icons/hicolor/scalable/apps/chessvault.svg",
+            data / "licenses/chessvault/LICENSE",
+        ),
+        strict=True,
+    ):
+        assert record == f"file\t{identifier}\t{mode}\t{digest(destination).hex()}"
+
+    before = {path: digest(path) for path in [*destinations, desktop, manifest]}
     repeated = run()
     assert repeated.returncode != 0
     assert "refusing to overwrite" in repeated.stderr

@@ -188,24 +188,32 @@ desktop_destination="$data_home/applications/chessvault.desktop"
 png_destination="$data_home/icons/hicolor/256x256/apps/chessvault.png"
 svg_destination="$data_home/icons/hicolor/scalable/apps/chessvault.svg"
 license_destination="$data_home/licenses/chessvault/LICENSE"
+manifest_destination="$data_home/chessvault/install-manifest-v1"
 
-# Desktop entries cannot represent literal line breaks in an Exec value.
-case "$binary_destination" in
-    *'
+# Keep the tab-separated manifest unambiguous, including for non-Unicode paths.
+for root in "$resolved_prefix" "$data_home"; do
+    case "$root" in
+        *"$(printf '\t')"* | *'
 '* | *"$(printf '\r')"*)
-        printf '%s\n' 'Error: the executable path must not contain line breaks.' >&2
-        exit 1
-        ;;
-esac
+            printf '%s\n' 'Error: installation roots must not contain tabs or line breaks.' >&2
+            exit 1
+            ;;
+    esac
+done
+if ! command -v sha256sum > /dev/null 2>&1; then
+    printf '%s\n' 'Error: sha256sum is required to record installed files.' >&2
+    exit 1
+fi
 
-# Check every destination before modifying anything. Upgrade support will add
-# ownership tracking; until then, even existing ChessVault files are refused.
+# Check every destination before modifying anything. Until upgrade support is
+# implemented, even existing recorded ChessVault installations are refused.
 for destination in \
     "$binary_destination" \
     "$desktop_destination" \
     "$png_destination" \
     "$svg_destination" \
-    "$license_destination"; do
+    "$license_destination" \
+    "$manifest_destination"; do
     if [ -e "$destination" ] || [ -L "$destination" ]; then
         printf 'Error: refusing to overwrite existing path: %s\n' "$destination" >&2
         exit 1
@@ -248,13 +256,15 @@ if [ "$dry_run" = true ]; then
     printf 'Would install PNG icon: %s\n' "$png_destination"
     printf 'Would install SVG icon: %s\n' "$svg_destination"
     printf 'Would install license: %s\n' "$license_destination"
+    printf 'Would record installation: %s\n' "$manifest_destination"
     printf '%s\n' 'Generated desktop entry:'
     render_desktop
     exit 0
 fi
 
 temporary_desktop=$(mktemp)
-trap 'rm -f -- "$temporary_desktop"' EXIT
+temporary_manifest=
+trap 'rm -f -- "$temporary_desktop"; if [ -n "$temporary_manifest" ]; then rm -f -- "$temporary_manifest"; fi' EXIT
 trap 'exit 1' HUP INT TERM
 render_desktop > "$temporary_desktop"
 
@@ -284,6 +294,33 @@ install_file 0644 "$temporary_desktop" "$desktop_destination"
 install_file 0644 "$png_source" "$png_destination"
 install_file 0644 "$svg_source" "$svg_destination"
 install_file 0644 "$license_source" "$license_destination"
+
+# Record only the five fixed file identifiers, never executable shell content.
+# Hash stdin so sha256sum does not escape unusual filenames in its output.
+record_file() {
+    identifier=$1
+    mode=$2
+    destination=$3
+    checksum=$(sha256sum < "$destination")
+    checksum=${checksum%% *}
+    printf 'file\t%s\t%s\t%s\n' "$identifier" "$mode" "$checksum"
+}
+
+# Publish the ownership record only after every payload file has been installed.
+# A failed publication leaves untracked files and must be reported, not concealed.
+umask 077
+temporary_manifest=$(mktemp)
+{
+    printf 'chessvault-install-manifest\t1\n'
+    printf 'prefix\t%s\n' "$resolved_prefix"
+    printf 'data-home\t%s\n' "$data_home"
+    record_file binary 0755 "$binary_destination"
+    record_file desktop 0644 "$desktop_destination"
+    record_file png 0644 "$png_destination"
+    record_file svg 0644 "$svg_destination"
+    record_file license 0644 "$license_destination"
+} > "$temporary_manifest"
+install_file 0600 "$temporary_manifest" "$manifest_destination"
 
 # Cache refresh is optional and must not turn a completed install into failure.
 if command -v update-desktop-database > /dev/null 2>&1; then

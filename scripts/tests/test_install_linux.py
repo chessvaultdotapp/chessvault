@@ -1,5 +1,6 @@
 """Integration tests for the Linux installer; no Rust build required."""
 
+import hashlib
 import os
 import pty
 import shutil
@@ -81,6 +82,23 @@ class Installer:
     def verify(self, prefix=None, data=None):
         prefix = prefix or self.home / ".local"
         data = data or self.home / ".local/share"
+        manifest = data / "chessvault/install-manifest-v1"
+        assert manifest.stat().st_mode & 0o777 == 0o600
+        expected_records = [
+            "chessvault-install-manifest\t1",
+            f"prefix\t{prefix.resolve()}",
+            f"data-home\t{data}",
+        ]
+        for identifier, mode, destination in (
+            ("binary", "0755", prefix / "bin/chessvault"),
+            ("desktop", "0644", data / "applications/chessvault.desktop"),
+            ("png", "0644", data / "icons/hicolor/256x256/apps/chessvault.png"),
+            ("svg", "0644", data / "icons/hicolor/scalable/apps/chessvault.svg"),
+            ("license", "0644", data / "licenses/chessvault/LICENSE"),
+        ):
+            checksum = hashlib.sha256(destination.read_bytes()).hexdigest()
+            expected_records.append(f"file\t{identifier}\t{mode}\t{checksum}")
+        assert manifest.read_text() == "\n".join(expected_records) + "\n"
         binary = prefix / "bin/chessvault"
         assert binary.read_bytes() == (self.package / PAYLOAD[0]).read_bytes()
         assert binary.stat().st_mode & 0o777 == 0o755
@@ -221,7 +239,7 @@ def test_non_directory_parent_fails_before_installing(installer):
 
 
 def test_exec_escaping(installer):
-    installer.home = installer.root / 'special \\"$`%\t home'
+    installer.home = installer.root / 'special \\"$`% home'
     installer.home.mkdir()
     installer.env["HOME"] = str(installer.home)
     success(installer.run())
@@ -240,12 +258,37 @@ def test_exec_escaping(installer):
     assert f'Exec="{escaped}"\n' in desktop
 
 
-@pytest.mark.parametrize("character", ["\n", "\r"])
+@pytest.mark.parametrize("character", ["\t", "\n", "\r"])
 def test_line_break_in_executable_path_is_rejected(installer, character):
     failure(
         installer.run("--dry-run", "--prefix", installer.root / f"bad{character}path"),
-        "must not contain line breaks",
+        "must not contain tabs or line breaks",
     )
+    assert list(installer.home.iterdir()) == []
+
+
+@pytest.mark.parametrize("symlink", [False, True])
+def test_existing_manifest_is_preserved(installer, symlink):
+    manifest = installer.home / ".local/share/chessvault/install-manifest-v1"
+    manifest.parent.mkdir(parents=True)
+    if symlink:
+        manifest.symlink_to(installer.root / "missing manifest")
+    else:
+        manifest.write_text("unrecognized record\n")
+    failure(installer.run(), "refusing to overwrite")
+    assert not (installer.home / ".local/bin/chessvault").exists()
+    if symlink:
+        assert manifest.is_symlink()
+    else:
+        assert manifest.read_text() == "unrecognized record\n"
+
+
+@pytest.mark.parametrize("character", ["\t", "\n", "\r"])
+def test_manifest_delimiters_in_data_home_are_rejected(installer, character):
+    data = installer.root / f"bad{character}data"
+    installer.env["XDG_DATA_HOME"] = str(data)
+    failure(installer.run(), "must not contain tabs or line breaks")
+    assert not data.exists()
     assert list(installer.home.iterdir()) == []
 
 
