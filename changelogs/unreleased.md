@@ -1,0 +1,13 @@
+# Unreleased
+
+## Added
+
+- Added a **New game** button to reset the board and move history. Starting over during an ongoing game asks for
+  confirmation; choose Cancel or press Escape to keep the current game. The button is disabled until a move is played.
+
+- Added a website installation guide for Linux development previews, covering installation, upgrades, and removal.
+
+## Changed
+
+- Updated the website download page to distinguish stable releases from development previews and show download
+  availability for each platform.
