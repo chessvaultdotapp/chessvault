@@ -4,5 +4,47 @@ import Layout from "../layouts/Layout.astro";
 
 <Layout title="Download — Chessvault">
   <h1>Download</h1>
-  <p>Downloads are coming soon.</p>
+  <aside class="release-notice" aria-labelledby="release-notice-title">
+    <h2 id="release-notice-title">No stable releases yet</h2>
+    <p>Chessvault is still in development. A stable release is not yet available to download.</p>
+  </aside>
+
+  <section class="development-previews" aria-labelledby="development-previews-title">
+    <h2 id="development-previews-title">Try a development preview</h2>
+    <p>Get an early look at Chessvault and help test upcoming changes.</p>
+    <p>
+      <strong>Development previews may contain bugs or incomplete features.</strong>
+    </p>
+    <p>
+      <a href="https://github.com/chessvaultdotapp/chessvault/releases">Browse development previews &rarr;</a>
+    </p>
+  </section>
 </Layout>
+
+<style>
+  .release-notice {
+    margin-block: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-inline-start: 4px solid var(--color-accent);
+    border-radius: 0.25rem;
+    background: var(--color-surface-elevated);
+  }
+
+  .development-previews {
+    margin-block: 2rem;
+  }
+
+  .development-previews p + p {
+    margin-top: 1rem;
+  }
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  p {
+    margin: 0;
+  }
+</style>
