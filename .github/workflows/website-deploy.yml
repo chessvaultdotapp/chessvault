@@ -44,7 +44,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           personal_token: ${{ secrets.GH_PAGES_DEPLOY_TOKEN }}
-          external_repository: ${{ github.repository_owner }}/chessvault.github.io
+          external_repository: ${{ github.repository_owner }}/${{ github.repository_owner }}.github.io
           publish_branch: main
           publish_dir: ./website/dist
           user_name: github-actions[bot]
