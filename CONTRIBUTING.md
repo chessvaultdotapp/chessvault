@@ -40,7 +40,8 @@ For example, a desktop console fix and its regression test belong in one
 
 Follow the [testing guide](docs/development/testing.md) for ordered checks,
 package and single-test selection, platform variants, and desktop interaction
-verification. Stop on failure and fix the failing check before continuing.
+verification. It also documents local Markdown, TOML, shell, and justfile checks.
+Stop on failure and fix the failing check before continuing.
 
 Include a brief description of what changed and how it was verified in the pull
 request; screenshots are useful for UI changes.
