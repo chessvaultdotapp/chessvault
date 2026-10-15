@@ -31,6 +31,7 @@ By default, the installer places files at:
 - `$HOME/.local/share/applications/chessvault.desktop`
 - `$HOME/.local/share/icons/hicolor/256x256/apps/chessvault.png`
 - `$HOME/.local/share/icons/hicolor/scalable/apps/chessvault.svg`
+- `$HOME/.local/share/licenses/chessvault/LICENSE`
 
 Launch ChessVault from your desktop's application menu or run `chessvault` if `$HOME/.local/bin` is on your `PATH`.
 Otherwise, run `"$HOME/.local/bin/chessvault"` directly.
@@ -39,7 +40,8 @@ Use `./install-linux.sh --prefix /absolute/path` to choose a different executabl
 This installs the executable into that prefix's `bin` directory and requires interactive confirmation.
 It does not change where the desktop entry and icons are installed. System-wide installation is not supported.
 
-If `XDG_DATA_HOME` is set to an absolute path, the desktop entry and icons go there instead of `$HOME/.local/share`.
+If `XDG_DATA_HOME` is set to an absolute path, the desktop entry, icons, and license go there instead of
+`$HOME/.local/share`.
 Use the same setting as your desktop session so it can find the launcher and icons.
 
 The installer currently refuses to overwrite existing files, including files from an earlier ChessVault installation.
@@ -53,7 +55,8 @@ The installer's `--uninstall` option is not implemented yet. For a default insta
 rm -- "$HOME/.local/bin/chessvault" \
   "$HOME/.local/share/applications/chessvault.desktop" \
   "$HOME/.local/share/icons/hicolor/256x256/apps/chessvault.png" \
-  "$HOME/.local/share/icons/hicolor/scalable/apps/chessvault.svg"
+  "$HOME/.local/share/icons/hicolor/scalable/apps/chessvault.svg" \
+  "$HOME/.local/share/licenses/chessvault/LICENSE"
 ```
 
 If you used a custom prefix or `XDG_DATA_HOME`, adjust the paths accordingly.

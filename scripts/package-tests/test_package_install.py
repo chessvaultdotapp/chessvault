@@ -38,6 +38,9 @@ def test_install_built_package(tmp_path, custom_data):
     assert (
         package / "share/icons/hicolor/scalable/apps/chessvault.svg"
     ).read_bytes() == (ROOT / "apps/chessvault/assets/logo.svg").read_bytes()
+    assert (package / "share/licenses/chessvault/LICENSE").read_bytes() == (
+        ROOT / "LICENSE"
+    ).read_bytes()
     template = (ROOT / "apps/chessvault/data/chessvault.desktop").read_text()
     assert (package / "share/applications/chessvault.desktop").read_text() == template
 
@@ -84,6 +87,7 @@ def test_install_built_package(tmp_path, custom_data):
     for icon in (
         "icons/hicolor/256x256/apps/chessvault.png",
         "icons/hicolor/scalable/apps/chessvault.svg",
+        "licenses/chessvault/LICENSE",
     ):
         destinations[data / icon] = package / "share" / icon
     for destination, source in destinations.items():
