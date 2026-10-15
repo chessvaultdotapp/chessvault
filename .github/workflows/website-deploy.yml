@@ -1,0 +1,51 @@
+name: Deploy website
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy website
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.18.0'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: '12.5.1'
+
+      - name: Install website dependencies
+        run: pnpm --filter website install --frozen-lockfile
+
+      - name: Build website only
+        run: pnpm --filter website build
+
+      # Cross-repository pushes require a token with contents: write on the target.
+      - name: Deploy to GitHub Pages repository
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
+        with:
+          personal_token: ${{ secrets.GH_PAGES_DEPLOY_TOKEN }}
+          external_repository: ${{ github.repository_owner }}/chessvault.github.io
+          publish_branch: main
+          publish_dir: ./website/dist
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
