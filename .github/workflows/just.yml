@@ -1,0 +1,48 @@
+name: Just
+
+on:
+  push:
+    paths:
+      - 'justfile'
+      - '**/justfile'
+      - '.justfile'
+      - '**/.justfile'
+      - '**/*.just'
+      - '.github/workflows/just.yml'
+      - '.github/actions/setup-just/**'
+  pull_request:
+    paths:
+      - 'justfile'
+      - '**/justfile'
+      - '.justfile'
+      - '**/.justfile'
+      - '**/*.just'
+      - '.github/workflows/just.yml'
+      - '.github/actions/setup-just/**'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check justfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
+      - name: Check formatting of tracked justfiles
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            just --fmt --check --justfile "$file"
+          done < <(git ls-files -z -- 'justfile' '**/justfile' '.justfile' '**/.justfile' '*.just')
+
+      - name: Validate tracked justfiles
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            just --list --justfile "$file"
+          done < <(git ls-files -z -- 'justfile' '**/justfile' '.justfile' '**/.justfile' '*.just')

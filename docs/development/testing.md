@@ -244,6 +244,37 @@ It defaults to version `1.5.5`; its optional `version` input accepts an exact
 release version without the `v` prefix. It supports Linux, macOS, and Windows
 on x64 and ARM64, using Bash (Git Bash on Windows).
 
+## Justfile checks
+
+Use [just](../tools/just.md) version `1.58.0` (the shared setup action's default)
+from the workspace root to check all tracked justfiles:
+
+<!-- rumdl-disable MD014 -->
+```console
+$ while IFS= read -r -d '' file; do
+    just --fmt --check --justfile "$file" || break
+    just --list --justfile "$file" || break
+  done < <(git ls-files -z -- 'justfile' '**/justfile' '.justfile' '**/.justfile' '*.just')
+```
+<!-- rumdl-enable MD014 -->
+
+Run this loop in Bash. Formatting checks do not modify files; apply formatting
+with `just --fmt --justfile <file>`. Pass new, untracked files explicitly to both
+checks before staging them. `--list` validates parsing and lists recipes without
+executing them; it does not verify that recipe commands work.
+
+The [Just workflow](../../.github/workflows/just.yml) checks all tracked justfiles
+on pushes and pull requests changing `justfile`, `.justfile`, or `*.just` files
+at any depth, the workflow itself, or the shared
+[`setup-just` action](../../.github/actions/setup-just/action.yml).
+
+Just has no first-party recipe linter. ShellCheck cannot directly parse justfiles:
+extracting recipe bodies would need to account for Just interpolation, per-line
+shell execution, and recipes using other interpreters. A separate community
+linter would add another tool dependency without replacing these checks. For now,
+formatting and parse/list validation are the scope of this workflow; keep complex
+shell logic in standalone scripts covered by the Shell checks below.
+
 ## Shell checks
 
 Use [shfmt](../tools/shfmt.md) and [ShellCheck](../tools/shellcheck.md) to format

@@ -12,11 +12,11 @@ check:
 
 # Verify one package; the desktop is binary-only and has no doctests.
 check-package package:
-    cargo build -p {{quote(package)}} --all-targets --locked
-    cargo nextest run -p {{quote(package)}} --locked
-    if [ {{quote(package)}} != chessvault ]; then cargo test -p {{quote(package)}} --doc --locked; fi
+    cargo build -p {{ quote(package) }} --all-targets --locked
+    cargo nextest run -p {{ quote(package) }} --locked
+    if [ {{ quote(package) }} != chessvault ]; then cargo test -p {{ quote(package) }} --doc --locked; fi
     cargo fmt --all -- --check
-    cargo clippy -p {{quote(package)}} --all-targets --locked --no-deps
+    cargo clippy -p {{ quote(package) }} --all-targets --locked --no-deps
 
 # Verify platform-dirs with native path resolution rather than development paths.
 check-platform-native:
