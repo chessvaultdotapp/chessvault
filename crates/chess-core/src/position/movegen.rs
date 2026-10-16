@@ -10,12 +10,16 @@ pub struct Move {
     pub promotion: Option<Piece>,
 }
 
-/// Position-based status only; repetition, move-count and dead-position draws are not evaluated.
+/// Position-based status, including proven dead-material draws.
+/// Repetition and move-count draws are evaluated by [`crate::Game`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PositionStatus {
     Ongoing,
     Checkmate,
     Stalemate,
+    /// Proven dead material: bare kings, one minor, or bishops all on one colour.
+    /// Other dead positions (such as blocked pawn structures) are not detected.
+    DeadPosition,
 }
 
 type Board = [Option<(Piece, Side)>; 64];
@@ -86,11 +90,16 @@ impl Position {
         !safe(&self.board(), self.side_to_move)
     }
 
-    /// Classifies a legal position by available moves and king safety.
-    /// Does not adjudicate other draw rules or game-level results such as resignation.
+    /// Classifies a legal position by moves, king safety, and proven dead material.
+    /// Dead-position detection is conservative; see [`PositionStatus::DeadPosition`].
+    /// Does not adjudicate history-dependent draws or resignation.
     pub fn status(&self) -> PositionStatus {
         if !self.legal_moves().is_empty() {
-            PositionStatus::Ongoing
+            if self.has_dead_material() {
+                PositionStatus::DeadPosition
+            } else {
+                PositionStatus::Ongoing
+            }
         } else if !self.is_in_check() {
             PositionStatus::Stalemate
         } else {
