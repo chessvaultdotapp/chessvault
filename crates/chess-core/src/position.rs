@@ -8,6 +8,7 @@ use crate::{
 
 pub(crate) mod movegen;
 mod notation;
+pub(crate) mod repetition;
 
 /// Occupancy bitboards, side to move, castling rights, and move counts.
 #[derive(Clone, Debug, PartialEq)]

@@ -1,4 +1,4 @@
-use crate::{Move, Position, PositionStatus, Side};
+use crate::{Move, Position, PositionStatus, Side, position::repetition::RepetitionKey};
 
 /// Game outcome, including results that cannot be inferred from the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -16,6 +16,8 @@ pub struct Game {
     initial_position: Position,
     position: Position,
     moves: Vec<Move>,
+    // Includes the initial position; always one entry longer than `moves`.
+    position_keys: Vec<RepetitionKey>,
     resigned: Option<Side>,
 }
 
@@ -23,6 +25,7 @@ impl Game {
     /// Starts a game from a position without a resignation result.
     pub fn new(position: Position) -> Self {
         Self {
+            position_keys: vec![position.repetition_key()],
             initial_position: position.clone(),
             position,
             moves: Vec::new(),
@@ -51,12 +54,20 @@ impl Game {
         &self.moves
     }
 
+    /// Occurrences of the current position, including the supplied starting position.
+    /// Only history recorded by this game is counted; this does not adjudicate a draw.
+    pub fn repetition_count(&self) -> usize {
+        let current = self.position_keys.last().expect("initial position key");
+        self.position_keys.iter().filter(|key| *key == current).count()
+    }
+
     /// Plays and records a legal move. Finished games reject further moves.
     pub fn play(&mut self, mv: Move) -> bool {
         if self.status() != GameStatus::Ongoing || !self.position.play(mv) {
             return false;
         }
         self.moves.push(mv);
+        self.position_keys.push(self.position.repetition_key());
         true
     }
 
@@ -89,6 +100,41 @@ mod tests {
         Move,
         Square::{D8, E5, E7, F2, F3, G2, G4, H4},
     };
+
+    #[test]
+    fn repetition_tracks_only_played_positions() {
+        use crate::Square::{E2, E4, E5, E7, F3, F6, G1, G8};
+        let mut game = Game::new(Position::standard());
+        assert_eq!(game.repetition_count(), 1);
+        for expected in 2..=3 {
+            for (from, to) in [(G1, F3), (G8, F6), (F3, G1), (F6, G8)] {
+                assert!(game.play(Move {
+                    from,
+                    to,
+                    promotion: None
+                }));
+                assert_eq!(game.position_keys.len(), game.moves.len() + 1);
+            }
+            assert_eq!(game.repetition_count(), expected);
+        }
+        let keys = game.position_keys.clone();
+        assert!(!game.play(Move {
+            from: E7,
+            to: E5,
+            promotion: None
+        }));
+        assert!(game.position_at(0).is_some());
+        assert!(game.resign(Side::White));
+        assert!(!game.play(Move {
+            from: E2,
+            to: E4,
+            promotion: None
+        }));
+        assert_eq!(game.position_keys, keys);
+        assert_eq!(game.repetition_count(), 3);
+        game = Game::new(Position::standard());
+        assert_eq!(game.repetition_count(), 1);
+    }
 
     #[test]
     fn status_follows_moves_and_replacement() {
