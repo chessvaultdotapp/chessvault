@@ -7,6 +7,9 @@ pub enum DrawReason {
     /// Threefold repetition claimed by the associated player.
     ThreefoldRepetition(Side),
     FivefoldRepetition,
+    /// Fifty-move rule claimed by the associated player.
+    FiftyMoveRule(Side),
+    SeventyFiveMoveRule,
 }
 
 /// Game outcome, including results that cannot be inferred from the board.
@@ -27,7 +30,7 @@ pub struct Game {
     // Includes the initial position; always one entry longer than `moves`.
     position_keys: Vec<RepetitionKey>,
     resigned: Option<Side>,
-    claimed_draw: Option<Side>,
+    claimed_draw: Option<DrawReason>,
 }
 
 impl Game {
@@ -71,21 +74,29 @@ impl Game {
         self.position_keys.iter().filter(|key| *key == current).count()
     }
 
-    /// Whether the side to move can claim threefold repetition now.
+    /// Whether the side to move can claim repetition or the fifty-move rule now.
     pub fn can_claim_draw(&self) -> bool {
-        self.status() == GameStatus::Ongoing && self.repetition_count() >= 3
+        self.status() == GameStatus::Ongoing && (self.repetition_count() >= 3 || self.position.halfmove_clock() >= 100)
     }
 
-    /// Claims threefold repetition for the side to move, without playing a move.
+    /// Claims a draw for the side to move, without playing a move.
     pub fn claim_draw(&mut self) -> bool {
         if !self.can_claim_draw() {
             return false;
         }
-        self.claimed_draw = Some(self.position.side_to_move());
+        self.claimed_draw = Some(self.claim_reason(self.position.halfmove_clock()));
         true
     }
 
-    /// Whether an intended legal move would permit a threefold repetition claim.
+    fn claim_reason(&self, clock: u8) -> DrawReason {
+        if clock >= 100 {
+            DrawReason::FiftyMoveRule(self.position.side_to_move())
+        } else {
+            DrawReason::ThreefoldRepetition(self.position.side_to_move())
+        }
+    }
+
+    /// Whether an intended legal move permits repetition or a fifty-move claim.
     /// Neither the move nor its resulting position is recorded.
     pub fn can_claim_draw_with_move(&self, mv: Move) -> bool {
         if self.status() != GameStatus::Ongoing {
@@ -96,7 +107,7 @@ impl Game {
             return false;
         }
         let key = next.repetition_key();
-        self.position_keys.iter().filter(|&&previous| previous == key).count() >= 2
+        next.halfmove_clock() >= 100 || self.position_keys.iter().filter(|&&previous| previous == key).count() >= 2
     }
 
     /// Claims based on an intended move, leaving the board and history unchanged.
@@ -104,7 +115,9 @@ impl Game {
         if !self.can_claim_draw_with_move(mv) {
             return false;
         }
-        self.claimed_draw = Some(self.position.side_to_move());
+        let mut next = self.position.clone();
+        assert!(next.play(mv), "validated intended move");
+        self.claimed_draw = Some(self.claim_reason(next.halfmove_clock()));
         true
     }
 
@@ -132,12 +145,15 @@ impl Game {
         if let Some(side) = self.resigned {
             return GameStatus::Resigned(side);
         }
-        if let Some(side) = self.claimed_draw {
-            return GameStatus::Draw(DrawReason::ThreefoldRepetition(side));
+        if let Some(reason) = self.claimed_draw {
+            return GameStatus::Draw(reason);
         }
         match self.position.status() {
             PositionStatus::Checkmate => GameStatus::Checkmate(self.position.side_to_move()),
             PositionStatus::Stalemate => GameStatus::Draw(DrawReason::Stalemate),
+            PositionStatus::Ongoing if self.position.halfmove_clock() >= 150 => {
+                GameStatus::Draw(DrawReason::SeventyFiveMoveRule)
+            }
             PositionStatus::Ongoing if self.repetition_count() >= 5 => GameStatus::Draw(DrawReason::FivefoldRepetition),
             PositionStatus::Ongoing => GameStatus::Ongoing,
         }

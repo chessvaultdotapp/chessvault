@@ -901,15 +901,21 @@ impl ChessVault {
             controls
         };
         let mut controls = controls;
-        if ongoing {
+        if ongoing && !self.game.can_claim_draw() {
+            let mut intended_claims = column![].spacing(8);
+            let mut has_intended_claim = false;
             for mv in self.game.position().legal_moves() {
                 if self.game.can_claim_draw_with_move(mv) {
-                    controls = controls.push(
+                    has_intended_claim = true;
+                    intended_claims = intended_claims.push(
                         button(text(format!("Claim draw with {}–{}", mv.from, mv.to)))
                             .on_press_maybe(navigation_enabled.then_some(Message::ClaimDrawWithMove(mv)))
                             .width(Fill),
                     );
                 }
+            }
+            if has_intended_claim {
+                controls = controls.push(container(scrollable(intended_claims)).max_height(140));
             }
         }
         let controls = controls.extend([
