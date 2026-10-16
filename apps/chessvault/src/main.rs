@@ -215,6 +215,73 @@ mod draw_tests {
         assert_eq!(app.history.status(&app.game), GameStatus::Ongoing);
     }
 
+    fn intended_claim_ready() -> (ChessVault, Move) {
+        let mut app = ready();
+        app.game = Game::new(Position::standard());
+        for (from, to) in [
+            (Square::G1, Square::F3),
+            (Square::G8, Square::F6),
+            (Square::F3, Square::G1),
+            (Square::F6, Square::G8),
+            (Square::G1, Square::F3),
+            (Square::G8, Square::F6),
+            (Square::F3, Square::G1),
+        ] {
+            assert!(app.game.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        app.history = History::default();
+        app.history.sync(&app.game);
+        (
+            app,
+            Move {
+                from: Square::F6,
+                to: Square::G8,
+                promotion: None,
+            },
+        )
+    }
+
+    #[test]
+    fn intended_claim_ends_game_without_playing_move() {
+        let (mut app, mv) = intended_claim_ready();
+        assert!(!app.game.can_claim_draw());
+        assert!(app.game.can_claim_draw_with_move(mv));
+        let position = app.game.position().clone();
+        let _ = app.update(Message::ClaimDrawWithMove(mv));
+        assert_eq!(
+            app.game.status(),
+            GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Black))
+        );
+        assert_eq!(app.game.position(), &position);
+        assert_eq!(app.game.moves().len(), 7);
+        assert_eq!(app.selected_square, None);
+        let _ = app.update(Message::SelectSquare(Square::G8));
+        assert_eq!(app.game.moves().len(), 7);
+    }
+
+    #[test]
+    fn intended_claim_respects_guards_and_rejects_invalid_moves() {
+        for guard in 0..5 {
+            let (mut app, mut mv) = intended_claim_ready();
+            match guard {
+                0 => {
+                    let _ = app.update(Message::Navigate(Navigation::First));
+                }
+                1 => app.console_open = true,
+                2 => app.pending_promotion = Some(mv),
+                3 => app.confirm_new_game = true,
+                _ => mv.to = Square::E4,
+            }
+            let _ = app.update(Message::ClaimDrawWithMove(mv));
+            assert_eq!(app.game.status(), GameStatus::Ongoing);
+            assert_eq!(app.game.moves().len(), 7);
+        }
+    }
+
     #[test]
     fn claims_are_blocked_during_review_and_modal_interactions() {
         let mut app = ready();
@@ -550,6 +617,7 @@ enum Message {
     CancelPromotion,
     Resign(Side),
     ClaimDraw,
+    ClaimDrawWithMove(Move),
     ToggleConsole,
     ClearLogs,
     RefreshLogs,
@@ -601,6 +669,7 @@ impl ChessVault {
                     | Message::Promote(_)
                     | Message::Resign(_)
                     | Message::ClaimDraw
+                    | Message::ClaimDrawWithMove(_)
             )
         {
             return Task::none();
@@ -668,6 +737,15 @@ impl ChessVault {
                     && !self.console_open
                     && self.pending_promotion.is_none()
                     && self.game.claim_draw()
+                {
+                    self.selected_square = None;
+                }
+            }
+            Message::ClaimDrawWithMove(mv) => {
+                if !self.history.is_reviewing()
+                    && !self.console_open
+                    && self.pending_promotion.is_none()
+                    && self.game.claim_draw_with_move(mv)
                 {
                     self.selected_square = None;
                 }
@@ -822,6 +900,18 @@ impl ChessVault {
         } else {
             controls
         };
+        let mut controls = controls;
+        if ongoing {
+            for mv in self.game.position().legal_moves() {
+                if self.game.can_claim_draw_with_move(mv) {
+                    controls = controls.push(
+                        button(text(format!("Claim draw with {}–{}", mv.from, mv.to)))
+                            .on_press_maybe(navigation_enabled.then_some(Message::ClaimDrawWithMove(mv)))
+                            .width(Fill),
+                    );
+                }
+            }
+        }
         let controls = controls.extend([
             button("Black resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))
