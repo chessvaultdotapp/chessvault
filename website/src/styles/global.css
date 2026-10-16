@@ -1,55 +1,126 @@
 @import "@fontsource-variable/nunito";
 
-/* Primitive colors: raw palette values, independent of UI roles.
-   Shade numbers run from light to dark; use semantic tokens in components. */
+/*
+ * Primitive colors
+ * Raw palette values, independent of UI roles.
+ * Shade numbers run from light to dark.
+ * Use semantic tokens in components.
+ */
 :root {
+  /* Cream */
+  --cream-50: #fffaf1;
   --cream-100: #f9f2e5;
   --cream-200: #f2e7ce;
+  --cream-300: #e6d5bb;
+
+  /* Brown */
   --brown-300: #d4a483;
   --brown-500: #925e42;
+  --brown-600: #6e4b39;
+  --brown-700: #584034;
   --brown-800: #493328;
   --brown-900: #38271e;
+
+  /* Green */
   --green-300: #8fbc92;
   --green-700: #467855;
+
+  /* Blue */
   --blue-300: #8fb7cf;
   --blue-700: #456e86;
+
+  /* Amber */
   --amber-300: #e0b66e;
   --amber-700: #946515;
+
+  /* Red */
   --red-300: #e39a90;
   --red-700: #a3453e;
 }
 
-/* Semantic colors: theme-aware UI roles referencing the primitive palette.
-   Status colors communicate meaning, not decoration; pair them with text or icons. */
+/*
+ * Semantic colors — Light theme
+ * Warm backgrounds, subtle surfaces,
+ * and restrained brown accents.
+ */
 :root {
   color-scheme: light;
+
+  /* Backgrounds */
   --color-background: var(--cream-200);
+  --color-surface: var(--cream-100);
+  --color-surface-elevated: var(--cream-50);
+
+  /* Typography */
   --color-text: var(--brown-900);
+  --color-text-muted: var(--brown-700);
+
+  /* Brand */
   --color-accent: var(--brown-500);
+  --color-accent-hover: var(--brown-600);
+
+  /* Borders */
+  --color-border: var(--cream-300);
+  --color-border-strong: var(--brown-300);
+
+  /* Buttons */
+  --color-primary-button: var(--brown-500);
+  --color-primary-button-hover: var(--brown-600);
+  --color-primary-button-text: var(--cream-50);
+
+  /* Status */
   --color-success: var(--green-700);
   --color-info: var(--blue-700);
   --color-warning: var(--amber-700);
   --color-danger: var(--red-700);
-  --color-surface: var(--brown-300);
-  --color-border: var(--brown-300);
-  --color-surface-elevated: var(--cream-100);
+
+  /* Focus */
+  --color-focus: var(--blue-700);
+
+  /* Global */
   font-family: "Nunito Variable", system-ui, sans-serif;
   color: var(--color-text);
   background: var(--color-background);
 }
 
+/*
+ * Semantic colors — Dark theme
+ * Deep brown foundations with warm,
+ * understated surfaces and highlights.
+ */
 :root[data-theme="dark"] {
   color-scheme: dark;
+
+  /* Backgrounds */
   --color-background: var(--brown-900);
+  --color-surface: var(--brown-800);
+  --color-surface-elevated: var(--brown-700);
+
+  /* Typography */
   --color-text: var(--cream-200);
+  --color-text-muted: var(--cream-300);
+
+  /* Brand */
   --color-accent: var(--brown-300);
+  --color-accent-hover: var(--cream-300);
+
+  /* Borders */
+  --color-border: var(--brown-600);
+  --color-border-strong: var(--brown-500);
+
+  /* Buttons */
+  --color-primary-button: var(--brown-300);
+  --color-primary-button-hover: var(--cream-300);
+  --color-primary-button-text: var(--brown-900);
+
+  /* Status */
   --color-success: var(--green-300);
   --color-info: var(--blue-300);
   --color-warning: var(--amber-300);
   --color-danger: var(--red-300);
-  --color-surface: var(--brown-500);
-  --color-border: var(--brown-500);
-  --color-surface-elevated: var(--brown-800);
+
+  /* Focus */
+  --color-focus: var(--blue-300);
 }
 
 * {
@@ -85,7 +156,7 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-focus);
   outline-offset: 4px;
 }
 
