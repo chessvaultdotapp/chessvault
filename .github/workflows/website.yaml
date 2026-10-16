@@ -41,12 +41,18 @@ jobs:
 
       - name: Check formatting
         working-directory: website
-        run: pnpm exec oxfmt --check src astro.config.mjs
+        run: pnpm exec oxfmt --check src astro.config.mjs playwright.config.ts tests
 
       - name: Lint
         working-directory: website
-        run: pnpm exec oxlint --deny-warnings src astro.config.mjs
+        run: pnpm exec oxlint --deny-warnings src astro.config.mjs playwright.config.ts tests
 
       - name: Check Astro diagnostics and types
         working-directory: website
         run: pnpm exec astro check
+
+      - name: Install Chromium for smoke tests
+        run: pnpm --filter website exec playwright install --with-deps chromium
+
+      - name: Test production website
+        run: pnpm --filter website test:e2e
