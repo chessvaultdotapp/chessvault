@@ -32,6 +32,11 @@ pub struct Position {
 }
 
 impl Position {
+    /// Half-moves since the last pawn move or capture, saturating at 255.
+    pub fn halfmove_clock(&self) -> u8 {
+        self.halfmove_count
+    }
+
     /// The fullmove number (one at the standard starting position).
     pub fn fullmove_number(&self) -> u32 {
         self.fullmove_count
@@ -129,6 +134,121 @@ impl Position {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{DrawReason, Game, GameStatus, Move};
+
+    #[test]
+    fn move_count_draw_thresholds_and_intended_claims() {
+        for clock in [98, 99, 100, 149, 150] {
+            let mut position = Position::standard();
+            position.halfmove_count = clock;
+            let mut game = Game::new(position);
+            let mv = Move {
+                from: Square::G1,
+                to: Square::F3,
+                promotion: None,
+            };
+            assert_eq!(game.can_claim_draw(), (100..150).contains(&clock));
+            assert_eq!(game.can_claim_draw_with_move(mv), (99..150).contains(&clock));
+            if clock == 150 {
+                assert_eq!(game.status(), GameStatus::Draw(DrawReason::SeventyFiveMoveRule));
+                assert!(!game.play(mv));
+            } else if clock >= 99 {
+                assert!(game.claim_draw_with_move(mv));
+                assert_eq!(game.status(), GameStatus::Draw(DrawReason::FiftyMoveRule(Side::White)));
+                assert!(game.moves().is_empty());
+                assert_eq!(game.position().halfmove_clock(), clock);
+            }
+        }
+    }
+
+    #[test]
+    fn pawn_moves_reset_clock_and_quiet_moves_trigger_automatic_draw() {
+        for (from, to, expected) in [(Square::E2, Square::E4, 0), (Square::G1, Square::F3, 150)] {
+            let mut position = Position::standard();
+            position.halfmove_count = 149;
+            let mut game = Game::new(position);
+            let mv = Move {
+                from,
+                to,
+                promotion: None,
+            };
+            assert_eq!(game.can_claim_draw_with_move(mv), expected != 0);
+            assert!(game.play(mv));
+            assert_eq!(game.position().halfmove_clock(), expected);
+            assert_eq!(
+                game.status(),
+                if expected == 150 {
+                    GameStatus::Draw(DrawReason::SeventyFiveMoveRule)
+                } else {
+                    GameStatus::Ongoing
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn capture_resets_clock_and_invalid_moves_preserve_it() {
+        let mut position = Position::standard();
+        for (from, to) in [(Square::E2, Square::E4), (Square::D7, Square::D5)] {
+            assert!(position.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        position.halfmove_count = 99;
+        let mut game = Game::new(position);
+        let invalid = Move {
+            from: Square::E4,
+            to: Square::E6,
+            promotion: None,
+        };
+        assert!(!game.claim_draw_with_move(invalid));
+        assert!(!game.play(invalid));
+        assert_eq!(game.position().halfmove_clock(), 99);
+        let capture = Move {
+            from: Square::E4,
+            to: Square::D5,
+            promotion: None,
+        };
+        assert!(!game.can_claim_draw_with_move(capture));
+        assert!(game.play(capture));
+        assert_eq!(game.position().halfmove_clock(), 0);
+        assert!(!game.can_claim_draw());
+    }
+
+    #[test]
+    fn current_fifty_move_claim_and_checkmate_precedence() {
+        let mut position = Position::standard();
+        position.halfmove_count = 100;
+        let mut game = Game::new(position);
+        assert!(game.claim_draw());
+        assert_eq!(game.status(), GameStatus::Draw(DrawReason::FiftyMoveRule(Side::White)));
+
+        let mut position = Position::standard();
+        for (from, to) in [
+            (Square::F2, Square::F3),
+            (Square::E7, Square::E5),
+            (Square::G2, Square::G4),
+        ] {
+            assert!(position.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        position.halfmove_count = 149;
+        let mut game = Game::new(position);
+        assert!(game.play(Move {
+            from: Square::D8,
+            to: Square::H4,
+            promotion: None
+        }));
+        assert_eq!(game.position().halfmove_clock(), 150);
+        assert_eq!(game.status(), GameStatus::Checkmate(Side::White));
+        assert!(!game.claim_draw());
+    }
+
     use crate::piece::Piece;
     use rstest::{fixture, rstest};
 
