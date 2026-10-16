@@ -1,9 +1,13 @@
-use chess_core::{GameStatus, Side};
+use chess_core::{DrawReason, GameStatus, Side};
 
 pub fn label(status: GameStatus) -> &'static str {
     match status {
         GameStatus::Ongoing => "",
-        GameStatus::Draw => "Draw",
+        GameStatus::Draw(DrawReason::Stalemate) => "Draw - Stalemate",
+        GameStatus::Draw(DrawReason::FivefoldRepetition) => "Draw - Fivefold repetition",
+        GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::White)) => "White claimed a draw - Threefold repetition",
+        GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Black)) => "Black claimed a draw - Threefold repetition",
+        GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Empty)) => "",
         GameStatus::Checkmate(Side::White) => "Black wins - Checkmate",
         GameStatus::Checkmate(Side::Black) => "White wins - Checkmate",
         GameStatus::Checkmate(Side::Empty) => "",
@@ -21,7 +25,19 @@ mod tests {
     fn result_labels() {
         for (status, expected) in [
             (GameStatus::Ongoing, ""),
-            (GameStatus::Draw, "Draw"),
+            (GameStatus::Draw(DrawReason::Stalemate), "Draw - Stalemate"),
+            (
+                GameStatus::Draw(DrawReason::FivefoldRepetition),
+                "Draw - Fivefold repetition",
+            ),
+            (
+                GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::White)),
+                "White claimed a draw - Threefold repetition",
+            ),
+            (
+                GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Black)),
+                "Black claimed a draw - Threefold repetition",
+            ),
             (GameStatus::Checkmate(Side::White), "Black wins - Checkmate"),
             (GameStatus::Checkmate(Side::Black), "White wins - Checkmate"),
             (GameStatus::Checkmate(Side::Empty), ""),

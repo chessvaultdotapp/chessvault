@@ -1,17 +1,25 @@
 use crate::{Move, Position, PositionStatus, Side, position::repetition::RepetitionKey};
 
+/// The rule that ended a game in a draw.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DrawReason {
+    Stalemate,
+    /// Threefold repetition claimed by the associated player.
+    ThreefoldRepetition(Side),
+    FivefoldRepetition,
+}
+
 /// Game outcome, including results that cannot be inferred from the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GameStatus {
     Ongoing,
-    /// Currently detected only for stalemate; other draw rules are not adjudicated.
-    Draw,
+    Draw(DrawReason),
     /// The associated side is the checkmated player, not the winner.
     Checkmate(Side),
     Resigned(Side),
 }
 
-/// A current position, played moves, and game-level resignation state.
+/// A current position, played moves, repetition history, and recorded results.
 pub struct Game {
     initial_position: Position,
     position: Position,
@@ -19,10 +27,11 @@ pub struct Game {
     // Includes the initial position; always one entry longer than `moves`.
     position_keys: Vec<RepetitionKey>,
     resigned: Option<Side>,
+    claimed_draw: Option<Side>,
 }
 
 impl Game {
-    /// Starts a game from a position without a resignation result.
+    /// Starts a game from a position with no recorded resignation or draw claim.
     pub fn new(position: Position) -> Self {
         Self {
             position_keys: vec![position.repetition_key()],
@@ -30,6 +39,7 @@ impl Game {
             position,
             moves: Vec::new(),
             resigned: None,
+            claimed_draw: None,
         }
     }
 
@@ -61,6 +71,43 @@ impl Game {
         self.position_keys.iter().filter(|key| *key == current).count()
     }
 
+    /// Whether the side to move can claim threefold repetition now.
+    pub fn can_claim_draw(&self) -> bool {
+        self.status() == GameStatus::Ongoing && self.repetition_count() >= 3
+    }
+
+    /// Claims threefold repetition for the side to move, without playing a move.
+    pub fn claim_draw(&mut self) -> bool {
+        if !self.can_claim_draw() {
+            return false;
+        }
+        self.claimed_draw = Some(self.position.side_to_move());
+        true
+    }
+
+    /// Whether an intended legal move would permit a threefold repetition claim.
+    /// Neither the move nor its resulting position is recorded.
+    pub fn can_claim_draw_with_move(&self, mv: Move) -> bool {
+        if self.status() != GameStatus::Ongoing {
+            return false;
+        }
+        let mut next = self.position.clone();
+        if !next.play(mv) {
+            return false;
+        }
+        let key = next.repetition_key();
+        self.position_keys.iter().filter(|&&previous| previous == key).count() >= 2
+    }
+
+    /// Claims based on an intended move, leaving the board and history unchanged.
+    pub fn claim_draw_with_move(&mut self, mv: Move) -> bool {
+        if !self.can_claim_draw_with_move(mv) {
+            return false;
+        }
+        self.claimed_draw = Some(self.position.side_to_move());
+        true
+    }
+
     /// Plays and records a legal move. Finished games reject further moves.
     pub fn play(&mut self, mv: Move) -> bool {
         if self.status() != GameStatus::Ongoing || !self.position.play(mv) {
@@ -80,15 +127,19 @@ impl Game {
         true
     }
 
-    /// Derives the outcome from the current position unless a player resigned.
+    /// Derives the outcome from the position and repetition history, or a recorded result.
     pub fn status(&self) -> GameStatus {
         if let Some(side) = self.resigned {
             return GameStatus::Resigned(side);
         }
+        if let Some(side) = self.claimed_draw {
+            return GameStatus::Draw(DrawReason::ThreefoldRepetition(side));
+        }
         match self.position.status() {
-            PositionStatus::Ongoing => GameStatus::Ongoing,
             PositionStatus::Checkmate => GameStatus::Checkmate(self.position.side_to_move()),
-            PositionStatus::Stalemate => GameStatus::Draw,
+            PositionStatus::Stalemate => GameStatus::Draw(DrawReason::Stalemate),
+            PositionStatus::Ongoing if self.repetition_count() >= 5 => GameStatus::Draw(DrawReason::FivefoldRepetition),
+            PositionStatus::Ongoing => GameStatus::Ongoing,
         }
     }
 }
@@ -100,6 +151,120 @@ mod tests {
         Move,
         Square::{D8, E5, E7, F2, F3, G2, G4, H4},
     };
+
+    fn shuffle(game: &mut Game) {
+        use crate::Square::{F3, F6, G1, G8};
+        for (from, to) in [(G1, F3), (G8, F6), (F3, G1), (F6, G8)] {
+            assert!(game.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+    }
+
+    #[test]
+    fn threefold_and_fourfold_require_a_claim() {
+        for cycles in [2, 3] {
+            for black_to_move in [false, true] {
+                let mut game = Game::new(Position::standard());
+                if black_to_move {
+                    assert!(game.play(Move {
+                        from: crate::Square::A2,
+                        to: crate::Square::A3,
+                        promotion: None
+                    }));
+                }
+                assert!(!game.can_claim_draw());
+                assert!(!game.claim_draw());
+                // Use the same cycle shifted by one ply for Black's turn.
+                use crate::Square::{F3, F6, G1, G8};
+                let cycle = if black_to_move {
+                    [(G8, F6), (G1, F3), (F6, G8), (F3, G1)]
+                } else {
+                    [(G1, F3), (G8, F6), (F3, G1), (F6, G8)]
+                };
+                for _ in 0..cycles {
+                    for (from, to) in cycle {
+                        assert!(game.play(Move {
+                            from,
+                            to,
+                            promotion: None
+                        }));
+                    }
+                }
+                assert_eq!(game.status(), GameStatus::Ongoing);
+                assert!(game.can_claim_draw());
+                let side = game.position().side_to_move();
+                let before = game.position().clone();
+                let moves = game.moves().to_vec();
+                assert!(game.claim_draw());
+                assert_eq!(game.status(), GameStatus::Draw(DrawReason::ThreefoldRepetition(side)));
+                assert_eq!(game.position(), &before);
+                assert_eq!(game.moves(), moves);
+                assert!(!game.can_claim_draw());
+                assert!(!game.claim_draw());
+                assert!(!game.resign(side));
+                assert!(!game.play(Move {
+                    from: cycle[0].0,
+                    to: cycle[0].1,
+                    promotion: None
+                }));
+            }
+        }
+    }
+
+    #[test]
+    fn fifth_occurrence_is_automatic() {
+        let mut game = Game::new(Position::standard());
+        for _ in 0..4 {
+            shuffle(&mut game);
+        }
+        assert_eq!(game.repetition_count(), 5);
+        assert_eq!(game.status(), GameStatus::Draw(DrawReason::FivefoldRepetition));
+        assert!(!game.claim_draw());
+        assert!(!game.resign(Side::White));
+        assert!(!game.play(Move {
+            from: crate::Square::E2,
+            to: crate::Square::E4,
+            promotion: None
+        }));
+    }
+
+    #[test]
+    fn intended_move_claim_does_not_play_the_move() {
+        use crate::Square::{F3, F6, G1, G8};
+        let mut game = Game::new(Position::standard());
+        let intended = Move {
+            from: F6,
+            to: G8,
+            promotion: None,
+        };
+        assert!(!game.can_claim_draw_with_move(intended));
+        assert!(!game.claim_draw_with_move(intended));
+        shuffle(&mut game);
+        for (from, to) in [(G1, F3), (G8, F6), (F3, G1)] {
+            assert!(game.play(Move {
+                from,
+                to,
+                promotion: None
+            }));
+        }
+        assert!(!game.can_claim_draw());
+        let before = game.position().clone();
+        let keys = game.position_keys.clone();
+        let moves = game.moves().to_vec();
+        assert!(game.can_claim_draw_with_move(intended));
+        assert!(game.claim_draw_with_move(intended));
+        assert_eq!(
+            game.status(),
+            GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Black))
+        );
+        assert_eq!(game.position(), &before);
+        assert_eq!(game.position_keys, keys);
+        assert_eq!(game.moves(), moves);
+        assert!(!game.claim_draw_with_move(intended));
+    }
 
     #[test]
     fn repetition_tracks_only_played_positions() {
