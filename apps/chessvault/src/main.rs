@@ -215,6 +215,67 @@ mod draw_tests {
         assert_eq!(app.history.status(&app.game), GameStatus::Ongoing);
     }
 
+    #[test]
+    fn offers_can_be_accepted_declined_and_reset() {
+        let mut app = ready();
+        app.reset_game();
+        let _ = app.update(Message::OfferDraw(Side::White));
+        assert_eq!(app.game.draw_offer(), Some(Side::White));
+        let _ = app.update(Message::DeclineDraw(Side::Black));
+        assert_eq!(app.game.draw_offer(), None);
+        let _ = app.update(Message::OfferDraw(Side::White));
+        let _ = app.update(Message::SelectSquare(Square::E2));
+        let _ = app.update(Message::SelectSquare(Square::E4));
+        assert_eq!(app.game.draw_offer(), Some(Side::White));
+        let position = app.game.position().clone();
+        let _ = app.update(Message::AcceptDraw(Side::Black));
+        assert_eq!(app.game.status(), GameStatus::Draw(DrawReason::Agreement));
+        assert_eq!(app.game.position(), &position);
+        assert_eq!(app.game.moves().len(), 1);
+        assert_eq!(app.selected_square, None);
+        let _ = app.update(Message::Navigate(Navigation::First));
+        assert_eq!(app.history.status(&app.game), GameStatus::Ongoing);
+        let _ = app.update(Message::NewGame);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        assert_eq!(app.game.draw_offer(), None);
+        assert!(app.game.moves().is_empty());
+
+        let _ = app.update(Message::OfferDraw(Side::White));
+        let _ = app.update(Message::AcceptDraw(Side::Black));
+        assert_eq!(app.game.status(), GameStatus::Draw(DrawReason::Agreement));
+        let _ = app.update(Message::NewGame);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+    }
+
+    #[test]
+    fn offer_actions_are_blocked_during_review_and_modals() {
+        for guard in 0..4 {
+            let mut app = ready();
+            assert!(app.game.offer_draw(Side::White));
+            match guard {
+                0 => {
+                    let _ = app.update(Message::Navigate(Navigation::First));
+                }
+                1 => app.console_open = true,
+                2 => {
+                    app.pending_promotion = Some(Move {
+                        from: Square::A7,
+                        to: Square::A8,
+                        promotion: Some(Piece::Queen),
+                    })
+                }
+                _ => app.confirm_new_game = true,
+            }
+            let _ = app.update(Message::AcceptDraw(Side::Black));
+            let _ = app.update(Message::DeclineDraw(Side::Black));
+            assert_eq!(app.game.draw_offer(), Some(Side::White));
+            assert_eq!(app.game.status(), GameStatus::Ongoing);
+            assert!(app.game.decline_draw(Side::Black));
+            let _ = app.update(Message::OfferDraw(Side::White));
+            assert_eq!(app.game.draw_offer(), None);
+        }
+    }
+
     fn intended_claim_ready() -> (ChessVault, Move) {
         let mut app = ready();
         app.game = Game::new(Position::standard());
@@ -618,6 +679,9 @@ enum Message {
     Resign(Side),
     ClaimDraw,
     ClaimDrawWithMove(Move),
+    OfferDraw(Side),
+    AcceptDraw(Side),
+    DeclineDraw(Side),
     ToggleConsole,
     ClearLogs,
     RefreshLogs,
@@ -670,6 +734,9 @@ impl ChessVault {
                     | Message::Resign(_)
                     | Message::ClaimDraw
                     | Message::ClaimDrawWithMove(_)
+                    | Message::OfferDraw(_)
+                    | Message::AcceptDraw(_)
+                    | Message::DeclineDraw(_)
             )
         {
             return Task::none();
@@ -730,6 +797,21 @@ impl ChessVault {
                 } else {
                     // Keep the pawn selected so another destination can be chosen.
                     self.pending_promotion = None;
+                }
+            }
+            Message::OfferDraw(side) => {
+                if self.draw_actions_enabled() {
+                    self.game.offer_draw(side);
+                }
+            }
+            Message::AcceptDraw(side) => {
+                if self.draw_actions_enabled() && self.game.accept_draw(side) {
+                    self.selected_square = None;
+                }
+            }
+            Message::DeclineDraw(side) => {
+                if self.draw_actions_enabled() {
+                    self.game.decline_draw(side);
                 }
             }
             Message::ClaimDraw => {
@@ -799,6 +881,14 @@ impl ChessVault {
             return self.history.scroll_to_current(&self.game);
         }
         Task::none()
+    }
+
+    fn draw_actions_enabled(&self) -> bool {
+        !self.history.is_reviewing()
+            && !self.console_open
+            && self.pending_promotion.is_none()
+            && !self.confirm_new_game
+            && self.game.status() == GameStatus::Ongoing
     }
 
     fn reset_game(&mut self) {
@@ -886,7 +976,10 @@ impl ChessVault {
 
         let controls = column![
             button("New game")
-                .on_press_maybe((!self.game.moves().is_empty()).then_some(Message::NewGame))
+                .on_press_maybe(
+                    (!self.game.moves().is_empty() || self.game.status() != GameStatus::Ongoing)
+                        .then_some(Message::NewGame),
+                )
                 .width(Fill)
         ]
         .spacing(12)
@@ -901,6 +994,41 @@ impl ChessVault {
             controls
         };
         let mut controls = controls;
+        if ongoing {
+            let enabled = self.draw_actions_enabled();
+            if let Some(offering) = self.game.draw_offer() {
+                let (label, responding) = if offering == Side::White {
+                    ("White offers a draw", Side::Black)
+                } else {
+                    ("Black offers a draw", Side::White)
+                };
+                let player = if responding == Side::White { "White" } else { "Black" };
+                controls = controls.push(
+                    column![
+                        text(label),
+                        row![
+                            button(text(format!("{player} accepts")))
+                                .on_press_maybe(enabled.then_some(Message::AcceptDraw(responding))),
+                            button("Decline").on_press_maybe(enabled.then_some(Message::DeclineDraw(responding))),
+                        ]
+                        .spacing(8),
+                    ]
+                    .spacing(8),
+                );
+            } else {
+                let side = self.game.position().side_to_move();
+                let label = if side == Side::White {
+                    "White offers draw"
+                } else {
+                    "Black offers draw"
+                };
+                controls = controls.push(
+                    button(label)
+                        .on_press_maybe(enabled.then_some(Message::OfferDraw(side)))
+                        .width(Fill),
+                );
+            }
+        }
         if ongoing && !self.game.can_claim_draw() {
             let mut intended_claims = column![].spacing(8);
             let mut has_intended_claim = false;

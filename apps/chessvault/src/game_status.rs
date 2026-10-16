@@ -3,11 +3,13 @@ use chess_core::{DrawReason, GameStatus, Side};
 pub fn label(status: GameStatus) -> &'static str {
     match status {
         GameStatus::Ongoing => "",
+        GameStatus::Draw(DrawReason::Agreement) => "Draw - Agreement",
         GameStatus::Draw(DrawReason::SeventyFiveMoveRule) => "Draw - Seventy-five-move rule",
         GameStatus::Draw(DrawReason::FiftyMoveRule(Side::White)) => "White claimed a draw - Fifty-move rule",
         GameStatus::Draw(DrawReason::FiftyMoveRule(Side::Black)) => "Black claimed a draw - Fifty-move rule",
         GameStatus::Draw(DrawReason::FiftyMoveRule(Side::Empty)) => "",
         GameStatus::Draw(DrawReason::Stalemate) => "Draw - Stalemate",
+        GameStatus::Draw(DrawReason::DeadPosition) => "Draw - Dead position",
         GameStatus::Draw(DrawReason::FivefoldRepetition) => "Draw - Fivefold repetition",
         GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::White)) => "White claimed a draw - Threefold repetition",
         GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::Black)) => "Black claimed a draw - Threefold repetition",
@@ -29,7 +31,9 @@ mod tests {
     fn result_labels() {
         for (status, expected) in [
             (GameStatus::Ongoing, ""),
+            (GameStatus::Draw(DrawReason::Agreement), "Draw - Agreement"),
             (GameStatus::Draw(DrawReason::Stalemate), "Draw - Stalemate"),
+            (GameStatus::Draw(DrawReason::DeadPosition), "Draw - Dead position"),
             (
                 GameStatus::Draw(DrawReason::SeventyFiveMoveRule),
                 "Draw - Seventy-five-move rule",

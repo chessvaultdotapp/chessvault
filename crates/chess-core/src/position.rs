@@ -6,6 +6,7 @@ use crate::{
     square::Square,
 };
 
+mod dead_position;
 pub(crate) mod movegen;
 mod notation;
 pub(crate) mod repetition;

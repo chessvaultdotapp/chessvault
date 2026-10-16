@@ -55,6 +55,7 @@ impl History {
                 PositionStatus::Ongoing => GameStatus::Ongoing,
                 PositionStatus::Checkmate => GameStatus::Checkmate(position.side_to_move()),
                 PositionStatus::Stalemate => GameStatus::Draw(DrawReason::Stalemate),
+                PositionStatus::DeadPosition => GameStatus::Draw(DrawReason::DeadPosition),
             },
         }
     }

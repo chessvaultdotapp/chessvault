@@ -72,7 +72,10 @@
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
   all four promotions. Desktop must apply moves through `Game::play` to retain history and reject finished-game moves.
-- `GameStatus::Checkmate(side)` identifies the loser, not the winner. Draw currently means stalemate only.
+- `GameStatus::Checkmate(side)` identifies the loser, not the winner. Draws include agreement, stalemate, repetition,
+  move-count rules, and conservative dead-material detection. Blocked dead positions with pawns are not yet detected.
+- Draw offers are made by the side to move and survive that player's move. Only the opponent can accept or decline;
+  their next legal move implicitly declines. Invalid moves preserve the offer; any game result clears it.
 
 ## State paths
 
