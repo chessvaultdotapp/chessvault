@@ -164,6 +164,83 @@ mod window_recreate_tests {
 }
 
 #[cfg(test)]
+mod draw_tests {
+    use super::*;
+    use chess_core::DrawReason;
+
+    fn ready() -> ChessVault {
+        let mut app = ChessVault {
+            logs: logs::Logs::default(),
+            console_open: false,
+            log_text: String::new(),
+            log_content: text_editor::Content::new(),
+            sources_open: false,
+            game: Game::new(Position::standard()),
+            history: History::default(),
+            selected_square: Some(Square::E2),
+            pending_promotion: None,
+            confirm_new_game: false,
+        };
+        for _ in 0..2 {
+            for (from, to) in [
+                (Square::G1, Square::F3),
+                (Square::G8, Square::F6),
+                (Square::F3, Square::G1),
+                (Square::F6, Square::G8),
+            ] {
+                assert!(app.game.play(Move {
+                    from,
+                    to,
+                    promotion: None
+                }));
+            }
+        }
+        app.history.sync(&app.game);
+        app
+    }
+
+    #[test]
+    fn claim_ends_play_and_clears_selection() {
+        let mut app = ready();
+        let _ = app.update(Message::ClaimDraw);
+        assert_eq!(
+            app.game.status(),
+            GameStatus::Draw(DrawReason::ThreefoldRepetition(Side::White))
+        );
+        assert_eq!(app.selected_square, None);
+        let _ = app.update(Message::SelectSquare(Square::E2));
+        let _ = app.update(Message::SelectSquare(Square::E4));
+        assert_eq!(app.game.moves().len(), 8);
+        let _ = app.update(Message::Navigate(history::Navigation::First));
+        assert_eq!(app.history.status(&app.game), GameStatus::Ongoing);
+    }
+
+    #[test]
+    fn claims_are_blocked_during_review_and_modal_interactions() {
+        let mut app = ready();
+        let _ = app.update(Message::Navigate(history::Navigation::First));
+        let _ = app.update(Message::ClaimDraw);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        let _ = app.update(Message::Navigate(history::Navigation::Latest));
+        app.console_open = true;
+        let _ = app.update(Message::ClaimDraw);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        app.console_open = false;
+        app.pending_promotion = Some(Move {
+            from: Square::A7,
+            to: Square::A8,
+            promotion: None,
+        });
+        let _ = app.update(Message::ClaimDraw);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+        app.pending_promotion = None;
+        app.confirm_new_game = true;
+        let _ = app.update(Message::ClaimDraw);
+        assert_eq!(app.game.status(), GameStatus::Ongoing);
+    }
+}
+
+#[cfg(test)]
 mod resignation_tests {
     use super::*;
 
@@ -472,6 +549,7 @@ enum Message {
     Promote(Piece),
     CancelPromotion,
     Resign(Side),
+    ClaimDraw,
     ToggleConsole,
     ClearLogs,
     RefreshLogs,
@@ -518,7 +596,11 @@ impl ChessVault {
         if self.confirm_new_game
             && matches!(
                 message,
-                Message::Navigate(_) | Message::SelectSquare(_) | Message::Promote(_) | Message::Resign(_)
+                Message::Navigate(_)
+                    | Message::SelectSquare(_)
+                    | Message::Promote(_)
+                    | Message::Resign(_)
+                    | Message::ClaimDraw
             )
         {
             return Task::none();
@@ -579,6 +661,15 @@ impl ChessVault {
                 } else {
                     // Keep the pawn selected so another destination can be chosen.
                     self.pending_promotion = None;
+                }
+            }
+            Message::ClaimDraw => {
+                if !self.history.is_reviewing()
+                    && !self.console_open
+                    && self.pending_promotion.is_none()
+                    && self.game.claim_draw()
+                {
+                    self.selected_square = None;
                 }
             }
             Message::Resign(side) => {
@@ -722,6 +813,15 @@ impl ChessVault {
         ]
         .spacing(12)
         .height(Fill);
+        let controls = if !self.history.is_reviewing() && self.game.can_claim_draw() {
+            controls.push(
+                button("Claim draw")
+                    .on_press_maybe(navigation_enabled.then_some(Message::ClaimDraw))
+                    .width(Fill),
+            )
+        } else {
+            controls
+        };
         let controls = controls.extend([
             button("Black resigns")
                 .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))

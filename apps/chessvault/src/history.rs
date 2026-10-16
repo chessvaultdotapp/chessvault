@@ -1,4 +1,4 @@
-use chess_core::{Game, GameStatus, Position, PositionStatus, Side};
+use chess_core::{DrawReason, Game, GameStatus, Position, PositionStatus, Side};
 use iced::{
     Element, Fill, Task,
     keyboard::key::Named,
@@ -54,7 +54,7 @@ impl History {
             Some((_, position)) => match position.status() {
                 PositionStatus::Ongoing => GameStatus::Ongoing,
                 PositionStatus::Checkmate => GameStatus::Checkmate(position.side_to_move()),
-                PositionStatus::Stalemate => GameStatus::Draw,
+                PositionStatus::Stalemate => GameStatus::Draw(DrawReason::Stalemate),
             },
         }
     }

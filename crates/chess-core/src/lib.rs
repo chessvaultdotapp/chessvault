@@ -14,7 +14,7 @@ mod position;
 mod side;
 mod square;
 
-pub use game::{Game, GameStatus};
+pub use game::{DrawReason, Game, GameStatus};
 pub use piece::Piece;
 pub use position::{
     Position,
