@@ -69,14 +69,13 @@ impl History {
             .position_at(self.labels.len())
             .expect("history belongs to this game");
         for &mv in &game.moves()[self.labels.len()..] {
-            let number = position.fullmove_number();
-            let dots = if position.side_to_move() == Side::White {
-                "."
-            } else {
-                "..."
-            };
             let san = position.san(mv).expect("recorded move is legal");
-            self.labels.push(format!("{number}{dots} {san}"));
+            let label = if position.side_to_move() == Side::White {
+                format!("{}. {san}", position.fullmove_number())
+            } else {
+                san
+            };
+            self.labels.push(label);
             assert!(position.play(mv));
         }
     }
@@ -215,7 +214,7 @@ mod tests {
         assert!(game.resign(Side::Black));
         history.sync(&game);
         history.sync(&game);
-        assert_eq!(history.labels, ["1. e4", "1... e5", "2. Nf3"]);
+        assert_eq!(history.labels, ["1. e4", "e5", "2. Nf3"]);
         let live = game.position().clone();
         for (action, expected) in [
             (Navigation::Previous, 2),
