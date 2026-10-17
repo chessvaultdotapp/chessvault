@@ -69,14 +69,13 @@ impl History {
             .position_at(self.labels.len())
             .expect("history belongs to this game");
         for &mv in &game.moves()[self.labels.len()..] {
-            let number = position.fullmove_number();
-            let dots = if position.side_to_move() == Side::White {
-                "."
-            } else {
-                "..."
-            };
             let san = position.san(mv).expect("recorded move is legal");
-            self.labels.push(format!("{number}{dots} {san}"));
+            let label = if position.side_to_move() == Side::White {
+                format!("{}. {san}", position.fullmove_number())
+            } else {
+                san
+            };
+            self.labels.push(label);
             assert!(position.play(mv));
         }
     }
@@ -129,7 +128,7 @@ impl History {
         let caption = if self.is_reviewing() {
             format!("Reviewing {ply}/{latest} — read-only")
         } else {
-            format!("Latest position · {latest} moves played")
+            String::new()
         };
         // Reserve the return-action row so the move list stays still during review.
         let return_action: Element<'_, Message> = if self.is_reviewing() {
@@ -139,7 +138,8 @@ impl History {
         };
         column![
             buttons,
-            text(caption).size(14),
+            // Keep the status row stable between live and review modes.
+            iced::widget::container(text(caption).size(14)).height(20),
             iced::widget::container(return_action).height(32),
         ]
         .spacing(6)
@@ -214,7 +214,7 @@ mod tests {
         assert!(game.resign(Side::Black));
         history.sync(&game);
         history.sync(&game);
-        assert_eq!(history.labels, ["1. e4", "1... e5", "2. Nf3"]);
+        assert_eq!(history.labels, ["1. e4", "e5", "2. Nf3"]);
         let live = game.position().clone();
         for (action, expected) in [
             (Navigation::Previous, 2),
