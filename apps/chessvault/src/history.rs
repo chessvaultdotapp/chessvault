@@ -129,7 +129,7 @@ impl History {
         let caption = if self.is_reviewing() {
             format!("Reviewing {ply}/{latest} — read-only")
         } else {
-            format!("Latest position · {latest} moves played")
+            String::new()
         };
         // Reserve the return-action row so the move list stays still during review.
         let return_action: Element<'_, Message> = if self.is_reviewing() {
@@ -139,7 +139,8 @@ impl History {
         };
         column![
             buttons,
-            text(caption).size(14),
+            // Keep the status row stable between live and review modes.
+            iced::widget::container(text(caption).size(14)).height(20),
             iced::widget::container(return_action).height(32),
         ]
         .spacing(6)
