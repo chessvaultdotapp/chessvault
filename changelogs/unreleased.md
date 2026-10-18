@@ -2,6 +2,9 @@
 
 ## Added
 
+- Added a **Save PGN** button alongside the finished-game result. Save the complete game to a `.pgn` file as
+  move numbers, SAN moves, and the final result, without headers, comments, or variations.
+
 - Added a **Claim draw** button for threefold repetition and the fifty-move rule. Qualifying intended moves also
   appear as draw-claim buttons, allowing a claim before playing the move without changing the board or move history.
   The fifty-move clock resets after any pawn move or capture.
