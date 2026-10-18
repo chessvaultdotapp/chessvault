@@ -92,6 +92,10 @@ def test_cli_overwrite_and_preview(
     with pytest.raises(SystemExit) as error:
         module.main()
     assert error.value.code == 1
+    message = capsys.readouterr().err
+    assert f"{path} already exists" in message
+    assert "use --stdout to preview without overwriting it" in message
+    assert "[Errno 17]" not in message
     assert path.read_bytes() == original
     monkeypatch.setattr("sys.argv", ["changelog-tool", "--stdout"])
     module.main()

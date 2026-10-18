@@ -107,8 +107,15 @@ def main() -> None:
         else:
             destination = ROOT / "changelogs" / "unreleased.md"
             destination.parent.mkdir(parents=True, exist_ok=True)
-            with destination.open("x", encoding="utf-8") as output:
-                output.write(text)
+            try:
+                with destination.open("x", encoding="utf-8") as output:
+                    output.write(text)
+            except FileExistsError:
+                parser.exit(
+                    1,
+                    f"error: {destination} already exists; "
+                    "use --stdout to preview without overwriting it.\n",
+                )
             print(f"Wrote {destination}; review and commit before running tag-tool.")
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"error: {error}\n")
