@@ -28,14 +28,17 @@ Development tags must end in build metadata like `26w40a` or `26w40aa`; earlier 
 such as `v1.2.3+build.01.26w40aa` is supported. Tags outside the selected ancestry are excluded.
 The range excludes every ancestor of the base, including the base itself.
 Sources are ordered oldest-first by reversed Git topological traversal, with tags on the same commit
-sorted by name. Each source file is read from its tagged commit, never from the working tree.
+sorted by name. Each historical source file is read from its tagged commit, never from the working tree.
 Missing files produce warnings and a note in the draft; other available sources are still included.
 
 ## Review and tag
 
-The draft includes empty Added, Fixed, Changed, and Breaking changes categories followed by
-source-tag sections. Move entries into the appropriate categories, manually deduplicate them,
-remove superseded details, and retain useful source-tag references. No semantic rewriting is attempted.
+The generated review starts with the current working-tree `changelogs/unreleased.md`, including uncommitted edits,
+then appends historical source-tag sections. The maintained file is never modified. This current-file inclusion
+also applies when `--revision` selects an older commit; that option only bounds the historical sources.
+If no unreleased changelog exists, empty Added, Fixed, Changed, and Breaking changes categories are provided instead.
+Move source entries into the appropriate categories, manually deduplicate them, remove superseded details,
+and retain useful source-tag references. No semantic rewriting is attempted.
 
 Commit the maintained `changelogs/unreleased.md` after incorporating any useful generated entries,
 then run the [tag tool](tag-tool.md):

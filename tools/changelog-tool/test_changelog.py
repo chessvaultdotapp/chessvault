@@ -80,6 +80,25 @@ def test_explicit_base_and_revision(repo: Path) -> None:
     assert "later entry" not in module.draft(repo, revision="v0.2.0")[0]
 
 
+def test_preserves_working_tree_unreleased(repo: Path) -> None:
+    release(repo, "v0.1.0+26w01a", "historical entry")
+    path = repo / "changelogs" / "unreleased.md"
+    path.write_text("# Unreleased\n\n## Added\n\nCommitted entry.\n")
+    run(repo, "add", ".")
+    run(repo, "commit", "-m", "maintain unreleased changelog")
+    current = "# Unreleased\n\n## Added\n\nUncommitted entry.\n"
+    path.write_text(current)
+
+    text, missing = module.draft(repo, revision="v0.1.0+26w01a", first_release=True)
+
+    assert not missing
+    assert text.startswith(current)
+    assert "Committed entry." not in text
+    assert text.index("Uncommitted entry.") < text.index("historical entry")
+    assert text.count("# Unreleased\n") == 1
+    assert path.read_text() == current
+
+
 def test_cli_overwrite_and_preview(
     repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -91,13 +110,13 @@ def test_cli_overwrite_and_preview(
     original = path.read_bytes()
     monkeypatch.setattr("sys.argv", ["changelog-tool"])
     module.main()
-    assert "# Unreleased" in capsys.readouterr().out
+    assert capsys.readouterr().out.startswith(original.decode())
     assert path.read_bytes() == original
     destination = repo / "generated" / "sources.md"
     monkeypatch.setattr("sys.argv", ["changelog-tool", "--output", str(destination)])
     module.main()
     generated = destination.read_bytes()
-    assert b"# Unreleased" in generated
+    assert generated.startswith(original)
     with pytest.raises(SystemExit) as error:
         module.main()
     assert error.value.code == 1

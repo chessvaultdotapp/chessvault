@@ -31,7 +31,7 @@ def draft(
     *,
     first_release: bool = False,
 ) -> tuple[str, list[str]]:
-    """Return a draft and missing source tags; never modify the repository."""
+    """Combine the working-tree unreleased changelog and tagged sources without writing."""
     end = git(root, "rev-parse", "--verify", f"{revision}^{{commit}}").strip()
     tags = git(root, "tag", "--merged", end).splitlines()
     commits = {
@@ -71,12 +71,16 @@ def draft(
             body = re.sub(r"\A# [^\n]*(?:\n|$)", "", body).strip()
             body = re.sub(r"(?m)^(#{1,5}) ", r"##\1 ", body)
             sources.append(f"### {tag}\n\n{body}\n")
+    unreleased = root / "changelogs" / "unreleased.md"
+    try:
+        text = unreleased.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        text = "# Unreleased\n\n## Added\n\n## Fixed\n\n## Changed\n\n## Breaking changes\n"
     boundary = base or "repository start (first release)"
-    text = (
-        "# Unreleased\n\n"
+    text += (
+        "\n\n"
         f"<!-- Sources after {boundary} through {end}.\n"
-        "Review, deduplicate, and move entries into the categories below; remove superseded details. -->\n\n"
-        "## Added\n\n## Fixed\n\n## Changed\n\n## Breaking changes\n\n"
+        "Review, deduplicate, and merge entries into the categories above; remove superseded details. -->\n\n"
         "## Source changelogs\n\n" + "\n".join(sources)
     )
     if missing:
