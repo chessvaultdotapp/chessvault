@@ -33,12 +33,15 @@ Missing files produce warnings and a note in the draft; other available sources 
 
 ## Review and tag
 
-The generated review starts with the current working-tree `changelogs/unreleased.md`, including uncommitted edits,
-then appends historical source-tag sections. The maintained file is never modified. This current-file inclusion
+The generated review merges the current working-tree `changelogs/unreleased.md`, including uncommitted edits,
+and historical changelogs into a single changelog. Matching level-two category headings are combined;
+current entries come first within each category, followed by historical entries oldest-first.
+Category order follows first appearance, and custom categories and introductory text are retained.
+There are no per-release sections. The maintained file is never modified. Current-file inclusion
 also applies when `--revision` selects an older commit; that option only bounds the historical sources.
-If no unreleased changelog exists, empty Added, Fixed, Changed, and Breaking changes categories are provided instead.
-Move source entries into the appropriate categories, manually deduplicate them, remove superseded details,
-and retain useful source-tag references. No semantic rewriting is attempted.
+If no categories exist, empty Added, Fixed, Changed, and Breaking changes categories are provided instead.
+Review and manually deduplicate entries and remove superseded details, such as automatic queen promotion
+replaced by a promotion picker. No semantic rewriting is attempted.
 
 Commit the maintained `changelogs/unreleased.md` after incorporating any useful generated entries,
 then run the [tag tool](tag-tool.md):

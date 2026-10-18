@@ -24,6 +24,32 @@ def git(root: Path, *args: str) -> str:
     ).stdout
 
 
+def merge_changelogs(bodies: list[str]) -> str:
+    """Group level-two sections without rewriting entries or dropping unknown sections."""
+    sections: dict[str, list[str]] = {}
+    introductions: list[str] = []
+    for body in bodies:
+        body = re.sub(r"\A# [^\n]*(?:\n|$)", "", body).strip()
+        parts = re.split(r"(?m)^## ([^\n]+)\n?", body)
+        if parts[0].strip():
+            introductions.append(parts[0].strip())
+        for index in range(1, len(parts), 2):
+            heading = parts[index].strip()
+            content = parts[index + 1].strip()
+            sections.setdefault(heading, [])
+            if content:
+                sections[heading].append(content)
+    if not sections:
+        sections = {
+            name: [] for name in ("Added", "Fixed", "Changed", "Breaking changes")
+        }
+    blocks = ["# Unreleased", *introductions]
+    for heading, contents in sections.items():
+        blocks.append(f"## {heading}")
+        blocks.extend(contents)
+    return "\n\n".join(blocks) + "\n"
+
+
 def draft(
     root: Path,
     revision: str = "HEAD",
@@ -68,20 +94,17 @@ def draft(
             except subprocess.CalledProcessError:
                 missing.append(tag)
                 continue
-            body = re.sub(r"\A# [^\n]*(?:\n|$)", "", body).strip()
-            body = re.sub(r"(?m)^(#{1,5}) ", r"##\1 ", body)
-            sources.append(f"### {tag}\n\n{body}\n")
+            sources.append(body)
     unreleased = root / "changelogs" / "unreleased.md"
     try:
-        text = unreleased.read_text(encoding="utf-8")
+        current = unreleased.read_text(encoding="utf-8")
     except FileNotFoundError:
-        text = "# Unreleased\n\n## Added\n\n## Fixed\n\n## Changed\n\n## Breaking changes\n"
+        current = ""
+    text = merge_changelogs([current, *sources])
     boundary = base or "repository start (first release)"
     text += (
-        "\n\n"
-        f"<!-- Sources after {boundary} through {end}.\n"
-        "Review, deduplicate, and merge entries into the categories above; remove superseded details. -->\n\n"
-        "## Source changelogs\n\n" + "\n".join(sources)
+        f"\n<!-- Sources after {boundary} through {end}.\n"
+        "Review, deduplicate, and remove superseded details. -->\n"
     )
     if missing:
         text += "\n<!-- Missing changelogs: " + ", ".join(missing) + " -->\n"

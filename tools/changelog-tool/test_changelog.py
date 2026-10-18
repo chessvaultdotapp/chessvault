@@ -81,7 +81,7 @@ def test_explicit_base_and_revision(repo: Path) -> None:
 
 
 def test_preserves_working_tree_unreleased(repo: Path) -> None:
-    release(repo, "v0.1.0+26w01a", "historical entry")
+    release(repo, "v0.1.0+26w01a", "## Added\n\nhistorical entry")
     path = repo / "changelogs" / "unreleased.md"
     path.write_text("# Unreleased\n\n## Added\n\nCommitted entry.\n")
     run(repo, "add", ".")
@@ -97,6 +97,34 @@ def test_preserves_working_tree_unreleased(repo: Path) -> None:
     assert text.index("Uncommitted entry.") < text.index("historical entry")
     assert text.count("# Unreleased\n") == 1
     assert path.read_text() == current
+
+
+def test_merges_categories_across_releases(repo: Path) -> None:
+    release(
+        repo, "v0.1.0+26w01a", "## Added\n\n- First feature.\n\n## Fixed\n\n- A fix."
+    )
+    release(
+        repo,
+        "v0.1.0+26w01b",
+        "## Added\n\n- Second feature.\n  Continued detail.\n\n## Security\n\n- Hardening.",
+    )
+    current = repo / "changelogs" / "unreleased.md"
+    current.write_text("# Unreleased\n\n## Added\n\n- Current feature.\n")
+
+    text, missing = module.draft(repo, first_release=True)
+
+    assert not missing
+    assert text.count("## Added\n") == 1
+    assert "## Source changelogs" not in text
+    assert "### v0.1.0" not in text
+    assert (
+        text.index("Current feature")
+        < text.index("First feature")
+        < text.index("Second feature")
+    )
+    assert "- Second feature.\n  Continued detail." in text
+    assert "## Fixed\n\n- A fix." in text
+    assert "## Security\n\n- Hardening." in text
 
 
 def test_cli_overwrite_and_preview(
