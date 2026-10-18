@@ -1,0 +1,118 @@
+"""Assemble reviewable release drafts from committed development changelogs."""
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).absolute().parents[2]
+NUMBER = r"(?:0|[1-9][0-9]*)"
+STABLE = re.compile(rf"v{NUMBER}\.{NUMBER}\.{NUMBER}")
+DEV = re.compile(
+    rf"v{NUMBER}\.{NUMBER}\.{NUMBER}"
+    r"(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?"
+    r"\+(?:[0-9A-Za-z-]+\.)*[0-9]{2}w[0-9]{2}[a-z]+"
+)
+
+
+def git(root: Path, *args: str) -> str:
+    """Run read-only Git commands, surfacing failures to the caller."""
+    return subprocess.run(
+        ["git", *args], cwd=root, check=True, capture_output=True, text=True
+    ).stdout
+
+
+def draft(
+    root: Path,
+    revision: str = "HEAD",
+    base: str | None = None,
+    *,
+    first_release: bool = False,
+) -> tuple[str, list[str]]:
+    """Return a draft and missing source tags; never modify the repository."""
+    end = git(root, "rev-parse", "--verify", f"{revision}^{{commit}}").strip()
+    tags = git(root, "tag", "--merged", end).splitlines()
+    commits = {
+        tag: git(root, "rev-parse", "--verify", f"refs/tags/{tag}^{{commit}}").strip()
+        for tag in tags
+        if STABLE.fullmatch(tag) or DEV.fullmatch(tag)
+    }
+    history = git(root, "rev-list", "--topo-order", end).splitlines()
+    if first_release and base:
+        raise ValueError("--first-release and --base cannot be combined")
+    if base is not None:
+        if not STABLE.fullmatch(base) or base not in commits:
+            raise ValueError("base must be a reachable plain stable tag")
+    elif not first_release:
+        # Nearest in topological traversal, not by version or tag date.
+        stable = {commits[tag] for tag in commits if STABLE.fullmatch(tag)}
+        nearest = next((commit for commit in history if commit in stable), None)
+        if nearest is None:
+            raise ValueError("no reachable stable tag; use --first-release explicitly")
+        base = min(
+            tag for tag in commits if STABLE.fullmatch(tag) and commits[tag] == nearest
+        )
+    excluded = set(git(root, "rev-list", commits[base]).splitlines()) if base else set()
+    ordered = [commit for commit in reversed(history) if commit not in excluded]
+    sources: list[str] = []
+    missing: list[str] = []
+    for commit in ordered:
+        for tag in sorted(
+            tag for tag in commits if commits[tag] == commit and DEV.fullmatch(tag)
+        ):
+            path = f"changelogs/{tag}.md"
+            try:
+                body = git(root, "show", f"{commit}:{path}")
+            except subprocess.CalledProcessError:
+                missing.append(tag)
+                continue
+            body = re.sub(r"\A# [^\n]*(?:\n|$)", "", body).strip()
+            body = re.sub(r"(?m)^(#{1,5}) ", r"##\1 ", body)
+            sources.append(f"### {tag}\n\n{body}\n")
+    boundary = base or "repository start (first release)"
+    text = (
+        "# Unreleased\n\n"
+        f"<!-- Sources after {boundary} through {end}.\n"
+        "Review, deduplicate, and move entries into the categories below; remove superseded details. -->\n\n"
+        "## Added\n\n## Fixed\n\n## Changed\n\n## Breaking changes\n\n"
+        "## Source changelogs\n\n" + "\n".join(sources)
+    )
+    if missing:
+        text += "\n<!-- Missing changelogs: " + ", ".join(missing) + " -->\n"
+    return text, missing
+
+
+def main() -> None:
+    """Write a new draft exclusively, or print a preview."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", help="explicit reachable stable tag")
+    parser.add_argument(
+        "--revision", default="HEAD", help="release commit (default: HEAD)"
+    )
+    parser.add_argument(
+        "--first-release", action="store_true", help="collect all reachable history"
+    )
+    parser.add_argument("--stdout", action="store_true", help="preview without writing")
+    args = parser.parse_args()
+    try:
+        text, missing = draft(
+            ROOT, args.revision, args.base, first_release=args.first_release
+        )
+        for tag in missing:
+            print(f"warning: missing changelogs/{tag}.md at its tag", file=sys.stderr)
+        if args.stdout:
+            print(text, end="")
+        else:
+            destination = ROOT / "changelogs" / "unreleased.md"
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("x", encoding="utf-8") as output:
+                output.write(text)
+            print(f"Wrote {destination}; review and commit before running tag-tool.")
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        parser.exit(1, f"error: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

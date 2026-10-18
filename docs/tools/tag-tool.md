@@ -73,6 +73,9 @@ The tool performs these steps in order:
    `[desktop] Release v1.2.3`.
 7. Create `v1.2.3` at the new commit, which contains the release version.
 
+For stable releases, the [changelog tool](changelog-tool.md) can assemble a draft from development-release changelogs.
+Review and edit that draft before committing it; generation is intentionally separate from tagging.
+
 Commit `changelogs/unreleased.md` before running the tool so the working tree is
 clean. The rename and title update apply to both explicit and development releases.
 Other contents and line endings are preserved; files without the opening title are
