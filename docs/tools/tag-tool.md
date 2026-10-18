@@ -99,7 +99,10 @@ be present in the tagged commit. It builds the same Linux x86_64 native archive 
 AppImage as the development workflow described below, then publishes a regular GitHub
 release marked as latest. If present, `changelogs/<tag>.md` is included before generated
 release notes. Existing notes and assets are preserved on reruns; missing assets are uploaded.
-Stable releases are not subject to development-release cleanup.
+After publishing and uploading both assets, the stable workflow deletes all published
+GitHub development prereleases matching the tag-tool development tag format, retaining
+their Git tags. Drafts and unrelated prereleases are preserved. Cleanup also runs on
+successful reruns; stable releases themselves are never deleted by this cleanup.
 
 ## Development release
 
