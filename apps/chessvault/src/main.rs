@@ -17,6 +17,7 @@ mod fs;
 mod game_status;
 mod history;
 mod icon;
+mod pgn;
 
 use history::{History, Navigation};
 mod logs;
@@ -72,6 +73,8 @@ struct ChessVault {
     selected_square: Option<Square>,
     pending_promotion: Option<Move>,
     confirm_new_game: bool,
+    saving_pgn: bool,
+    pgn_error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -180,6 +183,8 @@ mod draw_tests {
             selected_square: Some(Square::E2),
             pending_promotion: None,
             confirm_new_game: false,
+            saving_pgn: false,
+            pgn_error: None,
         };
         for _ in 0..2 {
             for (from, to) in [
@@ -386,6 +391,8 @@ mod resignation_tests {
                 selected_square: Some(Square::E2),
                 pending_promotion: None,
                 confirm_new_game: false,
+                saving_pgn: false,
+                pgn_error: None,
             };
             let _ = app.update(Message::Resign(side));
             assert_eq!(app.game.status(), GameStatus::Resigned(side));
@@ -419,6 +426,8 @@ mod promotion_tests {
             selected_square: None,
             pending_promotion: None,
             confirm_new_game: false,
+            saving_pgn: false,
+            pgn_error: None,
         };
         for (from, to) in [
             (G1, F3),
@@ -528,6 +537,8 @@ mod navigation_tests {
             selected_square: None,
             pending_promotion: None,
             confirm_new_game: false,
+            saving_pgn: false,
+            pgn_error: None,
         }
     }
 
@@ -670,6 +681,8 @@ mod navigation_tests {
 #[derive(Debug, Clone)]
 enum Message {
     NewGame,
+    SavePgn,
+    PgnSaved(Result<(), String>),
     ConfirmNewGame,
     CancelNewGame,
     Navigate(Navigation),
@@ -705,6 +718,8 @@ impl ChessVault {
             selected_square: None,
             pending_promotion: None,
             confirm_new_game: false,
+            saving_pgn: false,
+            pgn_error: None,
         };
 
         if let Err(err) = app.initialize() {
@@ -743,6 +758,37 @@ impl ChessVault {
         }
         let previous_move_count = self.game.moves().len();
         match message {
+            Message::SavePgn => {
+                if self.saving_pgn {
+                    return Task::none();
+                }
+                let Some(pgn) = pgn::export(&self.game) else {
+                    return Task::none();
+                };
+                self.saving_pgn = true;
+                self.pgn_error = None;
+                return Task::perform(
+                    async move {
+                        let Some(file) = rfd::AsyncFileDialog::new()
+                            .add_filter("PGN", &["pgn"])
+                            .set_file_name("game.pgn")
+                            .save_file()
+                            .await
+                        else {
+                            return Ok(());
+                        };
+                        file.write(pgn.as_bytes()).await.map_err(|err| err.to_string())
+                    },
+                    Message::PgnSaved,
+                );
+            }
+            Message::PgnSaved(result) => {
+                self.saving_pgn = false;
+                if let Err(err) = result {
+                    error!(error = %err, "Failed to save PGN");
+                    self.pgn_error = Some(format!("Could not save PGN: {err}"));
+                }
+            }
             Message::NewGame => {
                 if self.game.status() == GameStatus::Ongoing && !self.game.moves().is_empty() {
                     self.confirm_new_game = true;
@@ -897,6 +943,7 @@ impl ChessVault {
         self.selected_square = None;
         self.pending_promotion = None;
         self.confirm_new_game = false;
+        self.pgn_error = None;
     }
 
     fn refresh_logs(&mut self) {
@@ -1044,6 +1091,16 @@ impl ChessVault {
             }
             if has_intended_claim {
                 controls = controls.push(container(scrollable(intended_claims)).max_height(140));
+            }
+        }
+        if self.game.status() != GameStatus::Ongoing && !self.history.is_reviewing() {
+            controls = controls.push(
+                button("Save PGN")
+                    .on_press_maybe((!self.saving_pgn).then_some(Message::SavePgn))
+                    .width(Fill),
+            );
+            if let Some(error) = &self.pgn_error {
+                controls = controls.push(text(error));
             }
         }
         let controls = controls.extend([
