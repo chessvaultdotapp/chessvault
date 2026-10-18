@@ -84,6 +84,23 @@ renamed without content changes. If the file is absent, no changelog is created.
 Choose a version that changes the release files. If there is nothing to commit,
 Git fails and no tag is created.
 
+## Publishing stable releases
+
+After reviewing the explicit release commit and tag, push the stable tag explicitly:
+
+```console
+$ git push origin v1.2.3
+...
+```
+
+The [stable release workflow](../../.github/workflows/stable-release.yml) accepts only
+`vMAJOR.MINOR.PATCH` tags without prerelease identifiers or build metadata. It must
+be present in the tagged commit. It builds the same Linux x86_64 native archive and
+AppImage as the development workflow described below, then publishes a regular GitHub
+release marked as latest. If present, `changelogs/<tag>.md` is included before generated
+release notes. Existing notes and assets are preserved on reruns; missing assets are uploaded.
+Stable releases are not subject to development-release cleanup.
+
 ## Development release
 
 To derive a tag from the current desktop version instead of supplying one:

@@ -1,0 +1,225 @@
+name: Stable release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  identify-tag:
+    name: Identify stable tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      stable: ${{ steps.tag.outputs.stable }}
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Identify stable tag
+        id: tag
+        shell: bash
+        run: |
+          # Only publish stable versions; exclude prereleases and build metadata.
+          pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          if [[ "$TAG" =~ $pattern ]]; then
+            echo 'stable=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build shared Linux binary
+    needs: identify-tag
+    if: needs.identify-tag.outputs.stable == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Build Linux binary
+        shell: bash
+        run: |
+          cargo build -p chessvault --bin chessvault --release --locked \
+            --target x86_64-unknown-linux-gnu --message-format=json > build-messages.jsonl
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          messages = [json.loads(line) for line in pathlib.Path("build-messages.jsonl").read_text().splitlines()]
+          outputs = [pathlib.Path(message["out_dir"]) for message in messages
+                     if message["reason"] == "build-script-executed"
+                     and pathlib.Path(message["out_dir"], "chessvault.png").is_file()]
+          if len(outputs) != 1:
+              raise SystemExit(f"Expected one generated ChessVault icon, found {len(outputs)}")
+          shutil.copyfile(outputs[0] / "chessvault.png",
+                          "target/x86_64-unknown-linux-gnu/release/chessvault.png")
+          PY
+
+      - name: Store shared binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shared-linux-binary
+          path: |
+            target/x86_64-unknown-linux-gnu/release/chessvault
+            target/x86_64-unknown-linux-gnu/release/chessvault.png
+          if-no-files-found: error
+          retention-days: 7
+
+  package-native:
+    name: Package native Linux binary
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download shared binary
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: shared-linux-binary
+          path: binary
+
+      - name: Package Linux binary
+        shell: bash
+        run: |
+          python3 tools/dist-prepare/main.py binary/chessvault --output dist/package
+          tar -czf "dist/chessvault-${TAG}-linux-x86_64.tar.gz" \
+            -C dist/package bin install-linux.sh share
+
+      - name: Store native binary artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: stable-native-linux-x86_64
+          path: dist/chessvault-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  package-appimage:
+    name: Package Linux AppImage
+    needs: build
+    # Match the shared binary's glibc baseline when bundling libraries.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download shared binary
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: shared-linux-binary
+          path: binary
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y desktop-file-utils
+
+      - name: Package and validate AppImage
+        shell: bash
+        run: |
+          # Artifact downloads do not preserve executable permissions.
+          chmod 755 binary/chessvault
+          bash tools/build-appimage.sh --binary binary/chessvault
+          maximum=$(tail -n 1 dist/ChessVault-x86_64.glibc.txt)
+          if [[ $(printf '%s\n' GLIBC_2.35 "$maximum" | sort -V | tail -n 1) != GLIBC_2.35 ]]; then
+            echo "AppImage exceeds the glibc 2.35 baseline: $maximum" >&2
+            exit 1
+          fi
+          cd dist
+          mv ChessVault-x86_64.AppImage "chessvault-${TAG}-linux-x86_64.AppImage"
+
+      - name: Store AppImage artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: stable-appimage-linux-x86_64
+          path: dist/chessvault-*.AppImage
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  release:
+    name: Publish stable release
+    needs: [package-native, package-appimage]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out tagged release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: stable-*-linux-x86_64
+          merge-multiple: true
+          path: dist
+
+      - name: Verify release artifacts
+        shell: bash
+        run: |
+          cd dist
+          test -s "chessvault-${TAG}-linux-x86_64.tar.gz"
+          test -s "chessvault-${TAG}-linux-x86_64.AppImage"
+
+      - name: Create stable release
+        shell: bash
+        run: |
+          # Rerunning a successful workflow must not replace an existing release.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release already exists: $TAG"
+            exit 0
+          fi
+          notes=()
+          changelog="changelogs/$TAG.md"
+          if [[ -f "$changelog" ]]; then
+            notes=(--notes-file "$changelog")
+          fi
+          gh release create "$TAG" \
+            "${notes[@]}" \
+            --verify-tag \
+            --title "$TAG" \
+            --generate-notes \
+            --latest
+
+      - name: Upload Linux artifacts
+        shell: bash
+        run: |
+          existing=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for suffix in tar.gz AppImage; do
+            asset="chessvault-${TAG}-linux-x86_64.$suffix"
+            if grep -Fxq "$asset" <<< "$existing"; then
+              echo "Asset already exists: $asset"
+            else
+              gh release upload "$TAG" "dist/$asset"
+            fi
+          done
