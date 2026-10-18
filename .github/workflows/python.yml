@@ -53,5 +53,8 @@ jobs:
       - name: Test tag tool
         run: venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
 
+      - name: Test changelog tool
+        run: venvs/tag-tool/bin/python -m pytest tools/changelog-tool -q
+
       - name: Test distribution preparation tool
         run: venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q
