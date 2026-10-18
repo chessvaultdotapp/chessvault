@@ -4,12 +4,16 @@
 Run it from the workspace root with Python 3.10 or newer:
 
 ```sh
-python3 tools/changelog-tool/main.py --stdout
 python3 tools/changelog-tool/main.py
+python3 tools/changelog-tool/main.py --output changelog-sources.md
 ```
 
-The default output is `changelogs/unreleased.md`. Existing files are never overwritten.
-`--stdout` previews the draft without writing, even when that file exists.
+By default, generated material is printed to stdout; `--stdout` remains an explicit alias for this behavior.
+Use `--output <path>` to save it to a new file. Existing files are never overwritten.
+`--output` and `--stdout` cannot be combined.
+
+`changelogs/unreleased.md` is the maintained changelog for the upcoming release, not the generator's default output.
+Review the generated material and manually merge any useful entries into that changelog.
 
 ## Release boundaries
 
@@ -33,7 +37,8 @@ The draft includes empty Added, Fixed, Changed, and Breaking changes categories 
 source-tag sections. Move entries into the appropriate categories, manually deduplicate them,
 remove superseded details, and retain useful source-tag references. No semantic rewriting is attempted.
 
-Commit the reviewed `changelogs/unreleased.md`, then run the [tag tool](tag-tool.md):
+Commit the maintained `changelogs/unreleased.md` after incorporating any useful generated entries,
+then run the [tag tool](tag-tool.md):
 
 ```sh
 git add changelogs/unreleased.md
@@ -41,7 +46,7 @@ git commit -m '[docs] Prepare stable release changelog'
 venvs/tag-tool/bin/python tools/tag-tool/main.py v1.2.3
 ```
 
-The tag tool requires a clean tree and renames the committed draft to `changelogs/v1.2.3.md`,
+The tag tool requires a clean tree and renames the committed unreleased changelog to `changelogs/v1.2.3.md`,
 updates its title, and includes it in the release commit. Draft generation does not commit,
 tag, push, or publish anything. Stable GitHub release publishing is not provided by this tool.
 

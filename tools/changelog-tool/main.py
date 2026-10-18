@@ -85,7 +85,7 @@ def draft(
 
 
 def main() -> None:
-    """Write a new draft exclusively, or print a preview."""
+    """Preview generated material, or write it exclusively to an explicit path."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", help="explicit reachable stable tag")
     parser.add_argument(
@@ -94,7 +94,13 @@ def main() -> None:
     parser.add_argument(
         "--first-release", action="store_true", help="collect all reachable history"
     )
-    parser.add_argument("--stdout", action="store_true", help="preview without writing")
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument(
+        "--stdout", action="store_true", help="preview without writing (default)"
+    )
+    output_group.add_argument(
+        "--output", type=Path, help="save generated material to a new file"
+    )
     args = parser.parse_args()
     try:
         text, missing = draft(
@@ -102,10 +108,10 @@ def main() -> None:
         )
         for tag in missing:
             print(f"warning: missing changelogs/{tag}.md at its tag", file=sys.stderr)
-        if args.stdout:
+        if args.output is None:
             print(text, end="")
         else:
-            destination = ROOT / "changelogs" / "unreleased.md"
+            destination = args.output
             destination.parent.mkdir(parents=True, exist_ok=True)
             try:
                 with destination.open("x", encoding="utf-8") as output:
@@ -116,7 +122,9 @@ def main() -> None:
                     f"error: {destination} already exists; "
                     "use --stdout to preview without overwriting it.\n",
                 )
-            print(f"Wrote {destination}; review and commit before running tag-tool.")
+            print(
+                f"Wrote {destination}; review and merge into changelogs/unreleased.md."
+            )
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"error: {error}\n")
 

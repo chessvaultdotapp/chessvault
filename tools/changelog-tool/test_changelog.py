@@ -85,17 +85,27 @@ def test_cli_overwrite_and_preview(
 ) -> None:
     release(repo, "v0.1.0")
     monkeypatch.setattr(module, "ROOT", repo)
+    path = repo / "changelogs" / "unreleased.md"
+    path.parent.mkdir()
+    path.write_text("# Unreleased\n\nMaintained release entries.\n")
+    original = path.read_bytes()
     monkeypatch.setattr("sys.argv", ["changelog-tool"])
     module.main()
-    path = repo / "changelogs" / "unreleased.md"
-    original = path.read_bytes()
+    assert "# Unreleased" in capsys.readouterr().out
+    assert path.read_bytes() == original
+    destination = repo / "generated" / "sources.md"
+    monkeypatch.setattr("sys.argv", ["changelog-tool", "--output", str(destination)])
+    module.main()
+    generated = destination.read_bytes()
+    assert b"# Unreleased" in generated
     with pytest.raises(SystemExit) as error:
         module.main()
     assert error.value.code == 1
     message = capsys.readouterr().err
-    assert f"{path} already exists" in message
+    assert f"{destination} already exists" in message
     assert "use --stdout to preview without overwriting it" in message
     assert "[Errno 17]" not in message
+    assert destination.read_bytes() == generated
     assert path.read_bytes() == original
     monkeypatch.setattr("sys.argv", ["changelog-tool", "--stdout"])
     module.main()
