@@ -18,8 +18,7 @@ when additional rationale is useful.
 | `[desktop]` | Desktop application changes, including its tests and package-specific documentation |
 | `[chess-core]` | Chess core changes, including its tests and package-specific documentation |
 | `[platform-dirs]` | Platform directory resolution changes, including its tests and package-specific documentation |
-| `[website]` | Website changes, including styling, functionality, and website content |
-| `[docs]` | Documentation changes outside the website |
+| `[docs]` | Shared documentation changes |
 | `[ci]` | CI configuration and CI-specific documentation |
 
 Combine tags when applicable, placing them next to each other without spaces.
@@ -42,7 +41,6 @@ when the change is CI-specific.
 [desktop][chess-core] Display core positions in the desktop app
 [platform-dirs] Handle invalid XDG state paths
 [platform-dirs] Add application state directory resolution
-[website] Add semantic colors and reusable callouts
 [docs] Add development setup instructions
 [docs][desktop] Explain console source filtering
 [ci] Run tests before formatting and linting

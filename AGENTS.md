@@ -29,13 +29,9 @@
 
 ## Website
 
-- `website/` is a separate Astro pnpm workspace, not covered by `just check`; read `website/AGENTS.md` when working there.
-- From the root: `pnpm --filter website install --frozen-lockfile`, then
-  `pnpm --filter website exec oxfmt --check src astro.config.mjs`,
-  `pnpm --filter website exec oxlint --deny-warnings src astro.config.mjs`, and
-  `pnpm --filter website exec astro check`, stopping on failure.
-- Also run `pnpm --filter website build`; preview and exercise visible changes in a browser. Deployment uses a non-root
-  base path; `.github/workflows/docs.yml` builds with `--site https://chessvaultdotapp.github.io --base /chessvault/`.
+- The website is maintained separately at <https://github.com/chessvaultdotapp/website>.
+  Follow that repository's instructions for website development and deployment.
+- `.github/workflows/docs.yml` publishes developer documentation independently of the website.
 
 ## Assets, documentation, and release tools
 

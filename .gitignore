@@ -5,5 +5,3 @@ dist/
 node_modules/
 __pycache__/
 site/
-website/test-results/
-website/playwright-report/

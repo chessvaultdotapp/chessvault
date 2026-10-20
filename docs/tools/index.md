@@ -16,13 +16,8 @@ optional documentation and artwork tools.
 | Tool | Purpose |
 | --- | --- |
 | [just](just.md) | Run repository development tasks |
-| [Node.js](nodejs.md) | Run website, diagram, and SVG tooling |
-| [pnpm](pnpm.md) | Install website and shared tooling dependencies |
-| [Astro](astro.md) | Develop and build the website |
-| [Astro Check](astro-check.md) | Check website diagnostics and types |
-| [TypeScript](typescript.md) | Provide website type checking |
-| [oxfmt](oxfmt.md) | Format website source and configuration |
-| [oxlint](oxlint.md) | Lint website code |
+| [Node.js](nodejs.md) | Run diagram and SVG tooling |
+| [pnpm](pnpm.md) | Install diagram and SVG-tooling dependencies |
 | [Mermaid CLI](mermaid.md) | Render documentation diagrams from `.mmd` sources |
 | [SVGO](svgo.md) | Optimize SVG artwork and diagrams |
 | [uv](uv.md) | Manage Python installations, environments, and tools |

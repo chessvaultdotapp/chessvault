@@ -194,43 +194,9 @@ on success do not need invented output.
 
 ## Website checks
 
-Install [Node.js](../tools/nodejs.md) and [pnpm](../tools/pnpm.md), then run from
-the workspace root:
-
-```console
-$ pnpm --filter website install --frozen-lockfile
-Lockfile is up to date, resolution step is skipped
-...
-$ pnpm --filter website exec oxfmt --check src astro.config.mjs
-...
-$ pnpm --filter website exec oxlint --deny-warnings src astro.config.mjs
-...
-$ pnpm --filter website exec astro check
-...
-```
-
-These commands mirror the [website workflow](../../.github/workflows/website.yaml).
-It runs on pushes and pull requests changing `website/`, the root `package.json`,
-`pnpm-lock.yaml`, `pnpm-workspace.yaml`, or the workflow itself, and can also be
-started manually. Stop on failure and fix issues before continuing.
-
-[oxfmt](../tools/oxfmt.md) checks formatting without modifying files;
-[oxlint](../tools/oxlint.md) treats warnings as failures;
-[Astro Check](../tools/astro-check.md) checks diagnostics and types using
-[TypeScript](../tools/typescript.md). These checks are separate from `just check`.
-
-Also build and preview website changes locally:
-
-```console
-$ pnpm --filter website build
-...
-$ pnpm --filter website preview
-...
-```
-
-The build is an additional local check, not currently a step in the website workflow.
-For visible changes, exercise affected pages in a browser, including navigation
-and responsive layouts. See [Astro](../tools/astro.md) for development-server commands.
+Website development and checks are maintained in the separate
+[website repository](https://github.com/chessvaultdotapp/website). Follow its README
+and agent instructions; website checks are not part of this repository's `just check`.
 
 ## Python checks
 
