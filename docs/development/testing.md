@@ -182,7 +182,7 @@ Success: No issues found in 2 files (10ms)
 `rumdl check` reports issues without modifying files and exits unsuccessfully
 when lint issues are found. The [Markdown workflow](../../.github/workflows/markdown.yml)
 runs on pushes and pull requests that change `*.md` files, including nested and
-hidden directories. The local [`setup-rumdl` action](../../.github/actions/setup-rumdl/action.yml)
+hidden directories. The shared [setup-rumdl action](https://github.com/chessvaultdotapp/actions-setup-rumdl)
 installs the official rumdl 0.2.75 release binary, following the
 [upstream binary installation method](https://rumdl.dev/getting-started/installation/#download-binary).
 The workflow checks all tracked Markdown files, not just changed files. Configuration-only or workflow-only changes do

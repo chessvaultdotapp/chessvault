@@ -11,7 +11,6 @@ on:
       - 'pnpm-workspace.yaml'
       - '.github/workflows/markdown.yml'
       - '.github/actions/setup-just/**'
-      - '.github/actions/setup-rumdl/**'
   pull_request:
     paths: *markdown-paths
 
@@ -57,7 +56,9 @@ jobs:
         run: just --justfile crates/platform-dirs/justfile diagram
 
       - name: Install rumdl
-        uses: ./.github/actions/setup-rumdl
+        uses: chessvaultdotapp/actions-setup-rumdl@86f98314bd9485b425dc242c520a1df276f842e6 # rumdl 0.2.75
+        with:
+          version: '0.2.75'
 
       - name: Check tracked Markdown files
         run: git ls-files -z '*.md' | xargs -0 -r rumdl check

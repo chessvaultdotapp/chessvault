@@ -38,4 +38,4 @@ if ((${#workflows[@]} == 0)); then
 fi
 
 # Keep the checks identical regardless of optional analyzers on the runner.
-go tool actionlint -shellcheck= -pyflakes= "${workflows[@]}"
+actionlint -shellcheck= -pyflakes= "${workflows[@]}"
