@@ -1,0 +1,14 @@
+# Unreleased
+
+## Changed
+
+- The in-app log console now retains the latest 2,000 events to limit memory usage.
+
+- Old log files are cleaned up automatically in the background, retaining at most 20 files and removing logs older
+  than seven days.
+
+- The application now prefers the installed application icon, falling back to the embedded icon when unavailable.
+
+## Fixed
+
+- The application now continues to start when file logging is unavailable, rather than failing to open.
