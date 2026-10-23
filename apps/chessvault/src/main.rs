@@ -543,6 +543,19 @@ mod navigation_tests {
     }
 
     #[test]
+    fn enabling_multiline_dependency_logs_refreshes_console() {
+        use tracing_subscriber::layer::SubscriberExt;
+
+        let mut app = app();
+        let subscriber = tracing_subscriber::registry().with(app.logs.capture_layer());
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(target: "iced_wgpu", "Settings {{\n    present_mode: AutoVsync,\n    backends: Backends(\n        VULKAN | GL,\n    ),\n}}");
+        });
+        let _ = app.update(Message::SetSourceEnabled("iced_wgpu".into(), true));
+        assert!(app.log_text.contains("AutoVsync"));
+    }
+
+    #[test]
     fn new_game_confirmation_cancels_without_changes_and_resets_on_acceptance() {
         let mut app = app();
         let _ = app.update(Message::SelectSquare(Square::E2));
@@ -1148,10 +1161,13 @@ impl ChessVault {
             return content.into();
         }
 
+        let available_sources = self.logs.sources();
+        let has_other_sources = available_sources.iter().any(|(source, _)| source != "chessvault");
         let header = row![
             text("Developer console").size(18),
             Space::new().width(Fill),
-            button(if self.sources_open { "Hide sources" } else { "Sources" }).on_press(Message::ToggleSources),
+            button(if self.sources_open { "Hide sources" } else { "Sources" })
+                .on_press_maybe(has_other_sources.then_some(Message::ToggleSources)),
             button("Copy all").on_press(Message::CopyLogs),
             button("Clear").on_press(Message::ClearLogs),
             button("Close (F12)").on_press(Message::ToggleConsole),
@@ -1167,9 +1183,9 @@ impl ChessVault {
             .height(Fill);
 
         let mut body = row![editor].spacing(12).height(Fill);
-        if self.sources_open {
+        if self.sources_open && has_other_sources {
             let mut sources = column![text("Log sources").size(16)].spacing(8);
-            for (source, enabled) in self.logs.sources() {
+            for (source, enabled) in available_sources {
                 sources = sources.push(
                     checkbox(enabled)
                         .label(source.clone())

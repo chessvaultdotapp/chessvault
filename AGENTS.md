@@ -105,11 +105,12 @@
   so copying remains usable.
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
-- `RUST_LOG` controls capture (default `info`). Terminal output requires debug assertions; in-app capture works in release.
+- `RUST_LOG` controls all logging (default `off,chessvault=info`). Terminal output requires debug assertions;
+  in-app capture works in release.
 - Logging also writes a per-launch JSON file under `user_log_dir`; failure to initialize that file aborts startup.
 - Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
   but preserves source settings. “Copy all” copies the filtered snapshot.
 - Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged
   `log` records so dependency events retain their original source instead of becoming `log`.
-- Publish each complete formatted event atomically on `LogWriter` drop; the shared buffer retains the latest 2,000
+- Publish each complete formatted event atomically through `Logs::store_event`; the shared buffer retains the latest 2,000
   events, not lines.

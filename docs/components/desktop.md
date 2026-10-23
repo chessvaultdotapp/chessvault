@@ -109,7 +109,8 @@ $ RUST_LOG=chessvault=debug cargo run -p chessvault --locked
 
 `RUST_LOG` filters capture, not just display. A message excluded at this stage
 cannot be recovered by enabling a source in the console. Without a valid
-`RUST_LOG` configuration, capture defaults to `info`.
+`RUST_LOG` configuration, capture defaults to `off,chessvault=info`: dependency logs
+are excluded from console capture, terminal output, and log files.
 
 The source controls operate on retained events. Some dependency sources are
 hidden initially; new sources are enabled when discovered. “Copy all” copies
@@ -121,7 +122,7 @@ hidden ones, without changing source settings.
 - Install the global subscriber once, before GUI startup. Tests use scoped
   subscribers instead.
 - Retain at most 2,000 complete events, not lines. Publish each event atomically
-  on `LogWriter` drop so concurrent formatting cannot interleave fragments.
+  through `Logs::store_event` so concurrent formatting cannot interleave fragments.
 - Normalize bridged `log` records before determining their source. Their static
   tracing target alone would incorrectly group dependency messages under `log`.
 - Reject text-editor editing actions while accepting navigation and selection.

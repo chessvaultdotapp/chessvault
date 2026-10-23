@@ -142,7 +142,8 @@ being published so concurrent writers cannot interleave fragments.
 There are two distinct filtering stages:
 
 - **Capture:** `RUST_LOG` controls which events enter the store, defaulting to
-  `info`. Terminal output is enabled only in debug builds; in-app capture also
+  `off,chessvault=info` (only application logs). The same filter applies to log
+  files and terminal output. Terminal output is enabled only in debug builds; in-app capture also
   works in release builds.
 - **Display:** console source toggles filter snapshots of retained events.
   Hidden events can be revealed later, until cleared or evicted.
