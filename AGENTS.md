@@ -107,7 +107,9 @@
   `tracing::subscriber::with_default`.
 - `RUST_LOG` controls all logging (default `off,chessvault=info`). Terminal output requires debug assertions;
   in-app capture works in release.
-- Logging also writes a per-launch JSON file under `user_log_dir`; failure to initialize that file aborts startup.
+- Logging attempts to write a per-launch JSON file under `user_log_dir`; directory resolution or file initialization
+  failures emit a filtered warning after subscriber installation and do not abort startup. Subscriber installation
+  failures remain fatal. Console truncation notices must not promise an available log file.
 - Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
   but preserves source settings. “Copy all” copies the filtered snapshot.
 - Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::io;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
@@ -16,7 +17,7 @@ const MAX_ENTRIES: usize = 2_000;
 // Dependency events can include entire pixel buffers. Keep console layout bounded;
 // the independent JSON file layer still writes the complete event.
 const MAX_ENTRY_BYTES: usize = 4_096;
-const TRUNCATED_ENTRY: &str = "\n[console entry truncated; full event is in the log file]\n";
+const TRUNCATED_ENTRY: &str = "\n[console entry truncated]\n";
 const DEFAULT_LOG_FILTER: &str = "off,chessvault=info";
 
 #[derive(Clone, Default)]
@@ -49,21 +50,16 @@ impl Logs {
         #[cfg(debug_assertions)]
         let terminal_layer = layer().with_ansi(true).with_writer(io::stderr);
 
-        let log_dir =
-            platform_dirs::user_log_dir(Some("chessvault"), None).context("Failed to resolve application log dir")?;
-        let local_time = Local::now().format("%Y-%m-%dT%H-%M-%S-%f%z").to_string();
-
-        let file_appender = rolling::RollingFileAppender::builder()
-            .rotation(rolling::Rotation::NEVER)
-            .filename_prefix(format!("{local_time}.log"))
-            .build(&log_dir)
-            .with_context(|| format!("Failed to initialize log file in {}", log_dir.display()))?;
-
-        let file_layer = layer()
-            .json()
-            .flatten_event(true)
-            .with_ansi(false)
-            .with_writer(file_appender);
+        let (file_appender, file_error) = prepare_file_logging(
+            platform_dirs::user_log_dir(Some("chessvault"), None).context("Failed to resolve application log dir"),
+        );
+        let file_layer = file_appender.map(|appender| {
+            layer()
+                .json()
+                .flatten_event(true)
+                .with_ansi(false)
+                .with_writer(appender)
+        });
 
         let subscriber = registry().with(env_filter).with(logs.capture_layer()).with(file_layer);
         #[cfg(debug_assertions)]
@@ -72,6 +68,7 @@ impl Logs {
             .try_init()
             .context("Failed to initialize logging subscriber")?;
 
+        report_file_logging_failure(file_error);
         Ok(logs)
     }
 
@@ -139,6 +136,27 @@ impl Logs {
     }
 }
 
+fn prepare_file_logging(log_dir: Result<PathBuf>) -> (Option<rolling::RollingFileAppender>, Option<anyhow::Error>) {
+    let result = log_dir.and_then(|log_dir| {
+        let local_time = Local::now().format("%Y-%m-%dT%H-%M-%S-%f%z").to_string();
+        rolling::RollingFileAppender::builder()
+            .rotation(rolling::Rotation::NEVER)
+            .filename_prefix(format!("{local_time}.log"))
+            .build(&log_dir)
+            .with_context(|| format!("Failed to initialize log file in {}", log_dir.display()))
+    });
+    match result {
+        Ok(appender) => (Some(appender), None),
+        Err(error) => (None, Some(error)),
+    }
+}
+
+fn report_file_logging_failure(error: Option<anyhow::Error>) {
+    if let Some(error) = error {
+        tracing::warn!(error = %format!("{error:#}"), "File logging unavailable; continuing without a log file");
+    }
+}
+
 struct LogFormatter(Logs);
 
 impl<S, N> FormatEvent<S, N> for LogFormatter
@@ -183,6 +201,41 @@ mod tests {
         fn flush(&mut self) -> io::Result<()> {
             Ok(())
         }
+    }
+
+    #[rstest]
+    #[case::resolution_failure(true)]
+    #[case::creation_failure(false)]
+    fn file_logging_failure_preserves_console_capture(#[case] resolution_failure: bool) {
+        let path = if resolution_failure {
+            Err(anyhow::anyhow!("test path resolution failure"))
+        } else {
+            // An existing executable is a file, so it cannot contain a log directory.
+            Ok(std::env::current_exe().unwrap().join("logs"))
+        };
+        let (appender, error) = prepare_file_logging(path);
+        assert!(appender.is_none());
+        assert!(error.is_some());
+
+        let logs = Logs::default();
+        let subscriber = registry()
+            .with(EnvFilter::new(DEFAULT_LOG_FILTER))
+            .with(logs.capture_layer())
+            .with(appender.map(|appender| layer().json().with_writer(appender)));
+        tracing::subscriber::with_default(subscriber, || {
+            report_file_logging_failure(error);
+            tracing::info!("application continues");
+        });
+
+        let snapshot = logs.snapshot();
+        assert!(snapshot.contains("WARN"));
+        assert!(snapshot.contains("File logging unavailable"));
+        assert!(snapshot.contains("application continues"));
+        assert!(snapshot.contains(if resolution_failure {
+            "test path resolution failure"
+        } else {
+            "Failed to initialize log file"
+        }));
     }
 
     #[test]
