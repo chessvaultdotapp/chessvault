@@ -1,14 +1,16 @@
-//! Platform-aware resolution of user state and log directories.
+//! Platform-aware resolution of user state, share, and log directories.
 //!
-//! Use [`user_state_dir`] to locate the base directory for persistent user state,
-//! or [`user_log_dir`] to resolve a log directory beneath it by default.
+//! Use [`user_share_dir`] for persistent user data, [`user_state_dir`] for
+//! persistent user state, or [`user_log_dir`] for logs beneath the state directory
+//! by default.
 //! An optional application name selects a subdirectory beneath that base.
 //! This crate only resolves paths: callers create directories as needed.
 //!
 //! # Features and platform support
 //!
 //! The default-enabled `development` feature makes builds with debug assertions
-//! use `<current working directory>/.local/state` on every platform. Builds
+//! use `<current working directory>/.local/state` for state and
+//! `<current working directory>/.local/share` for data on every platform. Builds
 //! without debug assertions, or with this feature disabled, use native platform
 //! resolution, currently supported only on Linux.
 //!
@@ -79,7 +81,10 @@ mod linux;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn user_state_dir(app_name: Option<&str>) -> Result<PathBuf> {
-    let mut path = base_state_dir()?;
+    with_app_name(base_state_dir()?, app_name)
+}
+
+fn with_app_name(mut path: PathBuf, app_name: Option<&str>) -> Result<PathBuf> {
     if let Some(name) = app_name {
         anyhow::ensure!(
             !name.is_empty() && name != "." && name != ".." && !name.contains(['/', '\\', ':', '\0']),
@@ -90,6 +95,56 @@ pub fn user_state_dir(app_name: Option<&str>) -> Result<PathBuf> {
     }
 
     Ok(path)
+}
+
+/// Returns the absolute directory for persistent user data.
+///
+/// With debug assertions and the default-enabled `development` feature, uses
+/// `<current working directory>/.local/share` on every platform. Otherwise, on
+/// Linux, prefers an absolute `XDG_DATA_HOME`, falling back to `.local/share`
+/// beneath an absolute home directory. Non-Unicode paths are preserved.
+///
+/// Pass `None` for the base or an application name validated as in
+/// [`user_state_dir`]. Does not create directories or check their existence.
+///
+/// # Errors
+///
+/// Returns an error if base resolution fails (unavailable working directory,
+/// no valid native base, or unsupported platform), or the application name is
+/// invalid. Base resolution takes precedence over name validation.
+///
+/// # Examples
+///
+/// ```
+/// if let Ok(path) = platform_dirs::user_share_dir(Some("my-app")) {
+///     assert!(path.is_absolute());
+///     assert!(path.ends_with("my-app"));
+/// }
+/// ```
+pub fn user_share_dir(app_name: Option<&str>) -> Result<PathBuf> {
+    with_app_name(base_share_dir()?, app_name)
+}
+
+fn base_share_dir() -> Result<PathBuf> {
+    #[cfg(all(debug_assertions, feature = "development"))]
+    {
+        use anyhow::Context;
+
+        Ok(std::env::current_dir()
+            .context("Cannot resolve user share directory: current working directory is unavailable")?
+            .join(".local")
+            .join("share"))
+    }
+
+    #[cfg(all(not(all(debug_assertions, feature = "development")), target_os = "linux"))]
+    {
+        linux::user_share_dir()
+    }
+
+    #[cfg(all(not(all(debug_assertions, feature = "development")), not(target_os = "linux")))]
+    {
+        anyhow::bail!("User share directory is unsupported on this platform")
+    }
 }
 
 fn base_state_dir() -> Result<PathBuf> {
@@ -152,6 +207,32 @@ pub fn user_log_dir(app_name: Option<&str>, opinion: Option<bool>) -> Result<Pat
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn share_directory_application_names() {
+        let base = base_share_dir();
+        for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
+            match &base {
+                Ok(base) => assert_eq!(
+                    user_share_dir(name).unwrap(),
+                    name.map_or_else(|| base.clone(), |name| base.join(name))
+                ),
+                Err(error) => assert_eq!(format!("{:#}", user_share_dir(name).unwrap_err()), format!("{error:#}")),
+            }
+        }
+        for name in ["", ".", "..", "/app", "a/b", "a\\b", "C:app", "a\0b"] {
+            assert!(user_share_dir(Some(name)).is_err());
+        }
+    }
+
+    #[cfg(all(debug_assertions, feature = "development"))]
+    #[test]
+    fn debug_share_dir_uses_current_working_directory() {
+        assert_eq!(
+            user_share_dir(Some("chessvault")).unwrap(),
+            std::env::current_dir().unwrap().join(".local/share/chessvault")
+        );
+    }
 
     #[test]
     fn log_directory_opinions_and_application_names() {

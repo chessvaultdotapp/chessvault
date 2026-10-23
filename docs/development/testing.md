@@ -135,7 +135,7 @@ doctests. Code blocks in Markdown guides are not automatically tested by Cargo.
 ## Platform and feature variants
 
 The default-enabled `platform-dirs` development feature makes debug builds use
-working-directory-local state paths. Native resolution takes a different
+working-directory-local state and share paths. Native resolution takes a different
 compiled branch, so default debug checks alone do not cover every configuration.
 
 For changes to that policy, also run:
@@ -157,7 +157,7 @@ $ cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-fe
 
 Stop on failure here too. Linux resolver tests are compiled only on Linux and
 use the `linux::tests::` prefix. Passing tests on another OS does not verify
-Linux resolution. Native state-directory resolution currently supports only
+Linux resolution. Native directory resolution currently supports only
 Linux; the development path working elsewhere is not evidence of release app
 support. See [Platform directories](../components/platform-dirs.md) for the path policy.
 

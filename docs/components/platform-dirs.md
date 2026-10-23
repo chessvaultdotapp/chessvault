@@ -1,6 +1,6 @@
 # Platform directories
 
-`platform-dirs` resolves user state and log directories, optionally appending
+`platform-dirs` resolves user state, share, and log directories, optionally appending
 an application name. The desktop passes `Some("chessvault")` and creates the
 directory; the library only resolves paths.
 
@@ -33,16 +33,24 @@ For example, `user_log_dir(Some("chessvault"), None)` returns
 Application-name validation and resolution errors are inherited from `user_state_dir`.
 The function only resolves the path; it does not create the directory or write logs.
 
+### Share directory
+
+`platform_dirs::user_share_dir(app_name: Option<&str>)` returns an `anyhow::Result<PathBuf>`
+for persistent user data, with the same application-name validation as `user_state_dir`.
+Both functions resolve the base before validating the name, so resolution errors take precedence.
+They preserve non-Unicode paths and do not create directories.
+
 ### Development override
 
 With both debug assertions and the default-enabled `development` feature, the
-base directory is:
+base directories are:
 
 ```text
-<current working directory>/.local/state
+<current working directory>/.local/state  (state)
+<current working directory>/.local/share  (share)
 ```
 
-This works on every platform and does not consult `XDG_STATE_HOME`. An
+This works on every platform and does not consult `XDG_STATE_HOME` or `XDG_DATA_HOME`. An
 unavailable working directory produces an error. The path is resolved on each
 call, not cached, so changing the working directory changes later resolutions.
 
@@ -55,9 +63,9 @@ enabling `development` for the same package can re-enable the override.
 Release builds, and builds without `development`, use native resolution. Only
 Linux is currently implemented:
 
-1. Accept `XDG_STATE_HOME` when it is absolute.
+1. Accept `XDG_STATE_HOME` (state) or `XDG_DATA_HOME` (share) when it is absolute.
 2. Otherwise obtain an absolute home directory using `std::env::home_dir` and
-   append `.local/state`.
+   append `.local/state` or `.local/share`, respectively.
 3. Return an error if neither provides a usable path.
 
 Unset, empty, and relative XDG values all trigger the home fallback. An absolute
@@ -68,9 +76,11 @@ for those platforms.
 ## Verification
 
 Linux tests inject environment values and a home-directory lookup into
-`resolve_user_state_dir`. Follow that pattern instead of mutating process-wide
+`resolve_user_state_dir` and `resolve_user_share_dir`. Follow that pattern instead of mutating process-wide
 environment variables. Coverage includes XDG precedence, fallback behavior,
-invalid homes, and non-Unicode paths. Log-directory tests cover all opinion values,
+invalid homes, and non-Unicode paths for both state and share directories.
+Public share-directory tests cover application names and the development override.
+Log-directory tests cover all opinion values,
 optional application names, and propagation of invalid-name errors.
 
 Follow [Testing](../development/testing.md#platform-and-feature-variants), using
