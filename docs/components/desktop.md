@@ -130,8 +130,13 @@ hidden ones, without changing source settings.
   the shared store; selection should not be lost merely because a timer fires.
 - Run the 250 ms refresh subscription only while the console is open.
 
-Terminal logging is enabled only with debug assertions. Release builds still
-capture events for the in-app console; neither mode saves logs to disk.
+Terminal logging is enabled only with debug assertions. Both debug and release
+builds capture events for the in-app console and attempt to write a per-launch
+JSON log file under `user_log_dir`. If resolving the directory or opening the
+file fails, startup continues without file logging and emits a warning through
+the remaining logging outputs, subject to `RUST_LOG`. Failure to install the
+global logging subscriber still aborts startup. Console truncation notices do
+not assume a full event is available on disk.
 
 ## Window persistence and failures
 
