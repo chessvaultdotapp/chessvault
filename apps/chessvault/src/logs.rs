@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
-use std::io::{self, Write};
+use std::io;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
@@ -13,6 +13,11 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer, registry};
 
 const MAX_ENTRIES: usize = 2_000;
+// Dependency events can include entire pixel buffers. Keep console layout bounded;
+// the independent JSON file layer still writes the complete event.
+const MAX_ENTRY_BYTES: usize = 4_096;
+const TRUNCATED_ENTRY: &str = "\n[console entry truncated; full event is in the log file]\n";
+const DEFAULT_LOG_FILTER: &str = "off,chessvault=info";
 
 #[derive(Clone, Default)]
 pub struct Logs(Arc<Mutex<LogStore>>);
@@ -31,15 +36,7 @@ impl Default for LogStore {
     fn default() -> Self {
         Self {
             entries: VecDeque::new(),
-            sources: [
-                ("chessvault".into(), true),
-                ("log".into(), false),
-                ("calloop".into(), false),
-                ("iced_winit".into(), false),
-                ("wgpu_hal".into(), false),
-                ("iced_wgpu".into(), false),
-            ]
-            .into(),
+            sources: [("chessvault".into(), true)].into(),
         }
     }
 }
@@ -48,7 +45,7 @@ impl Logs {
     pub fn init() -> Result<Self> {
         let logs = Self::default();
 
-        let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+        let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_LOG_FILTER));
         #[cfg(debug_assertions)]
         let terminal_layer = layer().with_ansi(true).with_writer(io::stderr);
 
@@ -80,7 +77,7 @@ impl Logs {
 
     // A dedicated formatting layer preserves tracing's field/span formatting while
     // capturing complete events independently of terminal and file output.
-    fn capture_layer<S>(&self) -> impl Layer<S>
+    pub(super) fn capture_layer<S>(&self) -> impl Layer<S>
     where
         S: tracing::Subscriber + for<'a> LookupSpan<'a>,
     {
@@ -90,12 +87,27 @@ impl Logs {
             .with_writer(io::sink)
     }
 
-    fn writer(&self, target: &str) -> LogWriter {
-        LogWriter {
-            logs: self.clone(),
-            source: target.split("::").next().unwrap_or(target).to_owned(),
-            buffer: Vec::new(),
+    fn store_event(&self, target: &str, mut text: String) {
+        if text.is_empty() {
+            return;
         }
+        if text.len() > MAX_ENTRY_BYTES {
+            let mut end = MAX_ENTRY_BYTES;
+            while !text.is_char_boundary(end) {
+                end -= 1;
+            }
+            text.truncate(end);
+            text.push_str(TRUNCATED_ENTRY);
+        }
+
+        let source = target.split("::").next().unwrap_or(target).to_owned();
+        // Publish complete events atomically so concurrent formatting cannot interleave them.
+        let mut store = self.0.lock().unwrap();
+        store.sources.entry(source.clone()).or_insert(false);
+        if store.entries.len() == MAX_ENTRIES {
+            store.entries.pop_front();
+        }
+        store.entries.push_back(Entry { source, text });
     }
 
     pub fn snapshot(&self) -> String {
@@ -103,7 +115,7 @@ impl Logs {
         store
             .entries
             .iter()
-            .filter(|entry| store.sources.get(&entry.source).copied().unwrap_or(true))
+            .filter(|entry| store.sources.get(&entry.source).copied().unwrap_or(false))
             .map(|entry| entry.text.as_str())
             .collect()
     }
@@ -137,7 +149,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        mut writer: format::Writer<'_>,
+        _writer: format::Writer<'_>,
         event: &tracing::Event<'_>,
     ) -> std::fmt::Result {
         let mut text = String::new();
@@ -149,49 +161,8 @@ where
         // static tracing metadata only reports "log".
         let normalized = event.normalized_metadata();
         let metadata = normalized.as_ref().unwrap_or_else(|| event.metadata());
-        self.0
-            .writer(metadata.target())
-            .write_all(text.as_bytes())
-            .map_err(|_| std::fmt::Error)?;
-
-        writer.write_str(&text)
-    }
-}
-
-// Collect each formatted event before publishing it so concurrent writers cannot
-// interleave fragments of different events in the console.
-struct LogWriter {
-    logs: Logs,
-    source: String,
-    buffer: Vec<u8>,
-}
-
-impl Write for LogWriter {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.buffer.extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
+        self.0.store_event(metadata.target(), text);
         Ok(())
-    }
-}
-
-impl Drop for LogWriter {
-    fn drop(&mut self) {
-        if self.buffer.is_empty() {
-            return;
-        }
-
-        let mut store = self.logs.0.lock().unwrap();
-        store.sources.entry(self.source.clone()).or_insert(true);
-        if store.entries.len() == MAX_ENTRIES {
-            store.entries.pop_front();
-        }
-        store.entries.push_back(Entry {
-            source: self.source.clone(),
-            text: String::from_utf8_lossy(&self.buffer).into_owned(),
-        });
     }
 }
 
@@ -199,6 +170,61 @@ impl Drop for LogWriter {
 mod tests {
     use super::*;
     use rstest::rstest;
+
+    #[derive(Clone, Default)]
+    struct TestWriter(Arc<Mutex<Vec<u8>>>);
+
+    impl io::Write for TestWriter {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn oversized_dependency_events_are_bounded_before_being_enabled() {
+        let logs = Logs::default();
+        logs.store_event("iced_winit", "x".repeat(335_791));
+
+        assert!(logs.snapshot().is_empty());
+        logs.set_source_enabled("iced_winit".into(), true);
+        let snapshot = logs.snapshot();
+        assert_eq!(snapshot.len(), MAX_ENTRY_BYTES + TRUNCATED_ENTRY.len());
+        assert!(snapshot.ends_with(TRUNCATED_ENTRY));
+    }
+
+    #[test]
+    fn truncation_preserves_utf8_boundaries() {
+        let logs = Logs::default();
+        let prefix = "x".repeat(MAX_ENTRY_BYTES - 1);
+        logs.store_event("chessvault", format!("{prefix}♟more"));
+        assert_eq!(logs.snapshot(), format!("{prefix}{TRUNCATED_ENTRY}"));
+    }
+
+    #[test]
+    fn entry_at_byte_limit_is_not_truncated() {
+        let logs = Logs::default();
+        let text = "x".repeat(MAX_ENTRY_BYTES);
+        logs.store_event("chessvault", text.clone());
+        assert_eq!(logs.snapshot(), text);
+    }
+
+    #[test]
+    fn empty_events_do_not_discover_sources() {
+        let logs = Logs::default();
+        logs.store_event("dependency", String::new());
+        assert!(logs.snapshot().is_empty());
+        assert_eq!(logs.sources(), vec![("chessvault".into(), true)]);
+    }
+
+    #[test]
+    fn sources_start_with_only_chessvault() {
+        assert_eq!(Logs::default().sources(), vec![("chessvault".into(), true)]);
+    }
 
     #[test]
     fn captures_formatted_events_and_clears_history() {
@@ -239,10 +265,35 @@ mod tests {
     }
 
     #[test]
+    fn default_filter_excludes_dependencies_from_all_layers() {
+        let logs = Logs::default();
+        let output = TestWriter::default();
+        let file_output = output.clone();
+        let subscriber = registry()
+            .with(EnvFilter::new(DEFAULT_LOG_FILTER))
+            .with(logs.capture_layer())
+            .with(layer().json().with_writer(move || file_output.clone()));
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(target: "chessvault::game", "application event");
+            tracing::debug!(target: "chessvault::game", "debug event");
+            tracing::error!(target: "new_dependency::module", "dependency event");
+        });
+
+        let file_output = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
+        for snapshot in [logs.snapshot(), file_output] {
+            assert!(snapshot.contains("application event"));
+            assert!(!snapshot.contains("debug event"));
+            assert!(!snapshot.contains("dependency event"));
+        }
+        assert!(!logs.sources().iter().any(|(source, _)| source == "new_dependency"));
+    }
+
+    #[test]
     fn retains_only_the_latest_entries() {
         let logs = Logs::default();
         for index in 0..=MAX_ENTRIES {
-            writeln!(logs.writer("chessvault"), "event {index}").unwrap();
+            logs.store_event("chessvault", format!("event {index}\n"));
         }
 
         let snapshot = logs.snapshot();
@@ -278,7 +329,7 @@ mod tests {
         assert!(snapshot.contains(source));
         assert!(snapshot.contains("bridged dependency event"));
         logs.set_source_enabled(source.into(), false);
-        assert!(logs.sources().contains(&("log".into(), false)));
+        assert!(!logs.sources().iter().any(|(source, _)| source == "log"));
         logs.set_source_enabled("log".into(), true);
         assert!(logs.snapshot().is_empty());
     }
@@ -297,7 +348,10 @@ mod tests {
 
         assert!(logs.snapshot().contains("visible event"));
         assert!(!logs.snapshot().contains("hidden"));
-        assert!(logs.sources().contains(&("new_source".into(), true)));
+        assert!(!logs.snapshot().contains("discovered event"));
+        assert!(logs.sources().contains(&("new_source".into(), false)));
+        logs.set_source_enabled("new_source".into(), true);
+        assert!(logs.snapshot().contains("discovered event"));
 
         logs.set_source_enabled("iced_winit".into(), true);
         assert!(logs.snapshot().contains("hidden window event"));
