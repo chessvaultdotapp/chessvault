@@ -13,6 +13,10 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer, registry};
 
+mod retention;
+
+const LOG_TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H-%M-%S-%f%z";
+
 const MAX_ENTRIES: usize = 2_000;
 // Dependency events can include entire pixel buffers. Keep console layout bounded;
 // the independent JSON file layer still writes the complete event.
@@ -53,12 +57,13 @@ impl Logs {
         let (file_appender, file_error) = prepare_file_logging(
             platform_dirs::user_log_dir(Some("chessvault"), None).context("Failed to resolve application log dir"),
         );
-        let file_layer = file_appender.map(|appender| {
+        let current_log = file_appender.as_ref().map(|file| file.path.clone());
+        let file_layer = file_appender.map(|file| {
             layer()
                 .json()
                 .flatten_event(true)
                 .with_ansi(false)
-                .with_writer(appender)
+                .with_writer(file.appender)
         });
 
         let subscriber = registry().with(env_filter).with(logs.capture_layer()).with(file_layer);
@@ -69,6 +74,9 @@ impl Logs {
             .context("Failed to initialize logging subscriber")?;
 
         report_file_logging_failure(file_error);
+        if let Some(current_log) = current_log {
+            retention::start(current_log);
+        }
         Ok(logs)
     }
 
@@ -136,14 +144,24 @@ impl Logs {
     }
 }
 
-fn prepare_file_logging(log_dir: Result<PathBuf>) -> (Option<rolling::RollingFileAppender>, Option<anyhow::Error>) {
+struct LogFile {
+    appender: rolling::RollingFileAppender,
+    path: PathBuf,
+}
+
+fn prepare_file_logging(log_dir: Result<PathBuf>) -> (Option<LogFile>, Option<anyhow::Error>) {
     let result = log_dir.and_then(|log_dir| {
-        let local_time = Local::now().format("%Y-%m-%dT%H-%M-%S-%f%z").to_string();
-        rolling::RollingFileAppender::builder()
+        let local_time = Local::now().format(LOG_TIMESTAMP_FORMAT).to_string();
+        let filename = format!("{local_time}.log");
+        let appender = rolling::RollingFileAppender::builder()
             .rotation(rolling::Rotation::NEVER)
-            .filename_prefix(format!("{local_time}.log"))
+            .filename_prefix(&filename)
             .build(&log_dir)
-            .with_context(|| format!("Failed to initialize log file in {}", log_dir.display()))
+            .with_context(|| format!("Failed to initialize log file in {}", log_dir.display()))?;
+        Ok(LogFile {
+            appender,
+            path: log_dir.join(filename),
+        })
     });
     match result {
         Ok(appender) => (Some(appender), None),
@@ -221,7 +239,7 @@ mod tests {
         let subscriber = registry()
             .with(EnvFilter::new(DEFAULT_LOG_FILTER))
             .with(logs.capture_layer())
-            .with(appender.map(|appender| layer().json().with_writer(appender)));
+            .with(appender.map(|file| layer().json().with_writer(file.appender)));
         tracing::subscriber::with_default(subscriber, || {
             report_file_logging_failure(error);
             tracing::info!("application continues");

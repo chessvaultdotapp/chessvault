@@ -138,6 +138,16 @@ the remaining logging outputs, subject to `RUST_LOG`. Failure to install the
 global logging subscriber still aborts startup. Console truncation notices do
 not assume a full event is available on disk.
 
+After opening the current log and installing the subscriber, a background thread
+cleans up logs without delaying GUI startup. It keeps at most 20 files, including
+the current log, and deletes logs older than 7 days based on their filename
+timestamps. The current log is always preserved. Only regular files matching the
+exact application log filename format are eligible; unrelated files, directories,
+and symlinks are untouched. Cleanup failures are logged at error level, subject
+to `RUST_LOG`, and do not abort startup or stop other deletions where possible.
+Cleanup runs once per launch, not periodically. There is no cross-instance locking;
+other instances' active logs are not protected.
+
 ## Window persistence and failures
 
 `WindowRecreateInfo` loads and saves JSON containing width and height. Loading

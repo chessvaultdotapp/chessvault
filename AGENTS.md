@@ -110,6 +110,9 @@
 - Logging attempts to write a per-launch JSON file under `user_log_dir`; directory resolution or file initialization
   failures emit a filtered warning after subscriber installation and do not abort startup. Subscriber installation
   failures remain fatal. Console truncation notices must not promise an available log file.
+- After subscriber installation, background cleanup retains at most 20 log files (including the current log) and
+  deletes files older than 7 days by filename timestamp. Preserve the current log, unrelated files, and symlinks.
+  Cleanup errors are nonfatal error-level events. No cross-instance locking is implemented.
 - Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
   but preserves source settings. “Copy all” copies the filtered snapshot.
 - Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged
