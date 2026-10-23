@@ -27,14 +27,10 @@
   `tombi lint --error-on-warnings <changed-files>`. CI checks all tracked files of each type; see the testing guide.
   Configuration/workflow-only edits can miss path-filtered CI; run relevant checks locally.
 
-## Website
-
-- The website is maintained separately at <https://github.com/chessvaultdotapp/website>.
-  Follow that repository's instructions for website development and deployment.
-- `.github/workflows/docs.yml` publishes developer documentation independently of the website.
-
 ## Assets, documentation, and release tools
 
+- The website lives at <https://github.com/chessvaultdotapp/website>; this repo publishes developer docs via
+  `.github/workflows/docs.yml`.
 - Workflow linting: `GOFLAGS=-mod=readonly go tool actionlint -shellcheck= -pyflakes= [workflow-files]` from the root;
   omit file arguments to check all workflows. CI checks only changed workflow YAML, not composite actions or installers.
 - After `pnpm install --frozen-lockfile`, `just optimize-assets` optimizes app SVGs and regenerates diagrams.
@@ -45,9 +41,9 @@
 - Documentation has two Zensical roots: run `venvs/zensical/bin/zensical build --config-file <config>` for both
   `zensical.toml` and `crates/platform-dirs/zensical.toml` after diagram generation. See `.github/workflows/docs.yml`
   for site assembly; cross-root links are not yet staged.
-- With uv installed, `just --justfile venvs/justfile development tag-tool dist-prepare zensical` creates separate Python
-  environments. Ruff/ty run from `venvs/development/bin`; ty needs `--python venvs/tag-tool`. Use each tool's own
-  environment for pytest. Exact checks: `.github/workflows/python.yml` and `docs/development/testing.md`.
+- Python setup: `just --justfile venvs/justfile development tag-tool dist-prepare` (requires uv). Follow
+  `.github/workflows/python.yml`: Ruff/ty use `venvs/development/bin`, ty needs `--python venvs/tag-tool`, and pytest
+  uses `venvs/tag-tool/bin/python` for both tag-tool and changelog-tool, `venvs/dist-prepare/bin/python` for dist-prepare.
 - `tools/dist-prepare/main.py` only stages files: it requires `chessvault.png` beside the supplied binary and rejects an
   existing output directory. Building and archiving happen outside this tool.
 - Installer tests: `just --justfile venvs/justfile install-script`, then
@@ -55,21 +51,22 @@
   need `CHESSVAULT_PACKAGE` pointing to an archive from the current checkout; see the testing guide.
 - The tag tool requires a clean tree and cached Cargo dependencies, consumes committed `changelogs/unreleased.md` if present,
   and commits/tags locally. Pushing its development tag publishes a release; read `docs/tools/tag-tool.md` first.
-- `just appimage` requires the setup in `docs/development/appimage.md`; release packaging lives in
-  `.github/workflows/development-release.yml`.
+- Before `just appimage`, follow `docs/development/appimage.md`; release packaging is in
+  `.github/workflows/development-release.yml`. Zensical setup: `just --justfile venvs/justfile zensical`.
 
 ## Package boundaries
 
 - The binary-only `apps/chessvault` depends directly on `crates/chess-core` and `crates/platform-dirs`.
 - `chess-core` exposes types through `src/lib.rs` re-exports (including `Move`); bitboards and castling rights stay internal.
-- Tests pin one-byte representations and discriminants for squares, sides, pieces, and castling-right masks.
-  `Piece::Empty` and `Side::Empty` are invalid occupancy indices; `Square::None` is an invalid bit index.
+  Preserve tested one-byte representations/discriminants. `Piece::Empty` and `Side::Empty` are invalid occupancy indices;
+  `Square::None` is an invalid bit index.
 - Construct public positions with `Position::standard()`; `Position::empty()` is crate-private and there is no `Default`.
 - `position/movegen.rs` owns legal move generation and application. `Position::play` rejects illegal moves without
   mutation; `Move` encodes castling with king squares and en passant with the pawn's landing square. Core generates
   all four promotions. Desktop must apply moves through `Game::play` to retain history and reject finished-game moves.
-- `GameStatus::Checkmate(side)` identifies the loser, not the winner. Draws include agreement, stalemate, repetition,
-  move-count rules, and conservative dead-material detection. Blocked dead positions with pawns are not yet detected.
+- `GameStatus::Checkmate(side)` and `Resigned(side)` identify the loser. Threefold/50-move draws require claims;
+  fivefold/75-move draws are automatic. Intended-move claims do not play or record the move. Dead-position detection
+  is conservative; blocked dead positions with pawns are not detected.
 - Draw offers are made by the side to move and survive that player's move. Only the opponent can accept or decline;
   their next legal move implicitly declines. Invalid moves preserve the offer; any game result clears it.
 
@@ -79,10 +76,8 @@
   Default-enabled `development` plus debug assertions selects
   `<cwd>/.local/state` and `<cwd>/.local/share` on every platform; release builds or `default-features = false` use OS
   resolution, currently Linux-only (other platforms error).
-- Linux accepts only absolute `XDG_STATE_HOME` (state) or `XDG_DATA_HOME` (share), falling back to an absolute home
-  directory plus `.local/state` or `.local/share`, respectively. Preserve
-  non-Unicode paths; resolver tests inject environment values and home lookup instead of mutating process-wide
-  environment. Linux resolver tests are Linux-only.
+- Linux requires absolute XDG/home bases and preserves non-Unicode paths. Resolver tests inject environment/home
+  values; do not mutate process-wide environment. Base resolution errors precede application-name validation.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
 - Desktop state is normally `.local/state/chessvault/` in development; window dimensions are JSON in `recreate`
@@ -96,26 +91,21 @@
   and cached `LazyLock` handles so rendering is directory-independent and reuses handles.
 - History review reconstructs a separate position; never rewind or mutate the live game. Review is read-only;
   navigation is blocked while the console or promotion picker is open. Cache SAN labels when moves arrive, not on redraw.
+- `pgn::export` emits headerless SAN movetext only for finished games, replaying from `Game::position_at(0)`;
+  result tokens must use the losing-side semantics above.
 - Promotion is deferred until the on-board picker chooses a piece. Outside clicks or Escape keep the pawn selected
   without changing the position; board moves are blocked while choosing.
 - `.exit_on_close_request(false)` lets the close subscription query and save window size before `window::close`. Restore
   failures use defaults; save failures still close the window.
-- Iced's `tokio` feature enables the **F12** console timer; refresh runs only while open.
-  Its read-only `text_editor` rejects editing actions and preserves the selection during periodic refresh
-  so copying remains usable.
+- Iced's `tokio` feature enables the **F12** console timer; refresh runs only while open. The read-only `text_editor`
+  rejects editing actions and skips periodic refresh while text is selected so copying remains usable.
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
 - `RUST_LOG` controls all logging (default `off,chessvault=info`). Terminal output requires debug assertions;
   in-app capture works in release.
-- Logging attempts to write a per-launch JSON file under `user_log_dir`; directory resolution or file initialization
-  failures emit a filtered warning after subscriber installation and do not abort startup. Subscriber installation
-  failures remain fatal. Console truncation notices must not promise an available log file.
-- After subscriber installation, background cleanup retains at most 20 log files (including the current log) and
-  deletes files older than 7 days by filename timestamp. Preserve the current log, unrelated files, and symlinks.
-  Cleanup errors are nonfatal error-level events. No cross-instance locking is implemented.
-- Console source toggles filter snapshots, not capture; hidden events can be revealed later. `clear()` removes history
-  but preserves source settings. “Copy all” copies the filtered snapshot.
-- Sources come from the first `::`-separated component of the event target. Keep `NormalizeEvent` handling for bridged
-  `log` records so dependency events retain their original source instead of becoming `log`.
-- Publish each complete formatted event atomically through `Logs::store_event`; the shared buffer retains the latest 2,000
-  events, not lines.
+- Log-file initialization and background retention failures are nonfatal; subscriber installation failure is fatal.
+  Console truncation notices must not promise an available log file. Retention (`logs/retention.rs`) preserves the
+  current log, unrelated files, and symlinks; there is no cross-instance locking.
+- Console source toggles filter snapshots, not capture; `clear()` preserves source settings and “Copy all” uses the
+  filtered snapshot. Sources use the first `::`-separated target component; preserve `NormalizeEvent` for bridged `log`
+  records. Publish complete events atomically through `Logs::store_event`; retention is 2,000 events, not lines.
