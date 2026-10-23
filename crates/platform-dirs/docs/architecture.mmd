@@ -6,12 +6,12 @@ block-beta
         block:development
             columns 1
             development_title["<b>Development override</b><br/>When debug assertions are enabled<br/>AND the development feature is enabled"]
-            development_path["<b>On every OS</b><br/>Project-local directories<br/>State: current working directory + .local/state"]
+            development_path["<b>On every OS</b><br/>Project-local directories<br/>State: current working directory + .local/state<br/>Share: current working directory + .local/share"]
         end
         block:native
             columns 2
             native_title["<b>OS-specific resolution</b><br/>In release builds, or when the development feature is disabled"]:2
-            linux["<b>Linux</b><br/><br/>XDG directory conventions<br/>State: absolute XDG_STATE_HOME<br/>or home directory + .local/state"]
+            linux["<b>Linux</b><br/><br/>XDG directory conventions<br/>State: absolute XDG_STATE_HOME<br/>or home directory + .local/state<br/>Share: absolute XDG_DATA_HOME<br/>or home directory + .local/share"]
             other["<b>Other operating systems</b><br/><br/>Not supported yet<br/>Returns an error"]
         end
     end

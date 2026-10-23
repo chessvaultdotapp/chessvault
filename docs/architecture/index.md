@@ -21,7 +21,7 @@ are omitted.
 | --- | --- | --- |
 | `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../../apps/chessvault/src/main.rs) |
 | `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
-| `platform-dirs` | Platform-specific user state and log directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
+| `platform-dirs` | Platform-specific user state, share, and log directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
 
 The chess core has no dependency on the GUI or platform directory library.
 Platform resolution accepts an optional application name; the desktop passes
@@ -114,6 +114,12 @@ Release builds, and builds without that feature, use platform resolution:
   home directory is required and `.local/state` is appended.
 - Other platforms currently return an error. The development path does not mean
   that native state-directory support exists for those platforms.
+
+The library also exposes `user_share_dir` for persistent user data. Its development
+base is `<current working directory>/.local/share`; native Linux resolution uses
+an absolute `XDG_DATA_HOME`, falling back to `<home>/.local/share`. It follows the
+same application-name validation and platform support as state resolution.
+The desktop does not currently use this API.
 
 ### Saved data and failure handling
 

@@ -75,11 +75,12 @@
 
 ## State paths
 
-- `platform_dirs::{user_state_dir, user_log_dir}` only resolve paths; callers create directories.
+- `platform_dirs::{user_state_dir, user_share_dir, user_log_dir}` only resolve paths; callers create directories.
   Default-enabled `development` plus debug assertions selects
-  `<cwd>/.local/state` on every platform; release builds or `default-features = false` use OS resolution, currently
-  Linux-only (other platforms error).
-- Linux accepts only absolute `XDG_STATE_HOME`, falling back to an absolute home directory plus `.local/state`. Preserve
+  `<cwd>/.local/state` and `<cwd>/.local/share` on every platform; release builds or `default-features = false` use OS
+  resolution, currently Linux-only (other platforms error).
+- Linux accepts only absolute `XDG_STATE_HOME` (state) or `XDG_DATA_HOME` (share), falling back to an absolute home
+  directory plus `.local/state` or `.local/share`, respectively. Preserve
   non-Unicode paths; resolver tests inject environment values and home lookup instead of mutating process-wide
   environment. Linux resolver tests are Linux-only.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with

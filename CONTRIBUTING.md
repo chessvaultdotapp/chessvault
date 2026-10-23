@@ -9,7 +9,7 @@ development tools, clone the repository, and build and run the desktop app.
 
 - `apps/chessvault`: the desktop app, built with Iced 0.14.
 - `crates/chess-core`: the chess core library and its inline unit tests.
-- `crates/platform-dirs`: platform-specific state directory resolution.
+- `crates/platform-dirs`: platform-specific state, share, and log directory resolution.
 
 The desktop app depends directly on `chess-core` and `platform-dirs`.
 

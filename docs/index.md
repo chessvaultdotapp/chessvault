@@ -17,4 +17,4 @@ Chessvault is an early-stage chess desktop application built with Rust and Iced.
 
 - [Desktop application](components/desktop.md) — UI, board rendering, and logging.
 - [Chess core](components/chess-core.md) — chess primitives and position storage.
-- [Platform directories](components/platform-dirs.md) — user state and log directory resolution.
+- [Platform directories](components/platform-dirs.md) — user state, share, and log directory resolution.

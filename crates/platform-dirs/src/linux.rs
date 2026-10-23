@@ -1,4 +1,4 @@
-//! Linux user state directory resolution following the XDG base directory policy.
+//! Linux user directory resolution following the XDG base directory policy.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -11,6 +11,16 @@ pub(crate) fn user_state_dir() -> Result<PathBuf> {
     resolve_user_state_dir(std::env::var_os("XDG_STATE_HOME"), std::env::home_dir)
 }
 
+/// Resolves the data directory using the process environment and OS home lookup.
+#[cfg(not(all(debug_assertions, feature = "development")))]
+pub(crate) fn user_share_dir() -> Result<PathBuf> {
+    resolve_user_share_dir(std::env::var_os("XDG_DATA_HOME"), std::env::home_dir)
+}
+
+fn resolve_user_share_dir(xdg: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
+    resolve_user_dir(xdg, home, "share", "XDG_DATA_HOME")
+}
+
 /// Prefers an absolute XDG state path, otherwise appends `.local/state` to home.
 ///
 /// The home lookup is lazy and runs only when the XDG value is missing or not
@@ -18,18 +28,29 @@ pub(crate) fn user_state_dir() -> Result<PathBuf> {
 /// OS-native path values preserve non-Unicode names; injected inputs let tests
 /// exercise the policy without changing the process environment.
 fn resolve_user_state_dir(xdg_state_home: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
-    if let Some(path) = xdg_state_home.map(PathBuf::from)
+    resolve_user_dir(xdg_state_home, home, "state", "XDG_STATE_HOME")
+}
+
+fn resolve_user_dir(
+    xdg: Option<OsString>,
+    home: impl FnOnce() -> Option<PathBuf>,
+    directory: &str,
+    variable: &str,
+) -> Result<PathBuf> {
+    if let Some(path) = xdg.map(PathBuf::from)
         && path.is_absolute()
     {
         return Ok(path);
     }
 
-    let home = home().filter(|path| path.is_absolute()).context(
-        "Cannot resolve user state directory: \
-             XDG_STATE_HOME is unset or invalid and no absolute home directory could be determined.",
-    )?;
+    let home = home().filter(|path| path.is_absolute()).with_context(|| {
+        format!(
+            "Cannot resolve user {directory} directory: \
+             {variable} is unset or invalid and no absolute home directory could be determined."
+        )
+    })?;
 
-    Ok(home.join(".local").join("state"))
+    Ok(home.join(".local").join(directory))
 }
 
 #[cfg(test)]
@@ -37,6 +58,25 @@ mod tests {
     use super::*;
     use rstest::rstest;
     use std::os::unix::ffi::OsStringExt;
+
+    #[test]
+    fn share_directory_resolution() {
+        let non_unicode = OsString::from_vec(b"/data/\xff".to_vec());
+        assert_eq!(
+            resolve_user_share_dir(Some(non_unicode.clone()), || panic!("unexpected home lookup")).unwrap(),
+            PathBuf::from(non_unicode.clone())
+        );
+        for xdg in [None, Some(""), Some("relative/data")] {
+            assert_eq!(
+                resolve_user_share_dir(xdg.map(OsString::from), || Some(PathBuf::from(non_unicode.clone()))).unwrap(),
+                PathBuf::from(non_unicode.clone()).join(".local/share")
+            );
+            for home in [None, Some(""), Some("relative/home")] {
+                let error = resolve_user_share_dir(xdg.map(OsString::from), || home.map(PathBuf::from)).unwrap_err();
+                assert!(error.to_string().contains("XDG_DATA_HOME"));
+            }
+        }
+    }
 
     #[test]
     fn absolute_xdg_state_home_does_not_need_home() {

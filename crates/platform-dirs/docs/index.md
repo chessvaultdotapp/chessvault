@@ -1,6 +1,6 @@
 # Platform directories
 
-`platform-dirs` resolves directories for persistent user state and logs. It only
+`platform-dirs` resolves directories for persistent user state, shared data, and logs. It only
 resolves paths, optionally appending an application name; callers create directories
 as needed.
 
@@ -33,14 +33,27 @@ directory plus `log`.
 Application-name validation, resolution errors, and platform support are identical
 to `user_state_dir`. Neither function creates directories.
 
+### Share directory
+
+`platform_dirs::user_share_dir(app_name: Option<&str>)` returns the persistent user
+data directory. It uses `<current working directory>/.local/share` in development.
+Native Linux resolution prefers an absolute `XDG_DATA_HOME`, falling back to
+`.local/share` beneath an absolute home directory. Missing, empty, or relative
+XDG values use the fallback. Other native platforms return an error.
+
+Application-name validation and resolution precedence match `user_state_dir`.
+Non-Unicode paths are preserved; the function does not create directories.
+
 ## Features and platform support
 
 With debug assertions and the default-enabled `development` feature, resolution
-uses `<current working directory>/.local/state` on every platform.
+uses `<current working directory>/.local/state` for state and
+`<current working directory>/.local/share` for shared data on every platform.
 
 Otherwise, native resolution is used. Currently, only Linux is supported:
-an absolute `XDG_STATE_HOME` takes precedence, with a fallback to `.local/state`
-beneath an absolute home directory. Other platforms return an error.
+an absolute `XDG_STATE_HOME` (state) or `XDG_DATA_HOME` (share) takes precedence,
+with a fallback to `.local/state` or `.local/share`, respectively, beneath an
+absolute home directory. Other platforms return an error.
 
 Resolution preserves non-Unicode paths and does not check whether the directory
 exists or is writable.
