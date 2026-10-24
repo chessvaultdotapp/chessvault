@@ -40,6 +40,20 @@ for persistent user data, with the same application-name validation as `user_sta
 Both functions resolve the base before validating the name, so resolution errors take precedence.
 They preserve non-Unicode paths and do not create directories.
 
+### System share directories
+
+`platform_dirs::system_share_dirs(app_name: Option<&str>)` returns an `anyhow::Result<Vec<PathBuf>>`.
+On Linux it reads `XDG_DATA_DIRS` in search order, defaulting to `/usr/local/share` then `/usr/share`
+when unset or empty. Relative and empty entries are ignored; an explicitly configured list with no
+absolute entries produces an empty list. Order, duplicates, and non-Unicode paths are preserved.
+The user share directory is not included.
+
+An optional application name is validated using the same rules as user directories and appended to
+all returned paths. Invalid names are rejected even for an empty search list. Paths are not created
+or checked for existence. Unsupported platforms return an error.
+
+System paths always use native resolution, including in development builds.
+
 ### Development override
 
 With both debug assertions and the default-enabled `development` feature, the
