@@ -54,7 +54,7 @@ jobs:
 
       - name: Check Python types
         run: |
-          git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool --exclude tools/platform-dirs-differential
+          git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool --force-exclude --exclude tools/platform-dirs-differential
           venvs/development/bin/ty check --python venvs/platform-dirs-differential tools/platform-dirs-differential
 
       - name: Test tag tool
