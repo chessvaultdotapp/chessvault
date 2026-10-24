@@ -25,7 +25,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-#[cfg(all(target_os = "linux", any(not(all(debug_assertions, feature = "development")), test)))]
+#[cfg(target_os = "linux")]
 mod linux;
 
 /// Returns the absolute directory for persistent user state.
@@ -125,6 +125,45 @@ pub fn user_share_dir(app_name: Option<&str>) -> Result<PathBuf> {
     with_app_name(base_share_dir()?, app_name)
 }
 
+/// Returns system-wide directories for shared application data in search order.
+///
+/// On Linux, reads the colon-separated `XDG_DATA_DIRS`. When unset or empty,
+/// defaults to `/usr/local/share` followed by `/usr/share`. Empty and relative
+/// entries are ignored; an explicitly configured list with no absolute entries
+/// returns an empty vector. Order, duplicates, and non-Unicode paths are preserved.
+/// The user data directory is not included.
+///
+/// Unlike user directories, these paths use native resolution even with the
+/// `development` feature. Pass `None` for base paths or an application name
+/// validated as in [`user_state_dir`]. No directories are created or checked.
+///
+/// # Errors
+///
+/// Returns an error on unsupported platforms (anything other than Linux), or for
+/// an invalid application name, even when the search list is empty. Platform
+/// resolution errors take precedence over application-name validation.
+///
+/// # Examples
+///
+/// ```
+/// if let Ok(paths) = platform_dirs::system_share_dirs(Some("my-app")) {
+///     assert!(paths.iter().all(|path| path.is_absolute() && path.ends_with("my-app")));
+/// }
+/// ```
+pub fn system_share_dirs(app_name: Option<&str>) -> Result<Vec<PathBuf>> {
+    #[cfg(target_os = "linux")]
+    let bases = linux::system_share_dirs();
+
+    #[cfg(not(target_os = "linux"))]
+    let bases: Vec<PathBuf> = {
+        anyhow::bail!("System share directories are unsupported on this platform");
+    };
+
+    // Validate even when all configured entries were ignored.
+    with_app_name(PathBuf::new(), app_name)?;
+    bases.into_iter().map(|base| with_app_name(base, app_name)).collect()
+}
+
 fn base_share_dir() -> Result<PathBuf> {
     #[cfg(all(debug_assertions, feature = "development"))]
     {
@@ -207,6 +246,21 @@ pub fn user_log_dir(app_name: Option<&str>, opinion: Option<bool>) -> Result<Pat
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn system_share_directory_application_names() {
+        let bases = system_share_dirs(None).unwrap();
+        for name in ["chessvault", "my app", "šah"] {
+            assert_eq!(
+                system_share_dirs(Some(name)).unwrap(),
+                bases.iter().map(|base| base.join(name)).collect::<Vec<_>>()
+            );
+        }
+        for name in ["", ".", "..", "/app", "a/b", "a\\b", "C:app", "a\0b"] {
+            assert!(system_share_dirs(Some(name)).is_err());
+        }
+    }
 
     #[test]
     fn share_directory_application_names() {

@@ -3,6 +3,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+#[cfg(any(not(all(debug_assertions, feature = "development")), test))]
 use anyhow::{Context, Result};
 
 /// Resolves the state directory using the process environment and OS home lookup.
@@ -17,6 +18,19 @@ pub(crate) fn user_share_dir() -> Result<PathBuf> {
     resolve_user_share_dir(std::env::var_os("XDG_DATA_HOME"), std::env::home_dir)
 }
 
+pub(crate) fn system_share_dirs() -> Vec<PathBuf> {
+    resolve_system_share_dirs(std::env::var_os("XDG_DATA_DIRS"))
+}
+
+fn resolve_system_share_dirs(xdg: Option<OsString>) -> Vec<PathBuf> {
+    let value = xdg.filter(|value| !value.is_empty());
+    let value = value.unwrap_or_else(|| OsString::from("/usr/local/share:/usr/share"));
+    std::env::split_paths(&value)
+        .filter(|path| path.is_absolute())
+        .collect()
+}
+
+#[cfg(any(not(all(debug_assertions, feature = "development")), test))]
 fn resolve_user_share_dir(xdg: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
     resolve_user_dir(xdg, home, "share", "XDG_DATA_HOME")
 }
@@ -27,10 +41,12 @@ fn resolve_user_share_dir(xdg: Option<OsString>, home: impl FnOnce() -> Option<P
 /// absolute. Returns an error if the fallback home is missing or not absolute.
 /// OS-native path values preserve non-Unicode names; injected inputs let tests
 /// exercise the policy without changing the process environment.
+#[cfg(any(not(all(debug_assertions, feature = "development")), test))]
 fn resolve_user_state_dir(xdg_state_home: Option<OsString>, home: impl FnOnce() -> Option<PathBuf>) -> Result<PathBuf> {
     resolve_user_dir(xdg_state_home, home, "state", "XDG_STATE_HOME")
 }
 
+#[cfg(any(not(all(debug_assertions, feature = "development")), test))]
 fn resolve_user_dir(
     xdg: Option<OsString>,
     home: impl FnOnce() -> Option<PathBuf>,
@@ -65,6 +81,30 @@ mod tests {
     use super::*;
     use rstest::rstest;
     use std::os::unix::ffi::OsStringExt;
+
+    #[rstest]
+    #[case::unset(None, vec!["/usr/local/share", "/usr/share"])]
+    #[case::empty(Some(""), vec!["/usr/local/share", "/usr/share"])]
+    #[case::ordered(Some("/opt/share:/usr/share:/opt/share"), vec!["/opt/share", "/usr/share", "/opt/share"])]
+    #[case::invalid_entries(Some(":relative:/opt/share::../share:"), vec!["/opt/share"])]
+    #[case::all_invalid(Some(":relative:"), vec![])]
+    fn system_data_search_paths(#[case] value: Option<&str>, #[case] expected: Vec<&str>) {
+        assert_eq!(
+            resolve_system_share_dirs(value.map(OsString::from)),
+            expected.into_iter().map(PathBuf::from).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn system_data_preserves_non_unicode_paths() {
+        assert_eq!(
+            resolve_system_share_dirs(Some(OsString::from_vec(b"/data/\xff:/usr/share".to_vec()))),
+            vec![
+                PathBuf::from(OsString::from_vec(b"/data/\xff".to_vec())),
+                PathBuf::from("/usr/share")
+            ]
+        );
+    }
 
     #[test]
     fn share_directory_resolution() {
