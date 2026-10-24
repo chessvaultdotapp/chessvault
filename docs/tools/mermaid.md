@@ -25,6 +25,34 @@ Do not enable all dependency scripts to work around an installation failure.
 See [Puppeteer's troubleshooting guide](https://pptr.dev/troubleshooting) for
 browser startup failures or missing system libraries.
 
+## CI diagram cache
+
+Markdown checks and documentation builds share the local
+[prepare-diagrams action](../../.github/actions/prepare-diagrams/action.yml).
+It caches only the generated `architecture.svg` and `resolution.svg`, not Node
+modules or application artwork. Both workflows use the same exact cache key,
+covering runner OS/architecture, Chrome version, `.mmd` sources, the generation
+justfile, package manifests and lockfile, and the preparation/setup action code.
+Tool versions and generation settings in the action therefore invalidate the cache.
+There are no fallback restore keys: changed inputs regenerate the diagrams.
+
+On a cache hit, CI skips Node, pnpm, dependency installation, and Mermaid/SVGO
+execution. On a miss, it renders with the runner's sandbox-enabled Chrome and
+skips downloading Puppeteer's browser. Both paths verify the expected SVGs exist
+and are nonempty. Markdown link checks and both documentation builds still run;
+a diagram cache hit does not skip validation. Local generation is unchanged.
+
+Concurrent cold runs may both generate diagrams before one saves the shared key.
+GitHub's cache branch scoping still applies: main caches can serve PRs, while a
+PR-created cache cannot populate the main-branch cache. The first main run after
+an input change may therefore be cold even if a PR already generated the diagrams.
+
+After rollout, inspect the `Cache generated diagrams` step for exact hits and
+confirm the four tooling/rendering steps are skipped on prose-only changes.
+Compare total Markdown/documentation job times, including restore overhead, with
+cold runs. Changing a `.mmd` source, the lockfile, or the generation action should
+produce a miss. Hosted cache reuse and actual savings require subsequent CI runs.
+
 ## Generate diagrams
 
 Edit the `.mmd` sources in `crates/platform-dirs/docs/`, then run from the workspace
