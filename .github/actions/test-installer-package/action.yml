@@ -1,0 +1,30 @@
+name: Test installer package
+description: Install test dependencies and smoke-test an existing native Linux archive
+
+inputs:
+  package:
+    description: Path to the native Linux tar.gz archive from the current checkout
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: ./.github/actions/setup-uv
+
+    - name: Install just
+      uses: ./.github/actions/setup-just
+
+    - name: Install Python and test dependencies
+      shell: bash
+      env:
+        UV_PYTHON: '3.14.5'
+      run: |
+        uv python install "$UV_PYTHON"
+        just --justfile venvs/justfile install-script
+
+    - name: Test packaged installer
+      shell: bash
+      env:
+        CHESSVAULT_PACKAGE: ${{ inputs.package }}
+      run: venvs/install-script/bin/python -m pytest scripts/package-tests -q

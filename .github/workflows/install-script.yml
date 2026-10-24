@@ -13,6 +13,7 @@ on:
       - 'venvs/install-script.requirements.txt'
       - 'venvs/justfile'
       - '.github/workflows/install-script.yml'
+      - '.github/actions/test-installer-package/**'
       - '.github/actions/setup-uv/**'
       - '.github/actions/setup-just/**'
   pull_request:
@@ -129,20 +130,7 @@ jobs:
           name: installer-linux-package
           path: dist
 
-      - name: Install uv
-        uses: ./.github/actions/setup-uv
-
-      - name: Install just
-        uses: ./.github/actions/setup-just
-
-      - name: Install Python and test dependencies
-        env:
-          UV_PYTHON: '3.14.5'
-        run: |
-          uv python install "$UV_PYTHON"
-          just --justfile venvs/justfile install-script
-
       - name: Test packaged installer
-        env:
-          CHESSVAULT_PACKAGE: ${{ github.workspace }}/dist/chessvault-linux-x86_64.tar.gz
-        run: venvs/install-script/bin/python -m pytest scripts/package-tests -q
+        uses: ./.github/actions/test-installer-package
+        with:
+          package: ${{ github.workspace }}/dist/chessvault-linux-x86_64.tar.gz
