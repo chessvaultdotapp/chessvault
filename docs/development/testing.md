@@ -354,10 +354,11 @@ or SVG icon, test environment, or workflow dependencies change. Two jobs start i
 A third job waits for the package build, downloads the archive on a fresh Ubuntu runner,
 and runs the packaged installer. It does not depend on the fixture job.
 Both stable and development release workflows also run the package smoke tests
-inside their native packaging job, using the exact archive that will be uploaded.
+inside their combined build/packaging job, using the exact archive that will be uploaded.
 A failure blocks the native artifact upload and release publication. These tests
 reuse the release-produced binary; they do not compile another binary or start
-another runner job. AppImage packaging remains separate.
+another runner job. The same job then packages and validates the AppImage from
+the already-built executable. Publication waits for the combined job to succeed.
 
 The shared local action at `.github/actions/test-installer-package` installs the
 Python test environment and runs `scripts/package-tests` against its required

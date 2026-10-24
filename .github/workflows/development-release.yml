@@ -33,11 +33,11 @@ jobs:
           fi
 
   build:
-    name: Build shared Linux binary
+    name: Build and package Linux artifacts
     needs: identify-tag
     if: needs.identify-tag.outputs.development == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       TAG: ${{ github.ref_name }}
     steps:
@@ -69,39 +69,10 @@ jobs:
                           "target/x86_64-unknown-linux-gnu/release/chessvault.png")
           PY
 
-      - name: Store shared binary
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: shared-linux-binary
-          path: |
-            target/x86_64-unknown-linux-gnu/release/chessvault
-            target/x86_64-unknown-linux-gnu/release/chessvault.png
-          if-no-files-found: error
-          retention-days: 7
-
-  package-native:
-    name: Package native Linux binary
-    needs: build
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    env:
-      TAG: ${{ github.ref_name }}
-    steps:
-      - name: Check out tagged commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Download shared binary
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: shared-linux-binary
-          path: binary
-
       - name: Package Linux binary
         shell: bash
         run: |
-          python3 tools/dist-prepare/main.py binary/chessvault --output dist/package
+          python3 tools/dist-prepare/main.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
           tar -czf "dist/chessvault-${TAG}-linux-x86_64.tar.gz" \
             -C dist/package bin install-linux.sh share
 
@@ -120,35 +91,14 @@ jobs:
           compression-level: 0
           retention-days: 7
 
-  package-appimage:
-    name: Package Linux AppImage
-    needs: build
-    # Match the shared binary's glibc baseline when bundling libraries.
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    env:
-      TAG: ${{ github.ref_name }}
-    steps:
-      - name: Check out tagged commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Download shared binary
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: shared-linux-binary
-          path: binary
-
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y desktop-file-utils
 
       - name: Package and validate AppImage
         shell: bash
         run: |
-          # Artifact downloads do not preserve executable permissions.
-          chmod 755 binary/chessvault
-          bash tools/build-appimage.sh --binary binary/chessvault
+          # Reuse the same binary and generated icon as the tested native archive.
+          bash tools/build-appimage.sh --binary target/x86_64-unknown-linux-gnu/release/chessvault
           maximum=$(tail -n 1 dist/ChessVault-x86_64.glibc.txt)
           if [[ $(printf '%s\n' GLIBC_2.35 "$maximum" | sort -V | tail -n 1) != GLIBC_2.35 ]]; then
             echo "AppImage exceeds the glibc 2.35 baseline: $maximum" >&2
@@ -168,7 +118,7 @@ jobs:
 
   release:
     name: Publish development prerelease
-    needs: [package-native, package-appimage]
+    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
