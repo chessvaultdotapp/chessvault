@@ -13,7 +13,7 @@ png = "0.18.1"
 rfd = "0.17.2"
 serde.workspace = true
 serde_json.workspace = true
-tracing = "0.1.44"
+tracing.workspace = true
 tracing-appender = { version = "0.2.5" }
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }

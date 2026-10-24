@@ -37,10 +37,17 @@ fn resolve_user_dir(
     directory: &str,
     variable: &str,
 ) -> Result<PathBuf> {
-    if let Some(path) = xdg.map(PathBuf::from)
-        && path.is_absolute()
-    {
-        return Ok(path);
+    match xdg.map(PathBuf::from) {
+        Some(path) if path.is_absolute() => return Ok(path),
+        Some(path) => tracing::warn!(
+            variable,
+            path = ?path,
+            "XDG variable is not an absolute path; ignoring it as required by XDG and falling back to the default directory"
+        ),
+        None => tracing::info!(
+            variable,
+            "XDG variable is not set; falling back to the default directory"
+        ),
     }
 
     let home = home().filter(|path| path.is_absolute()).with_context(|| {

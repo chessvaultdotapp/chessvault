@@ -7,4 +7,5 @@ anyhow = "1.0.104"
 rstest = "0.27.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+tracing = "0.1.44"
 zerocopy = "0.8.57"

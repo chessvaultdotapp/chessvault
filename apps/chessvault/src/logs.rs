@@ -22,7 +22,7 @@ const MAX_ENTRIES: usize = 2_000;
 // the independent JSON file layer still writes the complete event.
 const MAX_ENTRY_BYTES: usize = 4_096;
 const TRUNCATED_ENTRY: &str = "\n[console entry truncated]\n";
-const DEFAULT_LOG_FILTER: &str = "off,chessvault=info";
+const DEFAULT_LOG_FILTER: &str = "off,chessvault=info,platform_dirs=info";
 
 #[derive(Clone, Default)]
 pub struct Logs(Arc<Mutex<LogStore>>);
@@ -108,7 +108,7 @@ impl Logs {
         let source = target.split("::").next().unwrap_or(target).to_owned();
         // Publish complete events atomically so concurrent formatting cannot interleave them.
         let mut store = self.0.lock().unwrap();
-        store.sources.entry(source.clone()).or_insert(false);
+        store.sources.entry(source.clone()).or_insert(source == "platform_dirs");
         if store.entries.len() == MAX_ENTRIES {
             store.entries.pop_front();
         }
@@ -348,12 +348,18 @@ mod tests {
         tracing::subscriber::with_default(subscriber, || {
             tracing::info!(target: "chessvault::game", "application event");
             tracing::debug!(target: "chessvault::game", "debug event");
+            tracing::info!(target: "platform_dirs::linux", "directory fallback event");
+            tracing::warn!(target: "platform_dirs::linux", "invalid directory event");
+            tracing::debug!(target: "platform_dirs::linux", "directory debug event");
             tracing::error!(target: "new_dependency::module", "dependency event");
         });
 
         let file_output = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
         for snapshot in [logs.snapshot(), file_output] {
             assert!(snapshot.contains("application event"));
+            assert!(snapshot.contains("directory fallback event"));
+            assert!(snapshot.contains("invalid directory event"));
+            assert!(!snapshot.contains("directory debug event"));
             assert!(!snapshot.contains("debug event"));
             assert!(!snapshot.contains("dependency event"));
         }

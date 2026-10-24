@@ -82,6 +82,13 @@ absolute home path. Missing,
 empty, and relative XDG values trigger the fallback; a missing or non-absolute
 home produces an error.
 
+The resolver emits a `tracing` info event when the XDG variable is unset and a
+warning when it is set but not absolute (including an empty value). Events name
+the variable and explain the fallback; warnings also include the rejected path.
+These events announce the fallback attempt, which can still fail if no absolute
+home is available. Valid absolute XDG values produce no event. Applications
+configure the tracing subscriber and filter; the library does not install one.
+
 Home lookup is lazy: a valid XDG path does not depend on home resolution.
 Neither branch creates or validates the directory on disk.
 

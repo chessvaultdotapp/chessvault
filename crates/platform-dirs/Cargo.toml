@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true

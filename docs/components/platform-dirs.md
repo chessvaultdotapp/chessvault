@@ -68,7 +68,10 @@ Linux is currently implemented:
    append `.local/state` or `.local/share`, respectively.
 3. Return an error if neither provides a usable path.
 
-Unset, empty, and relative XDG values all trigger the home fallback. An absolute
+Unset, empty, and relative XDG values all trigger the home fallback.
+The resolver logs unset variables at info level and non-absolute values (including
+empty values) at warn level through `tracing`, explaining the fallback. The desktop
+app enables these logs by default; `RUST_LOG` can override its filter. An absolute
 XDG path does not require a home-directory lookup. Other operating systems
 return an unsupported-platform error; the debug override is not native support
 for those platforms.

@@ -2483,6 +2483,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "rstest",
+ "tracing",
 ]
 
 [[package]]

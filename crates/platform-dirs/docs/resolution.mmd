@@ -28,6 +28,9 @@ flowchart TB
     read_xdg["Read XDG_STATE_HOME for state<br/>or XDG_DATA_HOME for share"]
     xdg{"Absolute path?"}
     use_xdg["Use the absolute XDG path"]
+    xdg_set{"Variable is set?"}
+    log_info["Log info: variable is unset<br/>Falling back to default directory"]
+    log_warn["Log warn: value is not absolute<br/>Ignore as required by XDG<br/>Fall back to default directory"]
     home["Look up home directory"]
     valid_home{"Absolute home<br/>path available?"}
     fallback["Append .local/state for state<br/>or .local/share for share<br/>to home path"]
@@ -48,7 +51,11 @@ flowchart TB
 
     read_xdg --> xdg
     xdg -->|Yes| use_xdg
-    xdg -->|No| home
+    xdg -->|No| xdg_set
+    xdg_set -->|No| log_info
+    xdg_set -->|"Yes (including empty)"| log_warn
+    log_info --> home
+    log_warn --> home
     use_xdg --> result
     home --> valid_home
     valid_home -->|Yes| fallback

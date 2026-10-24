@@ -101,7 +101,7 @@
   rejects editing actions and skips periodic refresh while text is selected so copying remains usable.
 - `Logs::init()` installs the global tracing subscriber before the GUI starts. Tests instead use scoped subscribers via
   `tracing::subscriber::with_default`.
-- `RUST_LOG` controls all logging (default `off,chessvault=info`). Terminal output requires debug assertions;
+- `RUST_LOG` controls all logging (default `off,chessvault=info,platform_dirs=info`). Terminal output requires debug assertions;
   in-app capture works in release.
 - Log-file initialization and background retention failures are nonfatal; subscriber installation failure is fatal.
   Console truncation notices must not promise an available log file. Retention (`logs/retention.rs`) preserves the

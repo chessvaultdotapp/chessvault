@@ -109,11 +109,13 @@ $ RUST_LOG=chessvault=debug cargo run -p chessvault --locked
 
 `RUST_LOG` filters capture, not just display. A message excluded at this stage
 cannot be recovered by enabling a source in the console. Without a valid
-`RUST_LOG` configuration, capture defaults to `off,chessvault=info`: dependency logs
-are excluded from console capture, terminal output, and log files.
+`RUST_LOG` configuration, capture defaults to `off,chessvault=info,platform_dirs=info`:
+application and platform-dirs logs at info level and above are captured. Other dependency
+logs are excluded from console capture, terminal output, and log files.
 
-The source controls operate on retained events. Some dependency sources are
-hidden initially; new sources are enabled when discovered. “Copy all” copies
+The source controls operate on retained events. The application source is enabled
+initially, and `platform_dirs` is enabled when discovered. Other new sources are
+hidden until explicitly enabled. “Copy all” copies
 the filtered snapshot, while “Clear” removes all retained events, including
 hidden ones, without changing source settings.
 
