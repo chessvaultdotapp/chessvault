@@ -1,0 +1,7 @@
+# Unreleased
+
+## Changed
+
+- On Linux, the app now searches system data directories from `XDG_DATA_DIRS` for its window icon after checking
+  the user data directory. If `XDG_DATA_DIRS` is unset or empty, it searches `/usr/local/share` then `/usr/share`.
+  Missing or invalid icons are skipped, with the embedded icon used when no installed icon can be loaded.
