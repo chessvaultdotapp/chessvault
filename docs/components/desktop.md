@@ -12,6 +12,7 @@ window dimensions. The board is not yet interactive.
 | [`board.rs`](../../apps/chessvault/src/board.rs) | Responsive board layout and embedded piece artwork |
 | [`logs.rs`](../../apps/chessvault/src/logs.rs) | Tracing setup, shared event storage, and source-filtered snapshots |
 | [`fs.rs`](../../apps/chessvault/src/fs.rs) | Saved window-state file path |
+| [`icon.rs`](../../apps/chessvault/src/icon.rs) | Installed window-icon lookup and embedded fallback |
 
 ## Application state and messages
 
@@ -53,6 +54,27 @@ checked indexing excludes their empty sentinels.
 
 See the [README acknowledgements](../../README.md#acknowledgements) for artwork
 attribution and licensing.
+
+### Window icon lookup
+
+At startup, [`icon::load`](../../apps/chessvault/src/icon.rs) searches for
+`icons/hicolor/256x256/apps/chessvault.png` beneath these data directories, in order:
+
+1. The user data directory returned by `platform_dirs::user_share_dir(None)`.
+2. The system data directories returned by `platform_dirs::system_share_dirs(None)`.
+
+On Linux, native user-directory resolution uses an absolute `XDG_DATA_HOME`, or
+`$HOME/.local/share` otherwise. System directories follow `XDG_DATA_DIRS` in order,
+with `/usr/local/share` then `/usr/share` as the default when it is unset or empty.
+In debug builds with the default `development` feature, the user directory is
+`<cwd>/.local/share`; system directories still use native resolution. See
+[platform directory resolution](platform-dirs.md) for the full path policy.
+
+The first successfully decoded PNG wins. Missing icons are skipped; unreadable or
+invalid icons produce a warning and the search continues. Directory-resolution
+failures also produce warnings without preventing the remaining search. If no
+installed icon can be loaded, the app uses the embedded 64×64 window icon generated
+from [`assets/logo.svg`](../../apps/chessvault/assets/logo.svg) at build time.
 
 ### Optimizing SVG artwork
 
