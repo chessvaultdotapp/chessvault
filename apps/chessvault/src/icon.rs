@@ -1,24 +1,44 @@
-use std::{io::ErrorKind, path::Path};
+use std::{
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result};
 use iced::window;
 use tracing::{info, warn};
 
 pub fn load() -> Result<window::Icon> {
+    let mut bases = Vec::new();
     match platform_dirs::user_share_dir(None) {
-        Ok(base) => {
-            let path = base.join("icons/hicolor/256x256/apps/chessvault.png");
-            match load_installed(&path) {
-                Ok(Some(icon)) => return Ok(icon),
-                Ok(None) => info!(path = %path.display(), "Installed icon unavailable; using embedded icon"),
-                Err(error) => {
-                    warn!(path = %path.display(), error = ?error, "Failed to load installed icon; using embedded icon")
-                }
+        Ok(base) => bases.push(base),
+        Err(error) => warn!(error = ?error, "Cannot resolve user icon directory; continuing icon search"),
+    }
+    match platform_dirs::system_share_dirs(None) {
+        Ok(system) => bases.extend(system),
+        Err(error) => warn!(error = ?error, "Cannot resolve system icon directories; continuing icon search"),
+    }
+    if let Some(icon) = load_from_dirs(bases, load_installed) {
+        return Ok(icon);
+    }
+    info!("No installed icon available; using embedded icon");
+    load_embedded()
+}
+
+fn load_from_dirs(
+    bases: impl IntoIterator<Item = PathBuf>,
+    mut load: impl FnMut(&Path) -> Result<Option<window::Icon>>,
+) -> Option<window::Icon> {
+    for base in bases {
+        let path = base.join("icons/hicolor/256x256/apps/chessvault.png");
+        match load(&path) {
+            Ok(Some(icon)) => return Some(icon),
+            Ok(None) => {}
+            Err(error) => {
+                warn!(path = %path.display(), error = ?error, "Failed to load installed icon; continuing icon search")
             }
         }
-        Err(error) => warn!(error = ?error, "Cannot resolve installed icon directory; using embedded icon"),
     }
-    load_embedded()
+    None
 }
 
 fn load_installed(path: &Path) -> Result<Option<window::Icon>> {
@@ -66,6 +86,35 @@ fn load_embedded() -> Result<window::Icon> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn installed_search_preserves_order_and_stops_at_first_icon() {
+        let mut visited = Vec::new();
+        let icon = super::load_from_dirs(
+            ["user", "system-first", "system-second", "unused"].map(std::path::PathBuf::from),
+            |path| {
+                visited.push(path.to_path_buf());
+                match visited.len() {
+                    1 => Ok(None),
+                    2 => anyhow::bail!("unreadable or invalid icon"),
+                    3 => super::load_embedded().map(Some),
+                    _ => panic!("search continued after finding an icon"),
+                }
+            },
+        );
+        assert!(icon.is_some());
+        assert_eq!(
+            visited,
+            ["user", "system-first", "system-second"]
+                .map(|base| std::path::Path::new(base).join("icons/hicolor/256x256/apps/chessvault.png"))
+        );
+    }
+
+    #[test]
+    fn exhausted_or_empty_search_returns_none() {
+        assert!(super::load_from_dirs(Vec::new(), |_| panic!("empty search")).is_none());
+        assert!(super::load_from_dirs([std::path::PathBuf::from("missing")], |_| Ok(None)).is_none());
+    }
+
     #[test]
     fn installed_png_produces_window_icon() {
         let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/chessvault.png"));
