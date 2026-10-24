@@ -1,0 +1,2 @@
+platformdirs==4.13.3
+pytest==9.1.1
