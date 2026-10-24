@@ -88,6 +88,7 @@ mod tests {
     #[case::ordered(Some("/opt/share:/usr/share:/opt/share"), vec!["/opt/share", "/usr/share", "/opt/share"])]
     #[case::invalid_entries(Some(":relative:/opt/share::../share:"), vec!["/opt/share"])]
     #[case::all_invalid(Some(":relative:"), vec![])]
+    #[case::whitespace(Some("/data : /ignored:/other"), vec!["/data ", "/other"])]
     fn system_data_search_paths(#[case] value: Option<&str>, #[case] expected: Vec<&str>) {
         assert_eq!(
             resolve_system_share_dirs(value.map(OsString::from)),
@@ -123,6 +124,20 @@ mod tests {
                 assert!(error.to_string().contains("XDG_DATA_HOME"));
             }
         }
+    }
+
+    #[test]
+    fn user_directories_preserve_whitespace() {
+        let xdg = Some(OsString::from("/custom/path "));
+        let unexpected_home = || panic!("An absolute XDG path must not need home lookup");
+        assert_eq!(
+            resolve_user_state_dir(xdg.clone(), unexpected_home).unwrap(),
+            PathBuf::from("/custom/path ")
+        );
+        assert_eq!(
+            resolve_user_share_dir(xdg, unexpected_home).unwrap(),
+            PathBuf::from("/custom/path ")
+        );
     }
 
     #[test]

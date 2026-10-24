@@ -40,8 +40,8 @@ Release workflows handle tags separately; documentation deployment remains limit
 
 This is the sequence used by [CI](../../.github/workflows/ci.yml). Eligible pushes and pull
 requests trigger it only when Rust source, desktop assets, Cargo manifests or
-lockfiles, `rust-toolchain.toml`, or `.cargo` configuration changes. Markdown-only
-changes do not trigger Rust builds. Nextest is our
+lockfiles, `rust-toolchain.toml`, `.cargo` configuration, differential-test inputs,
+or the root/venv recipes change. Markdown-only changes do not trigger Rust builds. Nextest is our
 preferred test runner, but it does not execute doctests, so the separate
 `cargo test --doc` step is required. Formatting checks do not modify files.
 Clippy's `--no-deps` excludes dependency linting, though dependencies may still
@@ -197,6 +197,50 @@ use the `linux::tests::` prefix. Passing tests on another OS does not verify
 Linux resolution. Native directory resolution currently supports only
 Linux; the development path working elsewhere is not evidence of release app
 support. See [Platform directories](../components/platform-dirs.md) for the path policy.
+
+### Differential platform-directory tests
+
+On Linux, compare the native public APIs against pinned Python `platformdirs`:
+
+```sh
+just --justfile venvs/justfile platform-dirs-differential
+just check-platform-differential
+```
+
+Setup requires uv; the comparison requires the pinned Rust toolchain and the generated
+Python environment. Without just, run
+`venvs/platform-dirs-differential/bin/python -m pytest tools/platform-dirs-differential -q`.
+The session builds `differential_probe` once with `--locked --no-default-features` and
+uses Cargo's reported executable path (including custom target directories). The probe
+rejects builds with the development feature. Ordinary Rust tests need no Python installation.
+
+Each case launches Rust and Python in separate child processes with equivalent controlled
+XDG variables and an explicit home directory; the test process environment is never mutated.
+The reference uses Linux `Unix` with `appauthor=False`, `version=None`, `multipath=True`,
+`ensure_exists=False`, and `use_site_for_root=False`, including when tests run as root.
+It compares state with user state, share with user data, and system share with the complete
+ordered site-data list. All three Rust log opinions are compared against the corresponding
+Python opinion. Failures report the case inputs, both outputs, and reference version;
+the installed version must match the requirements pin.
+
+The suite distinguishes parity from these explicit policy differences:
+
+- An explicitly configured system list containing no absolute entries produces an empty Rust
+  list; Python falls back to the default system directories. Both results are asserted.
+- Rust preserves whitespace in native paths; Python strips surrounding XDG whitespace.
+- Rust rejects empty application names, dot components, separators, colons, and NUL.
+  Python rejects parent traversal but accepts the other tested names. Error text is not a contract.
+- Rust rejects a relative home fallback; Python can return relative paths.
+
+Relative user XDG paths and mixed absolute/relative system lists are parity cases with this
+reference version, not skipped exceptions. Missing/invalid injected home lookups, error precedence,
+non-Unicode byte preservation, and development-local paths remain covered by Rust-only tests;
+the JSON probe intentionally handles Unicode paths only. Real unset-home lookup depends on the
+OS account database, so deterministic fallback failures use injected resolver tests instead.
+
+The Linux differential job in `ci.yml` runs on Rust/native inputs and changes to the runner,
+pin, or recipes. Python CI separately lints and type-checks the runner. When updating the pin,
+review changed reference behavior rather than normalizing away new mismatches.
 
 ## Documentation checks
 
