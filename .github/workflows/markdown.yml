@@ -2,6 +2,7 @@ name: Markdown
 
 on:
   push:
+    branches: [main]
     paths: &markdown-paths
       - '**/*.md'
       - 'crates/platform-dirs/docs/*.mmd'

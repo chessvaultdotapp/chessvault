@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
     paths: &rust-paths
       - '**/*.rs'
       - 'apps/chessvault/assets/**'

@@ -2,6 +2,7 @@ name: Just
 
 on:
   push:
+    branches: [main]
     paths:
       - 'justfile'
       - '**/justfile'

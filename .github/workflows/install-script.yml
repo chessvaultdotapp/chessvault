@@ -2,6 +2,7 @@ name: Linux installer
 
 on:
   push:
+    branches: [main]
     paths: &installer-paths
       - 'scripts/install-linux.sh'
       - 'scripts/tests/**'

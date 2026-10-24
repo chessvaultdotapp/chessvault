@@ -34,7 +34,11 @@ $ cargo clippy --workspace --all-targets --locked --no-deps
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 ```
 
-This is the sequence used by [CI](../../.github/workflows/ci.yml). Pushes and pull
+Check workflows run on pushes to `main` and on pull requests, subject to their existing path filters.
+Feature-branch pushes without a pull request and tag pushes do not run these checks.
+Release workflows handle tags separately; documentation deployment remains limited to `main`.
+
+This is the sequence used by [CI](../../.github/workflows/ci.yml). Eligible pushes and pull
 requests trigger it only when Rust source, desktop assets, Cargo manifests or
 lockfiles, `rust-toolchain.toml`, or `.cargo` configuration changes. Markdown-only
 changes do not trigger Rust builds. Nextest is our

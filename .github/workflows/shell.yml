@@ -2,6 +2,7 @@ name: Shell
 
 on:
   push:
+    branches: [main]
     paths: &shell-paths
       - '**/*.sh'
       - '.editorconfig'
