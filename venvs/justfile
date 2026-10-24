@@ -1,7 +1,7 @@
 default:
     @just --list
 
-venvs: development dist-prepare install-script tag-tool zensical
+venvs: development dist-prepare install-script platform-dirs-differential tag-tool zensical
 
 development:
     uv venv development
@@ -18,6 +18,10 @@ dist-prepare:
 install-script:
     uv venv install-script
     uv pip install --python install-script/bin/python --requirements install-script.requirements.txt
+
+platform-dirs-differential:
+    uv venv platform-dirs-differential
+    uv pip install --python platform-dirs-differential/bin/python --requirements platform-dirs-differential.requirements.txt
 
 zensical:
     uv venv zensical
