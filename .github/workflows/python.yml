@@ -7,12 +7,16 @@ on:
       - '**/*.py'
       - '**/*.pyi'
       - 'ruff.toml'
+      - 'venvs/platform-dirs-differential.requirements.txt'
+      - 'venvs/justfile'
       - '.github/workflows/python.yml'
   pull_request:
     paths:
       - '**/*.py'
       - '**/*.pyi'
       - 'ruff.toml'
+      - 'venvs/platform-dirs-differential.requirements.txt'
+      - 'venvs/justfile'
       - '.github/workflows/python.yml'
 
 permissions:
@@ -40,7 +44,7 @@ jobs:
           UV_PYTHON: '3.14.5'
         run: |
           uv python install "$UV_PYTHON"
-          just --justfile venvs/justfile development tag-tool dist-prepare
+          just --justfile venvs/justfile development tag-tool dist-prepare platform-dirs-differential
 
       - name: Lint tracked Python files
         run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check
@@ -49,7 +53,9 @@ jobs:
         run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff format --check
 
       - name: Check Python types
-        run: git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool
+        run: |
+          git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool --exclude tools/platform-dirs-differential
+          venvs/development/bin/ty check --python venvs/platform-dirs-differential tools/platform-dirs-differential
 
       - name: Test tag tool
         run: venvs/tag-tool/bin/python -m pytest tools/tag-tool -q

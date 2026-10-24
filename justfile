@@ -26,6 +26,10 @@ check-platform-native:
     cargo fmt --all -- --check
     cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-features
 
+# Compare native Linux paths against the pinned Python reference (set up its venv first).
+check-platform-differential:
+    venvs/platform-dirs-differential/bin/python -m pytest tools/platform-dirs-differential -q
+
 # Launch the desktop application.
 run:
     cargo run -p chessvault --locked

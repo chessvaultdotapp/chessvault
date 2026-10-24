@@ -11,6 +11,10 @@ on:
       - 'rust-toolchain.toml'
       - '.cargo/**'
       - '.github/workflows/ci.yml'
+      - 'tools/platform-dirs-differential/**'
+      - 'venvs/platform-dirs-differential.requirements.txt'
+      - 'venvs/justfile'
+      - 'justfile'
   pull_request:
     paths: *rust-paths
 
@@ -22,6 +26,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  platform-differential:
+    name: Compare native platform directories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install just
+        uses: ./.github/actions/setup-just
+
+      - name: Install Python reference environment
+        env:
+          UV_PYTHON: '3.14.5'
+        run: |
+          uv python install "$UV_PYTHON"
+          just --justfile venvs/justfile platform-dirs-differential
+
+      - name: Compare native paths
+        run: just check-platform-differential
+
   check:
     name: Build and check
     runs-on: ubuntu-latest
