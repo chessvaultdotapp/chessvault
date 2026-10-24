@@ -44,9 +44,24 @@ XDG values use the fallback. Other native platforms return an error.
 Application-name validation and resolution precedence match `user_state_dir`.
 Non-Unicode paths are preserved; the function does not create directories.
 
+### System share directories
+
+`platform_dirs::system_share_dirs(app_name: Option<&str>)` returns an
+`anyhow::Result<Vec<PathBuf>>` of system-wide data directories in search order.
+On Linux, it reads the colon-separated `XDG_DATA_DIRS`. An unset or empty value
+uses `/usr/local/share` followed by `/usr/share`. Empty and relative entries are
+ignored; a nonempty configuration containing no absolute entries returns an empty list.
+Order, duplicates, and non-Unicode paths are preserved. The user data directory is not included.
+
+Pass `None` for base paths or `Some("my-app")` to append a validated application name
+ to each path. Invalid names are rejected even if the list is empty. Unsupported
+platforms return an error before name validation. No directories are created or checked.
+
+System paths always use native resolution, even with the `development` feature enabled.
+
 ## Features and platform support
 
-With debug assertions and the default-enabled `development` feature, resolution
+For user directories, with debug assertions and the default-enabled `development` feature, resolution
 uses `<current working directory>/.local/state` for state and
 `<current working directory>/.local/share` for shared data on every platform.
 
