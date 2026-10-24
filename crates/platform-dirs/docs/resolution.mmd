@@ -17,15 +17,35 @@ flowchart TB
         append_log --> log_result
     end
 
-    start(["Base state or share directory"])
+    subgraph system_wrapper["System share directories: no development override"]
+        system_start(["system_share_dirs(app_name)"])
+        system_platform{"Linux target?<br/>(compile time)"}
+        system_read["Read XDG_DATA_DIRS<br/>Unset or empty: /usr/local/share:/usr/share"]
+        system_split["Split paths; keep absolute entries<br/>Preserve order and duplicates"]
+        system_name{"Valid application name?<br/>Check even for an empty list"}
+        system_append["Append optional name to each path"]
+        system_result(["Return Vec of PathBuf"])
+        system_error(["Return error"])
+        system_start --> system_platform
+        system_platform -.->|Yes| system_read
+        system_platform -.->|No| system_error
+        system_read --> system_split
+        system_split --> system_name
+        system_name -->|Yes| system_append
+        system_name -->|No| system_error
+        system_append --> system_result
+    end
+
+    subgraph user_state["user_state_dir: base resolution"]
+    start(["Base user state directory"])
     select{"Debug assertions +<br/>development feature?<br/>(compile time)"}
     platform{"Linux target?<br/>(compile time)"}
 
     cwd["Read current<br/>working directory"]
     cwd_ok{"Lookup succeeded?"}
-    local["Append .local/state for state<br/>or .local/share for share"]
+    local["Append .local/state"]
 
-    read_xdg["Read XDG_STATE_HOME for state<br/>or XDG_DATA_HOME for share"]
+    read_xdg["Read XDG_STATE_HOME"]
     xdg{"Absolute path?"}
     use_xdg["Use the absolute XDG path"]
     xdg_set{"Variable is set?"}
@@ -33,7 +53,7 @@ flowchart TB
     log_warn["Log warn: value is not absolute<br/>Ignore as required by XDG<br/>Fall back to default directory"]
     home["Look up home directory"]
     valid_home{"Absolute home<br/>path available?"}
-    fallback["Append .local/state for state<br/>or .local/share for share<br/>to home path"]
+    fallback["Append .local/state to home path"]
 
     error(["Return error"])
     result(["Return PathBuf"])
@@ -61,13 +81,56 @@ flowchart TB
     valid_home -->|Yes| fallback
     valid_home -->|No| error
     fallback --> result
+    end
+
+    subgraph user_share["user_share_dir: base resolution"]
+        share_start(["Base user share directory"])
+        share_select{"Debug assertions +<br/>development feature?<br/>(compile time)"}
+        share_platform{"Linux target?<br/>(compile time)"}
+        share_cwd["Read current<br/>working directory"]
+        share_cwd_ok{"Lookup succeeded?"}
+        share_local["Append .local/share"]
+        share_read["Read XDG_DATA_HOME"]
+        share_xdg{"Absolute path?"}
+        share_use["Use the absolute XDG path"]
+        share_set{"Variable is set?"}
+        share_info["Log info: variable is unset<br/>Falling back to default directory"]
+        share_warn["Log warn: value is not absolute<br/>Ignore as required by XDG<br/>Fall back to default directory"]
+        share_home["Look up home directory"]
+        share_valid{"Absolute home<br/>path available?"}
+        share_fallback["Append .local/share to home path"]
+        share_error(["Return error"])
+        share_result(["Return PathBuf"])
+
+        share_start --> share_select
+        share_select -.->|Yes| share_cwd
+        share_select -.->|No| share_platform
+        share_platform -.->|Yes| share_read
+        share_platform -.->|No: unsupported| share_error
+        share_cwd --> share_cwd_ok
+        share_cwd_ok -->|Yes| share_local
+        share_cwd_ok -->|No| share_error
+        share_local --> share_result
+        share_read --> share_xdg
+        share_xdg -->|Yes| share_use
+        share_xdg -->|No| share_set
+        share_set -->|No| share_info
+        share_set -->|Yes including empty| share_warn
+        share_info --> share_home
+        share_warn --> share_home
+        share_use --> share_result
+        share_home --> share_valid
+        share_valid -->|Yes| share_fallback
+        share_valid -->|No| share_error
+        share_fallback --> share_result
+    end
 
     classDef default fill:#ffffff,stroke:#475569,color:#0f172a
     classDef entry fill:#dbeafe,stroke:#475569,color:#0f172a
     classDef success fill:#dcfce7,stroke:#475569,color:#0f172a
     classDef failure fill:#fee2e2,stroke:#475569,color:#0f172a
-    class log_start,start,select,platform entry
-    class log_result,result success
-    class log_error,error failure
+    class log_start,start,select,platform,system_start,system_platform,share_start,share_select,share_platform entry
+    class log_result,result,system_result,share_result success
+    class log_error,error,system_error,share_error failure
     style log_wrapper fill:transparent,stroke:#94a3b8,color:#0f172a
     linkStyle default stroke:#475569

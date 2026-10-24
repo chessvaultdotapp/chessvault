@@ -1,8 +1,9 @@
-//! Platform-aware resolution of user state, share, and log directories.
+//! Platform-aware resolution of user state, share, log, and system data directories.
 //!
 //! Use [`user_share_dir`] for persistent user data, [`user_state_dir`] for
 //! persistent user state, or [`user_log_dir`] for logs beneath the state directory
-//! by default.
+//! by default. Use [`system_share_dirs`] for ordered system-wide data search paths;
+//! these exclude the user data directory and always use native resolution.
 //! An optional application name selects a subdirectory beneath that base.
 //! This crate only resolves paths: callers create directories as needed.
 //!
@@ -12,7 +13,8 @@
 //! use `<current working directory>/.local/state` for state and
 //! `<current working directory>/.local/share` for data on every platform. Builds
 //! without debug assertions, or with this feature disabled, use native platform
-//! resolution, currently supported only on Linux.
+//! resolution for user directories. System directories bypass this override.
+//! Native resolution is currently supported only on Linux.
 //!
 //! To use native resolution in debug builds, disable default features:
 //!

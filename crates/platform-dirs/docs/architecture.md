@@ -27,12 +27,16 @@ Resolution happens on each call rather than being cached.
 - [`src/linux.rs`](../src/linux.rs) owns Linux environment lookup, resolution
   policy, and its unit tests. It is private to the crate.
 
-The public API returns `anyhow::Result<PathBuf>`, keeping platform-specific
-implementation details behind the state, share, and log directory entry points.
+`system_share_dirs(app_name)` selects native system data resolution independently of the
+user-directory development override, then validates and appends the application name to each path.
+It validates names even for an empty search list.
+
+User-directory APIs return `anyhow::Result<PathBuf>`; `system_share_dirs` returns
+`anyhow::Result<Vec<PathBuf>>`. Platform-specific implementation details remain private.
 
 ## Compile-time selection
 
-Conditional compilation selects the implementation:
+Conditional compilation selects the user-directory implementation:
 
 | Configuration | Resolution |
 | --- | --- |
@@ -44,8 +48,10 @@ The `development` feature is enabled by default. Disabling default features
 allows native resolution in debug builds, but Cargo features are additive:
 another dependency enabling `development` can re-enable the override.
 
-The Linux module also compiles during Linux tests, allowing its policy to be
-checked even when the public entry point uses the development override.
+System directories always use native resolution: Linux is supported and other platforms return
+an error, regardless of the development feature. The Linux module therefore compiles on every
+Linux build. User-directory policy helpers also compile during tests so their native policy can
+be checked even when the public entry points use the development override.
 
 ## Resolution flow
 
@@ -92,6 +98,15 @@ configure the tracing subscriber and filter; the library does not install one.
 Home lookup is lazy: a valid XDG path does not depend on home resolution.
 Neither branch creates or validates the directory on disk.
 
+### System data search paths
+
+`system_share_dirs` reads `XDG_DATA_DIRS` with `std::env::var_os`. The injected resolver
+uses `/usr/local/share:/usr/share` when the value is unset or empty, splits it with
+`std::env::split_paths`, and discards non-absolute entries. A nonempty configured list with
+no absolute entries produces an empty vector rather than falling back. Order, duplicates,
+and non-Unicode paths are retained. No home lookup or filesystem access is needed, and the
+user share directory is not included. The public wrapper appends an optional validated name.
+
 ## Testing strategy
 
 Linux policy tests inject environment values and a home-lookup closure instead
@@ -101,6 +116,9 @@ coverage of fallback errors, non-Unicode paths, and whether home lookup runs.
 Log-directory tests cover all three opinion values with and without an application
 name, including names containing spaces and Unicode. They also check that invalid
 application names propagate the same errors as state-directory resolution.
+
+System-directory tests cover unset and empty defaults, ordered lists with duplicates,
+invalid entries, entirely invalid lists, non-Unicode paths, and application-name validation.
 
 Share-directory tests cover optional application names, invalid names, XDG
 fallbacks and errors, lazy home lookup, and non-Unicode paths.
@@ -112,8 +130,9 @@ to exercise both public entry-point configurations on Linux. See the workspace
 ## Adding a native platform
 
 Add a private platform module and select it in `lib.rs` when the development
-override is inactive. Narrow the unsupported-platform branch accordingly and
-leave the development override platform-independent.
+override is inactive, and for system directories regardless of that override.
+Narrow the unsupported-platform branches accordingly and leave the user-directory
+development override platform-independent.
 
 Keep platform policy behind the existing public API, preserve OS-native paths,
 and test platform inputs without mutating global process state. Verify the

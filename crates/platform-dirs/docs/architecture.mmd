@@ -5,13 +5,20 @@ block-beta
         title["<b>platform-dirs: directory resolution</b><br/>Implementation selected at compile time, not while the app runs"]:2
         block:development
             columns 1
-            development_title["<b>Development override</b><br/>When debug assertions are enabled<br/>AND the development feature is enabled"]
-            development_path["<b>On every OS</b><br/>Project-local directories<br/>State: current working directory + .local/state<br/>Share: current working directory + .local/share"]
+            development_title["<b>User-directory development override</b><br/>When debug assertions are enabled<br/>AND the development feature is enabled"]
+            development_state["<b>user_state_dir</b><br/>On every OS<br/>Current working directory + .local/state"]
+            development_share["<b>user_share_dir</b><br/>On every OS<br/>Current working directory + .local/share"]
         end
         block:native
             columns 2
-            native_title["<b>OS-specific resolution</b><br/>In release builds, or when the development feature is disabled"]:2
-            linux["<b>Linux</b><br/><br/>XDG directory conventions<br/>State: absolute XDG_STATE_HOME<br/>or home directory + .local/state<br/>Share: absolute XDG_DATA_HOME<br/>or home directory + .local/share"]
+            native_title["<b>OS-specific resolution</b><br/>User directories: release builds or development feature disabled<br/>System directories: always native"]:2
+            block:linux
+                columns 1
+                linux_title["<b>Linux</b>"]
+                linux_state["<b>user_state_dir</b><br/>Absolute XDG_STATE_HOME<br/>or home directory + .local/state"]
+                linux_share["<b>user_share_dir</b><br/>Absolute XDG_DATA_HOME<br/>or home directory + .local/share"]
+                system["<b>system_share_dirs(app_name)</b><br/>Always native<br/>Absolute XDG_DATA_DIRS entries in order<br/>Unset or empty: /usr/local/share, /usr/share"]
+            end
             other["<b>Other operating systems</b><br/><br/>Not supported yet<br/>Returns an error"]
         end
     end
@@ -22,7 +29,12 @@ block-beta
     style native_title fill:transparent,stroke:none,color:#0f172a
     style comptime fill:transparent,stroke:#475569,color:#0f172a
     style development fill:transparent,stroke:#475569,color:#0f172a
-    style development_path fill:#dbeafe,stroke:#2563eb,color:#0f172a
+    style development_state fill:#dbeafe,stroke:#2563eb,color:#0f172a
+    style development_share fill:#dbeafe,stroke:#2563eb,color:#0f172a
     style native fill:transparent,stroke:#475569,color:#0f172a
-    style linux fill:#ecfdf5,stroke:#059669,color:#0f172a
+    style linux fill:transparent,stroke:#059669,color:#0f172a
+    style linux_title fill:transparent,stroke:none,color:#0f172a
+    style system fill:#ecfdf5,stroke:#059669,color:#0f172a
+    style linux_state fill:#ecfdf5,stroke:#059669,color:#0f172a
+    style linux_share fill:#ecfdf5,stroke:#059669,color:#0f172a
     style other fill:#fff7ed,stroke:#ea580c,color:#0f172a
