@@ -51,6 +51,39 @@ If nextest is unavailable, replace both test commands with
 `cargo test --workspace --locked`, which runs unit tests, integration tests, and
 doctests. Keep the build, formatting, and Clippy steps in the same order.
 
+## CI cache measurement
+
+The debug CI cache uses separate restore and save steps. Pull requests restore the
+main-branch cache but do not save; successful pushes to `main` save on a primary-key
+miss. CI disables incremental compilation and excludes incremental directories from
+the archive. Local Cargo defaults and the installer release cache are unchanged.
+The `cargo-v2` namespace deliberately starts cold rather than restoring the old policy.
+
+Baseline: [CI run 40065880898](https://github.com/chessvaultdotapp/chessvault/actions/runs/40065880898)
+on October 24, 2026 restored **2,038,223,963 compressed bytes** in **38 seconds**,
+including about 19 seconds extracting the archive. Saving **2,108,702,889 bytes**
+took **29 seconds**, including about 20 seconds creating/compressing the archive.
+The build step took **8 seconds** and the whole job approximately **90 seconds**.
+Across the audit's 25 CI runs, restore and save consumed 24.1 of 38.3 job minutes.
+These are observed timings, not a controlled benchmark or a claim of future savings.
+
+After rollout, compare the following before considering further cache pruning:
+
+- The first cold `cargo-v2` build versus subsequent warm main and PR builds.
+- Restore and save durations and compressed bytes in the cache action logs.
+- Build, tests, Clippy, and total job durations; disabling incremental compilation
+  may increase workspace compilation time even as transfers shrink.
+- The job summary's uncompressed cache footprint, including `target/debug/deps`,
+  `target/debug/build`, and `target/debug/incremental` when present. Parent and child
+  sizes overlap and must not be summed.
+- Active cache storage and eviction behavior after several main pushes. Per-commit
+  main caches still accumulate; this change does not impose a storage cap.
+
+Use similar changes and the same toolchain when comparing warm runs. Do not treat
+cold-start costs or ordinary runner variance as steady-state results. The next
+hosted runs are required to establish actual savings; local `target` sizes are not
+representative of the CI archive.
+
 ## Focused checks
 
 For package-local changes, replace `--workspace` in the build, test, and Clippy

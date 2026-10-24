@@ -77,9 +77,14 @@ release version without the `v` prefix. They support Linux, macOS, and Windows o
 x64 and ARM64 where upstream publishes a build.
 
 CI caches Cargo registry downloads, Git dependency data, and `target` build
-artifacts. Cache keys include the runner OS and architecture, pinned toolchain,
-manifests, lockfile, and commit. Restore prefixes reuse compatible caches from
-earlier commits, including dependency artifacts when the lockfile changes.
+artifacts, excluding incremental compilation state. CI sets `CARGO_INCREMENTAL=0`;
+local builds keep Cargo's default behavior. Cache keys include a policy version,
+runner OS and architecture, pinned toolchain, manifests, lockfile, `.cargo`
+configuration, and commit. Restore prefixes reuse compatible caches from earlier
+commits, including dependency artifacts when the lockfile changes. Only successful
+push checks on `main` save caches; pull requests restore without uploading a copy.
+See the [cache measurement notes](docs/development/testing.md#ci-cache-measurement)
+for the baseline and rollout verification.
 
 Clippy uses `--no-deps` to lint workspace packages only. It still needs to
 compile or check dependencies, so dependency names can appear in its output.

@@ -10,6 +10,7 @@ on:
       - '**/Cargo.lock'
       - 'rust-toolchain.toml'
       - '.cargo/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     paths: *rust-paths
 
@@ -24,24 +25,30 @@ jobs:
   check:
     name: Build and check
     runs-on: ubuntu-latest
+    env:
+      # Incremental state is large and provides little reuse on ephemeral runners.
+      CARGO_INCREMENTAL: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
 
-      - name: Cache Cargo downloads and build artifacts
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Restore Cargo downloads and build artifacts
+        id: cargo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock') }}-${{ github.sha }}
+            !target/**/incremental
+          # Version the policy to avoid restoring old, incremental-enabled artifacts.
+          key: cargo-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock', '.cargo/**') }}-${{ github.sha }}
           restore-keys: |
-            cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock') }}-
-            cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock', '.cargo/**') }}-
+            cargo-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
 
       # Keep the build first: quality checks only matter if the code builds.
       - name: Build
@@ -64,3 +71,34 @@ jobs:
 
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked --no-deps
+
+      - name: Report Cargo cache footprint
+        shell: bash
+        run: |
+          {
+            echo '### Cargo cache footprint (uncompressed)'
+            echo
+            echo 'Compare restore/save step timings and compressed sizes in the cache action logs.'
+            echo
+            echo '```text'
+            for path in "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" \
+              "$HOME/.cargo/git/db" target target/debug/deps target/debug/build target/debug/incremental; do
+              if [[ -d "$path" ]]; then
+                du -sh "$path"
+              fi
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # PRs reuse the main cache without uploading another copy of target.
+      - name: Save Cargo downloads and build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+            !target/**/incremental
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
