@@ -282,24 +282,40 @@ and agent instructions; website checks are not part of this repository's `just c
 ## Python checks
 
 Install the [shared Python development environment](../tools/index.md#shared-python-development-environment)
-and the [tag tool dependencies](../tools/tag-tool.md#setup), then run:
+and the test environments, then run the same lint, type-check, and unit-test steps as CI:
+
+```sh
+just --justfile venvs/justfile development tag-tool dist-prepare platform-dirs-differential
+```
+
+The differential runner has its own reference dependency, so type-check it using
+its dedicated environment rather than the tag-tool environment.
 
 ```console
 $ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff check
 All checks passed!
 $ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ruff format --check
 2 files already formatted
-$ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool
+$ git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check \
+    --python venvs/tag-tool --force-exclude --exclude tools/platform-dirs-differential
 All checks passed!
+$ venvs/development/bin/ty check --python venvs/platform-dirs-differential tools/platform-dirs-differential
+All checks passed!
+$ venvs/tag-tool/bin/python -m pytest .github/scripts/test_website_pin.py -q
+...
 $ venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
 ...
-63 passed in 0.12s
+$ venvs/tag-tool/bin/python -m pytest tools/changelog-tool -q
+...
+$ venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q
+...
 ```
 
 These commands mirror the [Python workflow](../../.github/workflows/python.yml),
-which runs only on pushes and pull requests changing `.py` or `.pyi` files,
-including nested files. Requirements, configuration, and workflow-only changes
-do not trigger it; run these checks locally when changing those files.
+which runs on eligible pushes and pull requests changing `.py` or `.pyi` files,
+`ruff.toml`, `venvs/platform-dirs-differential.requirements.txt`, `venvs/justfile`,
+or the Python workflow itself. Other requirements/configuration changes do not
+trigger it; run these checks locally when changing those files.
 Pass new, untracked Python files explicitly to Ruff and ty before staging them.
 See [Ruff](../tools/ruff.md) and [ty](../tools/ty.md) for usage details.
 
