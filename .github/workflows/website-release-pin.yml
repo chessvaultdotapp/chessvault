@@ -3,6 +3,15 @@ name: Website release pin
 on:
   release:
     types: [published]
+  workflow_run:
+    workflows: [Development release, Stable release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact existing published release tag to pin
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,6 +23,11 @@ concurrency:
 
 jobs:
   update:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted automation
