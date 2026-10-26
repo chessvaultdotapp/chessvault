@@ -1,5 +1,24 @@
-//! Core chess primitives and bitboard-based position storage.
+//! Chess positions, legal moves, standard algebraic notation, and game results.
 //!
+//! Construct a [`Position`] with [`Position::standard`]. Positions generate legal
+//! moves, apply them without history, and classify board-based outcomes through
+//! [`PositionStatus`]. Use [`Game`] for played games: it records moves and repetition
+//! history, rejects moves after a result, and handles resignation, draw offers,
+//! claims, and automatic draws through [`GameStatus`] and [`DrawReason`].
+//!
+//! ```
+//! use chess_core::{Game, Move, Position, Square};
+//!
+//! let mut game = Game::new(Position::standard());
+//! assert!(game.play(Move {
+//!     from: Square::E2,
+//!     to: Square::E4,
+//!     promotion: None,
+//! }));
+//! assert_eq!(game.position().side_to_move(), chess_core::Side::Black);
+//! ```
+//!
+
 //! Positions store six piece-type bitboards and two side bitboards. The
 //! [`Piece::Empty`](piece::Piece::Empty) and [`Side::Empty`](side::Side::Empty)
 //! variants represent absence; they are sentinels, not valid indices into those
