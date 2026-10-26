@@ -63,6 +63,8 @@ Available recipes:
     default
     development
     dist-prepare
+    install-script
+    platform-dirs-differential
     tag-tool
     venvs
     zensical
@@ -72,6 +74,8 @@ Available recipes:
 | --- | --- |
 | `just --justfile venvs/justfile development` | Set up Ruff and ty. |
 | `just --justfile venvs/justfile dist-prepare` | Set up the distribution preparation tool's pytest environment. |
+| `just --justfile venvs/justfile install-script` | Set up Linux installer fixture and package smoke tests. |
+| `just --justfile venvs/justfile platform-dirs-differential` | Set up the Python platformdirs comparison suite. |
 | `just --justfile venvs/justfile tag-tool` | Set up the release tag tool and pytest. |
 | `just --justfile venvs/justfile zensical` | Set up the documentation-site dependencies. |
 | `just --justfile venvs/justfile venvs` | Set up all virtual environments. |
