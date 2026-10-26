@@ -471,9 +471,12 @@ $ cargo run -p chessvault --locked
 ```
 
 Exercise the affected interaction in a graphical desktop session. Depending on
-the change, verify board resizing and orientation, F12 console toggling, source
-filtering, copying selected logs during refresh, or saving and restoring window
-size. See [Desktop application](../components/desktop.md#verification) for more guidance.
+the change, verify legal moves and special moves, promotion choice/cancellation,
+read-only history navigation, results and draw claims/offers, new-game confirmation,
+and PGN saving/cancellation/failures. Also check affected board resizing, console
+filtering/copying during refresh, and window persistence. Use the detailed
+[desktop checklist](../components/desktop.md#verification); exercise the changed
+behavior rather than treating a successful launch as sufficient.
 
 Include a brief description of what changed and how it was verified in the pull
 request. Screenshots are useful for UI changes. Report any checks you could not

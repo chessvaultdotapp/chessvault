@@ -217,6 +217,25 @@ composition, and saved-dimension parsing; they do not replace GUI verification.
 For affected visible interactions, launch the app and check:
 
 - Resizing keeps the board square, centered, and correctly oriented.
+- Selecting a piece shows only legal destinations; illegal destination clicks do
+  not change the position or history. Exercise castling and en passant when affected.
+- Promotion waits for a queen/rook/bishop/knight choice. Test each choice; Escape
+  and outside clicks leave the position unchanged and the pawn selected.
+- History buttons, move clicks, and Left/Right, Up/Home, and Down/End shortcuts
+  select the expected ply. Review is read-only; returning to latest resumes play.
+  Opening the console or promotion picker blocks navigation.
+- Checkmate, stalemate, and resignation display the correct result and block moves.
+  Check that result text and PGN use the losing side for checkmate/resignation.
+- Draw offers survive the offering player's move. The opponent can accept or
+  decline, and the opponent's legal move implicitly declines. Illegal moves do not.
+- For draw-rule changes, exercise current-position and intended-move claims;
+  intended claims must not play or record the move. Check automatic fivefold,
+  seventy-five-move, and supported dead-material results with suitable move sequences.
+- New game confirms before discarding an ongoing game with recorded moves.
+  Cancel and Escape preserve it; confirmation resets history, selection, and offers.
+- Save PGN appears for finished games. Check exported SAN and result, dialog
+  cancellation, and a write failure using a disposable destination. Failures should
+  show an error without changing the game or preventing another save attempt.
 - F12 opens and closes the console; filtering and copying behave as expected.
 - Selected log text remains selected during periodic refresh.
 - Closing and reopening restores the saved window size.
