@@ -49,7 +49,8 @@ If nextest is unavailable, use the manual Cargo fallback described in the
 `just optimize-assets` checks that Node.js and pnpm are available. Install the
 [SVGO](svgo.md) and [Mermaid CLI](mermaid.md) dependencies first; the recipe does not
 install them automatically. Optimization is manual and modifies SVGs in place;
-review the diff and follow the [visual verification workflow](../components/desktop.md#optimizing-svg-artwork).
+review the diff and follow the
+[visual verification workflow](https://chessvaultdotapp.github.io/chessvault/dev/docs/apps/chessvault/development/#artwork-and-icons).
 
 ## Python environments
 

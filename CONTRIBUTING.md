@@ -105,14 +105,9 @@ repository commit.
 
 ## Desktop debugging
 
-Press **F12** to open the developer console. Enable app debug events with:
-
-```sh
-RUST_LOG=chessvault=debug cargo run -p chessvault --locked
-```
-
-`RUST_LOG` controls which events are captured. The console's source toggles
-filter captured events, so hidden sources can be shown again later.
+See the [desktop development guide](apps/chessvault/docs/development.md) for running,
+debugging, artwork changes, and interaction verification, and
+[runtime logging](apps/chessvault/docs/runtime.md#developer-console) for console filtering.
 
 See [AGENTS.md](AGENTS.md) for detailed implementation conventions and
 invariants.
