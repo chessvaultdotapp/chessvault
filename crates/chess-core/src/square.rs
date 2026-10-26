@@ -6,8 +6,8 @@ use std::fmt::Display;
 /// Squares are ordered by rank, from A1 through H1 (0–7) to A8 through H8
 /// (56–63). Each square's index is `8 * (rank - 1) + file`, with files A–H
 /// numbered 0–7.
-/// [`Square::None`] has discriminant 64 and is not a valid bit index in a
-/// [`crate::bitboard::Bitboard`].
+/// [`Square::None`] has discriminant 64 and is not a valid bit index in an
+/// internal bitboard.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 #[rustfmt::skip]
