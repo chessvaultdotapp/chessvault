@@ -38,9 +38,9 @@
   generated documentation SVGs are ignored, whereas application SVGs are tracked.
 - `apps/chessvault/build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
   `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
-- Documentation has two Zensical roots: run `venvs/zensical/bin/zensical build --config-file <config>` for both
-  `zensical.toml` and `crates/platform-dirs/zensical.toml` after diagram generation. See `.github/workflows/docs.yml`
-  for site assembly; cross-root links are not yet staged.
+- Build each Zensical root with `venvs/zensical/bin/zensical build --config-file <config>` after diagram generation:
+  `zensical.toml`, `crates/chess-core/zensical.toml`, and `crates/platform-dirs/zensical.toml`.
+  See `.github/workflows/docs.yml` for site assembly; use published URLs for cross-root links.
 - Python setup: `just --justfile venvs/justfile development tag-tool dist-prepare` (requires uv). Follow
   `.github/workflows/python.yml`: Ruff/ty use `venvs/development/bin`, ty needs `--python venvs/tag-tool`, and pytest
   uses `venvs/tag-tool/bin/python` for both tag-tool and changelog-tool, `venvs/dist-prepare/bin/python` for dist-prepare.

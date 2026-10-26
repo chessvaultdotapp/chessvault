@@ -68,33 +68,14 @@ position and never mutates the live game; returning to latest resumes play.
 SAN labels are cached when moves arrive. New-game and PGN-save actions are also
 handled by the application, not the renderer.
 
-## Chess representation
-
-`chess-core` publicly exports `Position`, `Move`, `PositionStatus`, `Game`,
-`GameStatus`, `DrawReason`, `Piece`, `Side`, `Square`, and `InvalidSquareIndex`;
-its implementation modules remain private.
-
-A [`Position`](../../crates/chess-core/src/position.rs) stores:
-
-- Six piece-type bitboards, one each for pawn through king.
-- Two side bitboards, one each for White and Black.
-- Side to move, castling-rights flags, an en passant target, and halfmove/fullmove counts.
-
-A square's piece and side are found by consulting both sets of occupancy
-bitboards. `Piece::Empty` and `Side::Empty` are sentinels, not valid indices into
-these arrays. `Square::None` represents no square and is not a valid bit index.
-
-`Position::standard()` constructs the normal starting position with White to
-move, all castling rights, a zero halfmove clock, and fullmove number one.
-`piece_at` returns `None` for an empty square or `Square::None`.
-The crate-internal `Position::empty()` instead clears all occupancy and counts,
-with no side to move or castling rights; it is not a playable starting position.
+## Chess core integration
 
 `Position` generates and applies legal moves and formats SAN. `Game` adds move
 and repetition history, resignation, draw offers, claim-based draws, and automatic
 results. Desktop moves must use `Game::play`, which rejects finished-game moves.
-See the [core guide](../components/chess-core.md) for rule boundaries. There is no
-public FEN loader or PGN parser; the desktop exports finished-game SAN movetext.
+See the [core overview](../components/chess-core.md) for package documentation,
+including representation invariants and rule boundaries. The desktop owns
+finished-game SAN movetext export rather than the core.
 
 ## Runtime and persistence
 
