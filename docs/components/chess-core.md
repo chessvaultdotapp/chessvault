@@ -1,121 +1,101 @@
 # Chess core
 
-`chess-core` contains chess primitives and bitboard-based position storage. It
-is independent of Iced, application runtime helpers, and filesystem policy.
-It currently supports constructing the standard position and looking up pieces,
-not playing or validating moves.
+`chess-core` implements chess positions, legal moves, standard algebraic notation
+(SAN), game history, and results. It is independent of Iced, application runtime
+helpers, and filesystem policy.
 
 ## Public API
 
-[`lib.rs`](../../crates/chess-core/src/lib.rs) re-exports `Position`, `Piece`, `Side`,
-`Square`, and `InvalidSquareIndex`. The underlying modules are private;
-`Bitboard` and `CastlingRights` are internal implementation details.
+[`lib.rs`](../../crates/chess-core/src/lib.rs) re-exports `Position`, `Move`,
+`PositionStatus`, `Game`, `GameStatus`, `DrawReason`, `Piece`, `Side`, `Square`,
+and `InvalidSquareIndex`. Implementation modules, bitboards, and castling rights
+remain private.
 
-A consumer can inspect the starting position:
+Construct public positions with `Position::standard()`; there is no `Default`
+or arbitrary-position loader. For example:
 
 ```rust
-use chess_core::{Piece, Position, Side, Square};
+use chess_core::{Game, Move, Position, Square};
 
-let position = Position::standard();
-assert_eq!(position.piece_at(Square::E1), Some((Piece::King, Side::White)));
-assert_eq!(position.piece_at(Square::E4), None);
-assert_eq!(position.piece_at(Square::None), None);
+let mut game = Game::new(Position::standard());
+assert!(game.play(Move {
+    from: Square::E2,
+    to: Square::E4,
+    promotion: None,
+}));
+assert_eq!(game.moves().len(), 1);
 ```
 
-Position fields are private. There is currently no public mutation API, metadata
-getter API, arbitrary-position loader, or `Default` implementation for `Position`.
+## Positions and moves
+
+`Position` stores six piece-type bitboards and two side bitboards, plus side to
+move, castling rights, an en passant target, and halfmove/fullmove counters.
+Each occupied square must appear in exactly one piece board and one side board.
+`piece_at` is a lookup, not a validator of internal occupancy consistency.
+
+`Position::standard()` initializes the standard layout, White to move, all four
+castling rights, no en passant target, a zero halfmove clock, and fullmove number
+one. The crate-private `Position::empty()` is an internal construction helper,
+not a legal starting position.
+
+- `side_to_move`, `halfmove_clock`, and `fullmove_number` expose metadata.
+- `legal_moves` generates legal moves, including castling, en passant, and all
+  four promotions. Ordering is unspecified.
+- `play` applies a legal move; an illegal move returns false without mutation.
+- `san` formats a legal move without changing the position; illegal moves return `None`.
+- `is_in_check` and `status` inspect board-based outcomes.
+
+`Move` uses king origin/destination squares for castling and the pawn's landing
+square for en passant. Promotion explicitly names a queen, rook, bishop, or knight.
+
+## Games, history, and results
+
+Use `Game::play` rather than changing a separate position when maintaining a game:
+`Game` records moves and repetition history and rejects moves after a result.
+`position()` exposes the live position read-only. `position_at(ply)` reconstructs
+an independent position without rewinding the game; zero selects the starting position.
+
+`PositionStatus` classifies ongoing play, checkmate, stalemate, and proven dead
+material. `GameStatus` also accounts for resignation, agreement, and history-based
+draws. `Checkmate(side)` and `Resigned(side)` identify the loser, not the winner.
+
+Threefold repetition and the fifty-move rule require a claim. Fivefold repetition
+and the seventy-five-move rule are automatic. Intended-move claims leave the board
+and recorded history unchanged. Dead-position detection is conservative: bare
+kings, a single minor piece, and bishops all on one colour are detected; blocked
+dead positions with pawns are not.
+
+Draw offers are made by the side to move and survive that player's move. Only
+the opponent can accept or decline; the opponent's next legal move implicitly
+declines. Invalid moves preserve the offer, and a game result clears it.
 
 ## Squares, pieces, and sides
 
 | Type | Representation | Sentinel |
 | --- | --- | --- |
-| [`Square`](../../crates/chess-core/src/square.rs) | One byte; A1–H1 are 0–7, continuing through A8–H8 at 56–63 | `None = 64` |
-| [`Piece`](../../crates/chess-core/src/piece.rs) | One byte; Pawn, Knight, Bishop, Rook, Queen, King are 0–5 | `Empty = 6` |
-| [`Side`](../../crates/chess-core/src/side.rs) | One byte; White = 0, Black = 1 | `Empty = 2` |
+| `Square` | One byte; A1–H1 are 0–7, continuing through A8–H8 at 56–63 | `None = 64` |
+| `Piece` | One byte; Pawn, Knight, Bishop, Rook, Queen, King are 0–5 | `Empty = 6` |
+| `Side` | One byte; White = 0, Black = 1 | `Empty = 2` |
 
-For zero-based rank and file coordinates, the square index is `rank * 8 + file`.
-`Square::try_from(u8)` accepts only 0–63; even the sentinel index 64 returns
-`InvalidSquareIndex`. Use `Square::None` explicitly when representing absence.
-Square display currently uses variant spelling such as `E4`, not lowercase
-algebraic notation.
+For zero-based coordinates, a square index is `rank * 8 + file`.
+`Square::try_from(u8)` accepts only 0–63, not the sentinel. Square display uses
+variant spelling such as `E4`; SAN formatting supplies chess notation separately.
+Sentinels are not valid occupancy indices or bit shifts. Tests pin representations
+and discriminants, which also determine desktop artwork indexing.
 
-The sentinels represent absence, not additional pieces, sides, or board squares.
-Never use them as occupancy-array indices or shift counts. Tests pin both the
-one-byte representations and discriminant values; changing enum order affects
-storage and consumers such as the desktop artwork table.
+Internal `Bitboard` wraps a `u64`, with A1 at bit zero and H8 at bit 63. It supports
+empty construction, single-square conversion, membership, setting, and bitwise
+operations. Invalid square conversion/setting fails; membership of `Square::None`
+is false. Internal castling masks are 1/2 for White's kingside/queenside rights and
+4/8 for Black's.
 
-## Bitboards
+## Boundaries and verification
 
-[`Bitboard`](../../crates/chess-core/src/bitboard.rs) wraps a private `u64`. Bit zero
-corresponds to A1 and bit 63 to H8. A set bit means a square belongs to the set.
+There is no public FEN loader or PGN parser. Finished-game headerless PGN export
+belongs to the desktop, which replays core moves and requests SAN labels.
 
-Internal operations include:
-
-- `empty()` and `Default`: a zero-bit set; prefer `empty()` for explicit
-  construction.
-- `TryFrom<Square>`: a single-square set, rejecting `Square::None`.
-- `set`: add a square without changing other bits; invalid input returns an
-  error without modifying the board.
-- `contains`: membership lookup, returning false for `Square::None`.
-- Bitwise AND, OR, and XOR, including their assignment forms.
-
-A bitboard is only a set of squares. Its role as piece-type or side occupancy
-comes from its location in a `Position`.
-
-## Position storage and consistency
-
-[`Position`](../../crates/chess-core/src/position.rs) stores six piece-type
-bitboards and two side bitboards, rather than a separate object per occupied
-square. A white pawn, for example, contributes a bit to both the pawn board and
-the White board.
-
-For a consistent position, each occupied square must belong to exactly one
-piece-type board and exactly one side board, and both groups must describe the
-same overall occupancy. These are representation invariants, not a claim that
-the position is legally reachable.
-
-`piece_at` searches side and piece-type occupancy and returns the matching pair.
-It is a lookup, not a validator: it does not report overlapping boards or other
-internal inconsistencies. Future mutation code must preserve consistency in
-both groups of bitboards.
-
-Additional private fields hold side to move, a `u8` castling-rights mask, a `u8`
-halfmove count, and a `u32` fullmove count. Internal castling masks are 1 and 2
-for White's kingside and queenside rights, and 4 and 8 for Black's; OR-combining
-them gives all rights (15).
-
-### Construction
-
-| State | `Position::standard()` | Internal `Position::empty()` |
-| --- | --- | --- |
-| Occupancy | Standard 32-piece layout | All boards zero |
-| Side to move | White | `Side::Empty` |
-| Castling rights | All four | None |
-| Halfmove count | 0 | 0 |
-| Fullmove count | 1 | 0 |
-
-The empty constructor is crate-visible, not part of the public API, and does
-not create a legal starting position. The standard constructor uses it as a
-base before populating occupancy and metadata.
-
-## Current boundaries
-
-There is no move generation, move execution, check detection, game-result
-detection, or FEN/PGN support yet. Position storage also has no en passant field.
-Castling rights and clocks are currently initialized data, not evidence of
-implemented rules or automatic updates.
-
-Keep new chess behavior independent of GUI and storage concerns. Expose only
-the operations consumers need, and document sentinel handling and consistency
-requirements beside the API in Rustdoc.
-
-## Verification
-
-Tests live beside each implementation. They cover representation sizes and
-values, square conversion, bit operations, empty construction, starting-position
-masks and metadata, and square lookup across piece/side combinations.
-
-Follow [Testing](../development/testing.md) for ordered checks, using
-`-p chess-core` for core-only changes. Use workspace checks when a public API
-change also changes the desktop consumer. Markdown examples are illustrative;
-place examples that need continuous doctest coverage in Rustdoc.
+Tests live beside implementations and cover representation, move legality,
+special moves, notation, history, draw rules, and result handling. Follow
+[Testing](../development/testing.md) for ordered checks with `-p chess-core`;
+use workspace checks for public APIs affecting the desktop. Markdown examples
+are illustrative; put continuously tested examples in Rustdoc.

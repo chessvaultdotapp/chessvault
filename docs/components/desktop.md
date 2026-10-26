@@ -1,34 +1,40 @@
 # Desktop application
 
 The `chessvault` package is a binary-only Iced 0.14 application. It currently
-renders the standard starting position, provides a developer console, and saves
-window dimensions. The board is not yet interactive.
+supports local play for both sides, legal-move hints, promotion selection,
+read-only history review, game results, and finished-game PGN export. It also
+provides a developer console and saves window dimensions.
 
 ## Source map
 
 | File | Responsibility |
 | --- | --- |
 | [`main.rs`](../../apps/chessvault/src/main.rs) | Startup, `ChessVault` state, messages, subscriptions, views, and window-state serialization |
-| [`board.rs`](../../apps/chessvault/src/board.rs) | Responsive board layout and embedded piece artwork |
+| [`board.rs`](../../apps/chessvault/src/board.rs) | Selection, legal destination clicks, board layout, and embedded piece artwork |
+| [`history.rs`](../../apps/chessvault/src/history.rs) | Cached SAN labels and independent read-only review positions |
+| [`game_status.rs`](../../apps/chessvault/src/game_status.rs) | Human-readable game results |
+| [`pgn.rs`](../../apps/chessvault/src/pgn.rs) | Headerless SAN movetext export for finished games |
+| [`serialization/mod.rs`](../../apps/chessvault/src/serialization/mod.rs) | Versioned binary format headers |
 | [`logs.rs`](../../apps/chessvault/src/logs.rs) | Tracing setup, shared event storage, and source-filtered snapshots |
 | [`fs.rs`](../../apps/chessvault/src/fs.rs) | Saved window-state file path |
 | [`icon.rs`](../../apps/chessvault/src/icon.rs) | Installed window-icon lookup and embedded fallback |
 
 ## Application state and messages
 
-`ChessVault` owns a `chess_core::Position`, a shared `Logs` handle, and console UI
+`ChessVault` owns a `chess_core::Game`, `History`, selection, pending promotion,
+new-game confirmation and PGN-save state, a shared `Logs` handle, and console UI
 state. The console keeps both the last displayed string and Iced's
 `text_editor::Content`; the latter holds cursor and selection state.
 
 The app uses `iced::application` with `boot`, `update`, `view`, and
 `subscription`, not the older Iced `Application` trait API.
 
-- `boot` creates the starting position and initializes the state directory.
+- `boot` creates a game from the standard position and initializes the state directory.
 - `update` changes state in response to `Message` values. Clipboard and window
   operations return Iced tasks; ordinary state updates return `Task::none()`.
 - `view` derives the widget tree from application state.
-- `subscription` listens for F12 and close requests, and adds a timer only when
-  the console is open.
+- `subscription` listens for keyboard navigation, F12, Escape, and close requests,
+  and adds a timer only when the console is open.
 
 When adding an interaction, route it through messages and `update`. Keep board
 presentation in `board.rs` and chess rules in `chess-core`, rather than giving
@@ -36,9 +42,21 @@ the renderer its own independent position representation.
 
 ## Board rendering and assets
 
-`board::view` borrows a `Position` and queries `piece_at` for each square. Its
-generic message type allows it to fit into the app without defining board
-messages before there are interactions to handle.
+`board::view` renders the live or independently reconstructed review position,
+selection, and legal destinations. Board clicks become application messages;
+legal moves are applied through `Game::play` to preserve history and results.
+
+Promotion is deferred until an on-board picker chooses a piece. Escape or an
+outside click cancels the picker without moving the pawn. Review never rewinds
+the live game: return to latest to resume play. Navigation is blocked while the
+console or promotion picker is open. SAN labels are cached when moves arrive,
+not recomputed on redraw.
+
+The app exposes resignation, draw offers/responses, claimable draws (including
+intended-move claims), and automatic results from the core. New game asks for
+confirmation when appropriate. Save PGN is available for finished games and
+writes headerless SAN movetext with a result token; it is not a full PGN database
+or import facility.
 
 The board uses the smaller available dimension as its side length. Ranks are
 rendered from eight down to one and files from a through h, placing White at the

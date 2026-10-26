@@ -2,9 +2,9 @@
 
 This page describes the current implementation, rather than a target design.
 Chessvault is a Rust workspace with an Iced desktop application and two
-supporting libraries. The app displays the standard chess starting position,
-provides an in-app developer console, and remembers its window size. It does not
-yet support playing moves.
+supporting libraries. The app supports local chess play, legal-move hints,
+promotion selection, read-only move-history review, game results, and finished-game
+PGN export. It also provides an in-app developer console and remembers its window size.
 
 ## Package boundaries
 
@@ -20,7 +20,7 @@ are omitted.
 | Package | Responsibility | Entry point |
 | --- | --- | --- |
 | `chessvault` | UI, application state, logging, and window-size persistence | [`apps/chessvault/src/main.rs`](../../apps/chessvault/src/main.rs) |
-| `chess-core` | Chess primitives and bitboard-based position storage | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
+| `chess-core` | Positions, legal moves, SAN, game history, and results | [`crates/chess-core/src/lib.rs`](../../crates/chess-core/src/lib.rs) |
 | `platform-dirs` | Platform-specific user state, share, and log directory resolution | [`crates/platform-dirs/src/lib.rs`](../../crates/platform-dirs/src/lib.rs) |
 
 The chess core has no dependency on the GUI or platform directory library.
@@ -30,14 +30,15 @@ Platform resolution accepts an optional application name; the desktop passes
 ## Desktop lifecycle and state
 
 The binary uses Iced 0.14's `iced::application` builder. `ChessVault` owns the
-current `Position`, shared log store, and console presentation state.
+live `Game`, independent `History` review state, selection and promotion state,
+shared log store, and console presentation state.
 
 Startup proceeds as follows:
 
 1. Install the global tracing subscriber so startup failures can be captured.
 2. Try to load the saved window dimensions. Missing state uses Iced's default
    size; invalid or unreadable state logs an error and also falls back.
-3. Boot `ChessVault` with `Position::standard()` and the console closed.
+3. Boot `ChessVault` with a `Game` constructed from `Position::standard()` and the console closed.
 4. Create the application state directory. Failure here is fatal.
 
 Iced drives three methods:
@@ -45,8 +46,8 @@ Iced drives three methods:
 - `update` handles messages and returns tasks for effects such as clipboard
   writes and window operations.
 - `view` builds the board and, when open, the developer console.
-- `subscription` listens for F12 and window-close requests, adding a 250 ms log
-  refresh timer only while the console is open.
+- `subscription` listens for keyboard navigation, F12, Escape, and window-close
+  requests, adding a 250 ms log refresh timer only while the console is open.
 
 Automatic closing is disabled. On a close request, the app queries the window
 size, attempts to save it, and then closes the window even if saving fails.
@@ -61,18 +62,23 @@ The board scales to the available space, with White at the bottom and a1 dark.
 Piece SVGs are embedded in the binary, so rendering does not depend on the
 working directory. Their handles are cached and reused across redraws.
 
-There are currently no board-interaction messages or move-making operations.
+Board messages update selection or apply moves through `Game::play`. Promotion
+waits for an explicit piece choice. History review reconstructs an independent
+position and never mutates the live game; returning to latest resumes play.
+SAN labels are cached when moves arrive. New-game and PGN-save actions are also
+handled by the application, not the renderer.
 
 ## Chess representation
 
-`chess-core` publicly exports `Position`, `Piece`, `Side`, `Square`, and
-`InvalidSquareIndex`; its implementation modules remain private.
+`chess-core` publicly exports `Position`, `Move`, `PositionStatus`, `Game`,
+`GameStatus`, `DrawReason`, `Piece`, `Side`, `Square`, and `InvalidSquareIndex`;
+its implementation modules remain private.
 
 A [`Position`](../../crates/chess-core/src/position.rs) stores:
 
 - Six piece-type bitboards, one each for pawn through king.
 - Two side bitboards, one each for White and Black.
-- Side to move, castling-rights flags, and halfmove and fullmove counts.
+- Side to move, castling-rights flags, an en passant target, and halfmove/fullmove counts.
 
 A square's piece and side are found by consulting both sets of occupancy
 bitboards. `Piece::Empty` and `Side::Empty` are sentinels, not valid indices into
@@ -84,9 +90,11 @@ move, all castling rights, a zero halfmove clock, and fullmove number one.
 The crate-internal `Position::empty()` instead clears all occupancy and counts,
 with no side to move or castling rights; it is not a playable starting position.
 
-The core currently provides representation and lookup, not legal move
-generation, move execution, game-result detection, or FEN/PGN support. Those
-capabilities should not be inferred from the presence of position metadata.
+`Position` generates and applies legal moves and formats SAN. `Game` adds move
+and repetition history, resignation, draw offers, claim-based draws, and automatic
+results. Desktop moves must use `Game::play`, which rejects finished-game moves.
+See the [core guide](../components/chess-core.md) for rule boundaries. There is no
+public FEN loader or PGN parser; the desktop exports finished-game SAN movetext.
 
 ## Runtime and persistence
 
@@ -119,7 +127,8 @@ The library also exposes `user_share_dir` for persistent user data. Its developm
 base is `<current working directory>/.local/share`; native Linux resolution uses
 an absolute `XDG_DATA_HOME`, falling back to `<home>/.local/share`. It follows the
 same application-name validation and platform support as state resolution.
-The desktop does not currently use this API.
+The desktop uses this API, followed by native `system_share_dirs`, to search for
+installed window icons before falling back to embedded pixels.
 
 ### Saved data and failure handling
 
@@ -154,12 +163,15 @@ records are normalized to preserve the original dependency source.
 F12 toggles the console. Its text editor rejects editing actions, and periodic
 refresh pauses while text is selected so copying remains usable. “Copy all”
 copies the filtered snapshot. Clearing history preserves source settings.
-Logs and source settings are not persisted to disk.
+Console history and source settings are not restored between launches. Captured
+events are also written to a per-launch JSON log when file initialization succeeds;
+background retention preserves the current log and prunes eligible old logs. See
+[desktop logging](../components/desktop.md#developer-console) for failure and retention policy.
 
 ## Tests and further reading
 
 Unit tests live beside their implementations. They cover chess representations
-and starting-position lookup, log capture and filtering, window-state parsing,
+and legal play, notation, history and results, log capture and filtering, window-state parsing,
 and path resolution. Filesystem resolver tests inject inputs rather than
 mutating process-wide environment variables; logging tests use scoped
 subscribers instead of installing the application's global subscriber.
