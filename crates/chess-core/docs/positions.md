@@ -6,7 +6,9 @@ one. The crate-private `Position::empty()` is an internal construction helper,
 not a legal starting position: it clears occupancy and counters, with no side to
 move or castling rights.
 
-- `piece_at` returns `None` for an empty square or `Square::None`.
+- `piece_at(square)` returns `Option<(Piece, Side)>`: `Some((piece, side))`
+  identifies the occupant. The return value is `Option::None` when the input
+  square is empty or the input is the sentinel `Square::None`.
 - `side_to_move`, `halfmove_clock`, and `fullmove_number` expose metadata.
 - `legal_moves` generates legal moves, including castling, en passant, and all
   four promotions. Ordering is unspecified.
