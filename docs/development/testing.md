@@ -475,7 +475,8 @@ the change, verify legal moves and special moves, promotion choice/cancellation,
 read-only history navigation, results and draw claims/offers, new-game confirmation,
 and PGN saving/cancellation/failures. Also check affected board resizing, console
 filtering/copying during refresh, and window persistence. Use the detailed
-[desktop checklist](../components/desktop.md#verification); exercise the changed
+[desktop checklist](https://chessvaultdotapp.github.io/chessvault/dev/docs/apps/chessvault/development/#verification);
+exercise the changed
 behavior rather than treating a successful launch as sufficient.
 
 Include a brief description of what changed and how it was verified in the pull

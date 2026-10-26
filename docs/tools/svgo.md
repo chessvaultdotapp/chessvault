@@ -22,7 +22,7 @@ Output is abbreviated. SVGO is not part of the Cargo build. Desktop artwork
 optimization is manual; the platform-dirs documentation workflow regenerates
 and optimizes its [Mermaid diagrams](mermaid.md) before building the site.
 
-See the [SVG optimization workflow](../components/desktop.md#optimizing-svg-artwork)
+See the [SVG optimization workflow](https://chessvaultdotapp.github.io/chessvault/dev/docs/apps/chessvault/development/#artwork-and-icons)
 for usage and visual verification. With [just](just.md) installed,
 `just optimize-assets` optimizes desktop artwork in place and regenerates the
 documentation diagrams.
