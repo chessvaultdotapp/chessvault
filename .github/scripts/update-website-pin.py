@@ -40,12 +40,58 @@ def pin_at(ref):
     return json.loads(base64.b64decode(data["content"])), data["sha"]
 
 
+def candidate_for_event(event_name, event):
+    """Resolve only the exact release named by a trusted event, never latest."""
+    if event_name == "release":
+        candidate = release(event["release"]["tag_name"])
+        if candidate["id"] != event["release"]["id"]:
+            raise ValueError("Triggering release no longer matches")
+    elif event_name == "workflow_dispatch":
+        candidate = release(event["inputs"]["tag"])
+    elif event_name == "workflow_run":
+        run = event["workflow_run"]
+        if (
+            run["conclusion"] != "success"
+            or run["event"] != "push"
+            or run["head_repository"]["full_name"] != SOURCE
+            or run["name"] not in {"Development release", "Stable release"}
+        ):
+            raise ValueError("Untrusted or unsuccessful release workflow")
+        jobs = api(
+            f"repos/{SOURCE}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs?per_page=100"
+        )["jobs"]
+        publish_name = (
+            "Publish development prerelease"
+            if run["name"] == "Development release"
+            else "Publish stable release"
+        )
+        if not any(
+            job["name"] == publish_name and job["conclusion"] == "success"
+            for job in jobs
+        ):
+            print("Release publication job did not run successfully; nothing to pin")
+            return None
+        candidate = release(run["head_branch"])
+        from urllib.parse import quote
+
+        commit = api(f"repos/{SOURCE}/commits/{quote(candidate['tag_name'], safe='')}")[
+            "sha"
+        ]
+        if commit != run["head_sha"]:
+            raise ValueError("Release tag does not match the completed workflow commit")
+    else:
+        raise ValueError(f"Unsupported event: {event_name}")
+    if candidate["draft"] or not candidate["published_at"]:
+        raise ValueError("Expected a published release")
+    return candidate
+
+
 def main():
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as stream:
-        event_release = json.load(stream)["release"]
-    candidate = release(event_release["tag_name"])
-    if candidate["id"] != event_release["id"] or candidate["draft"]:
-        raise ValueError("Triggering release no longer matches a published release")
+        event = json.load(stream)
+    candidate = candidate_for_event(os.environ["GITHUB_EVENT_NAME"], event)
+    if candidate is None:
+        return
     # Git's commit endpoint peels annotated tags to their commit object.
     from urllib.parse import quote
 

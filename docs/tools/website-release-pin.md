@@ -5,6 +5,22 @@ Draft creation does not trigger it. The workflow reads trusted automation from `
 release tag to a full commit SHA, and updates `changelogs.json` in `chessvaultdotapp/website`.
 It never writes application Git refs or changes release tags.
 
+Releases published by the built-in `GITHUB_TOKEN` do not trigger other release workflows.
+A `workflow_run` completion trigger therefore also handles Development release and Stable release.
+It accepts only successful push runs from this repository, checks that the publication job succeeded in that
+specific run attempt, and resolves the run's exact tag. The tag commit must match the run's head SHA.
+Skipped publication jobs are ignored. No artifacts or code from the triggering run are executed;
+automation is always checked out from `main`.
+
+For recovery or verification of an existing release, run **Website release pin** from the Actions tab using
+**Run workflow** on `main` and enter its exact published tag. Alternatively:
+
+```sh
+gh workflow run website-release-pin.yml --ref main -f 'tag=v0.1.0+26w44a'
+```
+
+All three trigger paths share the same ordering, duplicate-PR, and draft guards.
+
 ## Credentials
 
 Create a fine-grained PAT owned by an account with access to `chessvaultdotapp/website`:
