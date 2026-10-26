@@ -1,0 +1,27 @@
+name: Website release pin
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+# Do not cancel an update midway through its cross-repository writes.
+concurrency:
+  group: website-release-pin
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted automation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Open or update website PR
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_PIN_TOKEN }}
+        run: python3 .github/scripts/update-website-pin.py

@@ -57,6 +57,9 @@ jobs:
           git ls-files -z '*.py' '*.pyi' | xargs -0 -r venvs/development/bin/ty check --python venvs/tag-tool --force-exclude --exclude tools/platform-dirs-differential
           venvs/development/bin/ty check --python venvs/platform-dirs-differential tools/platform-dirs-differential
 
+      - name: Test website release pin automation
+        run: venvs/tag-tool/bin/python -m pytest .github/scripts/test_website_pin.py -q
+
       - name: Test tag tool
         run: venvs/tag-tool/bin/python -m pytest tools/tag-tool -q
 
