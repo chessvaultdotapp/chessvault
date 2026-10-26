@@ -23,6 +23,7 @@ pub enum GameStatus {
     Draw(DrawReason),
     /// The associated side is the checkmated player, not the winner.
     Checkmate(Side),
+    /// The associated side is the player who resigned, not the winner.
     Resigned(Side),
 }
 
@@ -109,7 +110,8 @@ impl Game {
         true
     }
 
-    /// Declines the opponent's offer. Playing a legal move also declines it.
+    /// Declines the opponent's offer. The responding opponent's next legal move
+    /// also declines it; the offering player's move preserves the offer.
     pub fn decline_draw(&mut self, side: Side) -> bool {
         if !self.can_respond_to_draw(side) {
             return false;
