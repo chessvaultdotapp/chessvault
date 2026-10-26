@@ -1,6 +1,6 @@
 [package]
 name = "chessvault"
-version = "0.1.0+26w43b"
+version = "0.1.0+26w44a"
 edition = "2024"
 
 [dependencies]
