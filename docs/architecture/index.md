@@ -132,9 +132,12 @@ installed window icons before falling back to embedded pixels.
 
 ### Saved data and failure handling
 
-The `recreate` file contains JSON with window `width` and `height`. Loading
-requires finite, positive dimensions. It does not restore window position or
-save the chess position.
+The `recreate` file is a 24-byte binary record with a versioned header and two
+little-endian `f32` dimensions. Loading requires the exact supported header and
+length and finite, positive dimensions. Legacy JSON is rejected, logged, and
+falls back to defaults rather than being migrated. See the
+[desktop format description](../components/desktop.md#window-persistence-and-failures).
+It does not restore window position or save the chess position.
 
 Saving currently creates or truncates the file directly; it is not an atomic
 replace. A damaged file is handled by the startup fallback described above.

@@ -157,7 +157,7 @@ Use these nearby tests as examples when extending a component:
 - **Chess core:** pin compact representations and discriminants, bitboard
   operations, position construction, and square lookup. Include sentinel cases;
   empty pieces, sides, and squares are not valid occupancy indices.
-- **Desktop:** test log capture and filtering, window-state JSON validation, and
+- **Desktop:** test log capture and filtering, window-state binary-format validation, and
   file-path composition independently of the GUI.
 - **Platform directories:** inject upstream path results,
   environment values, and home-directory lookups. Do not mutate process-wide

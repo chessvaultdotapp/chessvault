@@ -192,9 +192,13 @@ other instances' active logs are not protected.
 
 ## Window persistence and failures
 
-`WindowRecreateInfo` loads and saves JSON containing width and height. Loading
-rejects non-positive or non-finite dimensions. A missing file uses the default
-window size; read or parse failures are logged and also use the default.
+`WindowRecreateInfo` loads and saves an exactly 24-byte binary record: a 16-byte
+header followed by little-endian `f32` width and height. The header contains
+`CHSV`, `u32` major/minor versions (0/1), and a `u32` format identifier (0), with
+all integers little-endian. Loading requires the exact supported header and length
+and rejects non-positive or non-finite dimensions. Legacy JSON is not migrated:
+it is rejected and logged, and startup uses the default window size. A missing
+file also uses defaults. The next successful save writes the binary format.
 
 The app disables automatic exit on close requests. It first queries the window
 size, attempts to save it, and then closes even if saving failed. In contrast,

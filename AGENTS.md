@@ -80,8 +80,9 @@
   values; do not mutate process-wide environment. Base resolution errors precede application-name validation.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
-- Desktop state is normally `.local/state/chessvault/` in development; window dimensions are JSON in `recreate`
-  (no extension). `user_log_dir` appends `log` unless its opinion argument is `Some(false)`.
+- Desktop state is normally `.local/state/chessvault/` in development; window dimensions use a 24-byte binary
+  `recreate` file (no extension): a 16-byte versioned header and two little-endian `f32` values. Legacy JSON is rejected.
+  `user_log_dir` appends `log` unless its opinion argument is `Some(false)`.
 
 ## App wiring
 
