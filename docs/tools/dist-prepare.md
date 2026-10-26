@@ -110,18 +110,20 @@ share/icons/hicolor/scalable/apps/chessvault.svg
 ```
 
 The [development release workflow](../../.github/workflows/development-release.yml)
-checks out the tagged commit and downloads the shared Linux binary and generated PNG, then runs:
+checks out the tagged commit, builds the Linux binary and PNG, copies the PNG
+beside the binary, then runs in the same build/packaging job:
 
 ```console
-$ python3 tools/dist-prepare/main.py binary/chessvault --output dist/package
+$ python3 tools/dist-prepare/main.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
 Prepared dist/package
 ```
 
 CI uses the runner's Python without installing test dependencies. It archives
 `bin/`, `install-linux.sh`, and `share/` as
 `chessvault-<dev-tag>-linux-x86_64.tar.gz`.
-[AppImage packaging](../development/appimage.md) runs separately using the same
-built binary; it does not use this staging tool. See the
+The job smoke-tests the native archive before uploading it, then runs
+[AppImage packaging](../development/appimage.md) using the same built binary.
+AppImage packaging does not use this staging tool. See the
 [release tag tool](tag-tool.md#publish-on-github) for publication details.
 
 ## Failures and recovery

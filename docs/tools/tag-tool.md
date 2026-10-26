@@ -170,13 +170,15 @@ The `chessvault-<dev-tag>-linux-x86_64.tar.gz` archive remains available and con
 [distribution preparation tool](dist-prepare.md). This unbundled executable needs
 compatible system libraries.
 
-After tag validation, one read-only build job compiles the shared Linux binary.
-Two read-only packaging jobs download that same binary and produce the native
-archive and AppImage in parallel, without recompiling. The shared binary and
-packages are retained as workflow artifacts for seven days.
-The release job waits for both packagers to succeed, downloads and checks for the
-packages, and publishes them with `contents: write` permission. Failed packaging
-or release jobs can be rerun without rebuilding while the artifacts are retained.
+After tag validation, one read-only build/packaging job compiles the Linux binary
+and generated PNG. It stages the native archive, smoke-tests its installer, and
+uploads that archive before packaging and validating the AppImage from the same
+binary. Packaging is sequential, not parallel. Only the native archive and AppImage
+are retained as workflow artifacts, for seven days; the raw binary is not uploaded.
+The release job waits for the combined job to succeed, downloads and checks the
+packages, and publishes them with `contents: write` permission. A publication-only
+retry can reuse retained artifacts without rebuilding. Retrying the combined job
+runs its build and packaging steps again.
 
 Reruns preserve existing release notes and assets, but upload missing artifacts.
 A failed build does not create a new prerelease.
