@@ -1,0 +1,27 @@
+[project]
+site_name = "Chessvault - chess-core documentation"
+site_url = "https://chessvaultdotapp.github.io/chessvault/dev/docs/crates/chess-core/"
+nav = [
+    { "Overview" = "index.md" },
+    { "Positions and moves" = "positions.md" },
+    { "Games and results" = "games.md" },
+    { "Representation" = "representation.md" },
+    { "Development" = "development.md" },
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
