@@ -9,6 +9,7 @@ on:
       - '**/zensical.toml'
       - 'docs/**'
       - 'crates/**/docs/**'
+      - 'apps/chessvault/docs/**'
       - 'crates/platform-dirs/justfile'
       - 'venvs/zensical.requirements.txt'
       - 'package.json'
@@ -24,6 +25,7 @@ on:
       - '**/zensical.toml'
       - 'docs/**'
       - 'crates/**/docs/**'
+      - 'apps/chessvault/docs/**'
       - 'crates/platform-dirs/justfile'
       - 'venvs/zensical.requirements.txt'
       - 'package.json'
@@ -67,14 +69,17 @@ jobs:
         run: |
           venvs/zensical/bin/zensical build --config-file zensical.toml
           venvs/zensical/bin/zensical build --config-file crates/chess-core/zensical.toml
+          venvs/zensical/bin/zensical build --config-file apps/chessvault/zensical.toml
           venvs/zensical/bin/zensical build --config-file crates/platform-dirs/zensical.toml
 
       - name: Assemble Pages site
         run: |
           mkdir -p _site/dev/docs/crates/platform-dirs
+          mkdir -p _site/dev/docs/apps/chessvault
           cp -a site/. _site/dev/docs/
           mkdir -p _site/dev/docs/crates/chess-core
           cp -a crates/chess-core/site/. _site/dev/docs/crates/chess-core/
+          cp -a apps/chessvault/site/. _site/dev/docs/apps/chessvault/
           cp -a crates/platform-dirs/site/. _site/dev/docs/crates/platform-dirs/
 
       - name: Upload Pages artifact
