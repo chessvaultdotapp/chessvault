@@ -1,0 +1,26 @@
+[project]
+site_name = "Chessvault - desktop documentation"
+site_url = "https://chessvaultdotapp.github.io/chessvault/dev/docs/apps/chessvault/"
+nav = [
+    { "Overview" = "index.md" },
+    { "Architecture and UI flow" = "architecture.md" },
+    { "Runtime state and logging" = "runtime.md" },
+    { "Desktop development" = "development.md" },
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
