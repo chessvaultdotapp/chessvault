@@ -52,8 +52,12 @@ jobs:
         run: just check-platform-differential
 
   check:
-    name: Build and check
-    runs-on: ubuntu-latest
+    name: Build and check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     env:
       # Incremental state is large and provides little reuse on ephemeral runners.
       CARGO_INCREMENTAL: '0'
@@ -83,23 +87,36 @@ jobs:
       - name: Build
         run: cargo build --workspace --all-targets --locked
 
+      - name: Build native platform directories
+        run: cargo build -p platform-dirs --all-targets --locked --no-default-features
+
       - name: Install nextest
         uses: ./.github/actions/setup-nextest
 
       - name: Test
         run: cargo nextest run --workspace --locked
 
+      - name: Test native platform directories
+        run: cargo nextest run -p platform-dirs --locked --no-default-features
+
       - name: Test documentation
         run: cargo test --workspace --doc --locked
+
+      - name: Test native platform directory documentation
+        run: cargo test -p platform-dirs --doc --locked --no-default-features
 
       - name: Install formatting and linting components
         run: rustup component add rustfmt clippy
 
       - name: Check formatting
+        if: runner.os == 'Linux'
         run: cargo fmt --all -- --check
 
       - name: Lint
         run: cargo clippy --workspace --all-targets --locked --no-deps
+
+      - name: Lint native platform directories
+        run: cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-features
 
       - name: Report Cargo cache footprint
         shell: bash
