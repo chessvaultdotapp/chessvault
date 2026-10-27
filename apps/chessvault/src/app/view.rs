@@ -5,27 +5,15 @@ use iced::{
 };
 
 use super::{Message, State};
-use crate::{components::board, game_status};
+use crate::{
+    components::{board, new_game_confirmation},
+    game_status,
+};
 
 impl State {
     pub(crate) fn view(&self) -> Element<'_, Message> {
         if self.confirm_new_game {
-            return container(
-                column![
-                    text("Start a new game?").size(24),
-                    text("The current game and its move history will be discarded."),
-                    row![
-                        button("Cancel").on_press(Message::CancelNewGame),
-                        button("Start new game").on_press(Message::ConfirmNewGame),
-                    ]
-                    .spacing(12),
-                ]
-                .spacing(16),
-            )
-            .padding(24)
-            .center_x(Fill)
-            .center_y(Fill)
-            .into();
+            return new_game_confirmation::view(Message::CancelNewGame, Message::ConfirmNewGame);
         }
         let game_status = self.history.status(&self.game);
         let ongoing = !self.history.is_reviewing() && game_status == GameStatus::Ongoing;
