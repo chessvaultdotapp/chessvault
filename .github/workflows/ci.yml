@@ -26,6 +26,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  wasm:
+    name: Build and lint chess-core for WASM
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install pinned Rust toolchain and WASM target
+        run: |
+          rustup show active-toolchain
+          rustup target add wasm32-unknown-unknown
+          rustup component add clippy
+
+      - name: Restore WASM Cargo downloads and build artifacts
+        id: cargo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+            !target/**/incremental
+          key: cargo-wasm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock', '.cargo/**') }}-${{ github.sha }}
+          restore-keys: |
+            cargo-wasm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.toml', 'Cargo.lock', '.cargo/**') }}-
+            cargo-wasm-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}-
+
+      # Compile/lint coverage only; browser test execution needs a separate harness.
+      - name: Build chess-core for WASM
+        run: cargo build -p chess-core --target wasm32-unknown-unknown --locked
+
+      - name: Lint chess-core for WASM
+        run: cargo clippy -p chess-core --target wasm32-unknown-unknown --locked --no-deps
+
+      - name: Save WASM Cargo downloads and build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+            !target/**/incremental
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
   platform-differential:
     name: Compare native platform directories
     runs-on: ubuntu-latest
