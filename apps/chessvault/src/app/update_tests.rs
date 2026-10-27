@@ -1,6 +1,8 @@
 use super::*;
 use chess_core::{Piece, Side, Square};
 
+use crate::components::developer_console;
+
 use crate::{
     components::move_history::{self as history, Navigation},
     logs,
@@ -12,11 +14,7 @@ mod draw_tests {
 
     fn ready() -> State {
         let mut app = State {
-            logs: logs::Logs::default(),
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
+            console: developer_console::State::new(logs::Logs::default()),
             game: Game::new(Position::standard()),
             history: History::default(),
             selected_square: Some(Square::E2),
@@ -100,7 +98,7 @@ mod draw_tests {
                 0 => {
                     let _ = app.update(Message::Navigate(Navigation::First));
                 }
-                1 => app.console_open = true,
+                1 => app.console.open = true,
                 2 => {
                     app.pending_promotion = Some(Move {
                         from: Square::A7,
@@ -176,7 +174,7 @@ mod draw_tests {
                 0 => {
                     let _ = app.update(Message::Navigate(Navigation::First));
                 }
-                1 => app.console_open = true,
+                1 => app.console.open = true,
                 2 => app.pending_promotion = Some(mv),
                 3 => app.confirm_new_game = true,
                 _ => mv.to = Square::E4,
@@ -194,10 +192,10 @@ mod draw_tests {
         let _ = app.update(Message::ClaimDraw);
         assert_eq!(app.game.status(), GameStatus::Ongoing);
         let _ = app.update(Message::Navigate(history::Navigation::Latest));
-        app.console_open = true;
+        app.console.open = true;
         let _ = app.update(Message::ClaimDraw);
         assert_eq!(app.game.status(), GameStatus::Ongoing);
-        app.console_open = false;
+        app.console.open = false;
         app.pending_promotion = Some(Move {
             from: Square::A7,
             to: Square::A8,
@@ -219,11 +217,7 @@ mod resignation_tests {
     fn resigning_ends_play_and_clears_selection() {
         for side in [Side::White, Side::Black] {
             let mut app = State {
-                logs: logs::Logs::default(),
-                console_open: false,
-                log_text: String::new(),
-                log_content: text_editor::Content::new(),
-                sources_open: false,
+                console: developer_console::State::new(logs::Logs::default()),
                 game: Game::new(Position::standard()),
                 history: History::default(),
                 selected_square: Some(Square::E2),
@@ -254,11 +248,7 @@ mod promotion_tests {
         use Square::{A2, A4, A5, A6, B7, B8, C6, F3, G1, G2, H3, H4, H5, H7};
         let mut app = State {
             history: History::default(),
-            logs: logs::Logs::default(),
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
+            console: developer_console::State::new(logs::Logs::default()),
             game: Game::new(Position::standard()),
             selected_square: None,
             pending_promotion: None,
@@ -363,11 +353,7 @@ mod navigation_tests {
 
     fn app() -> State {
         State {
-            logs: logs::Logs::default(),
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
+            console: developer_console::State::new(logs::Logs::default()),
             game: Game::new(Position::standard()),
             history: History::default(),
             selected_square: None,
@@ -383,12 +369,15 @@ mod navigation_tests {
         use tracing_subscriber::layer::SubscriberExt;
 
         let mut app = app();
-        let subscriber = tracing_subscriber::registry().with(app.logs.capture_layer());
+        let subscriber = tracing_subscriber::registry().with(app.console.logs.capture_layer());
         tracing::subscriber::with_default(subscriber, || {
             tracing::info!(target: "iced_wgpu", "Settings {{\n    present_mode: AutoVsync,\n    backends: Backends(\n        VULKAN | GL,\n    ),\n}}");
         });
-        let _ = app.update(Message::SetSourceEnabled("iced_wgpu".into(), true));
-        assert!(app.log_text.contains("AutoVsync"));
+        let _ = app.update(Message::Console(developer_console::Message::SetSourceEnabled(
+            "iced_wgpu".into(),
+            true,
+        )));
+        assert!(app.console.text.contains("AutoVsync"));
     }
 
     #[test]
@@ -403,8 +392,8 @@ mod navigation_tests {
             to: Square::B8,
             promotion: Some(Piece::Queen),
         });
-        app.sources_open = true;
-        let logs = app.logs.snapshot();
+        app.console.sources_open = true;
+        let logs = app.console.logs.snapshot();
         for cancel in [Message::CancelNewGame, Message::CancelPromotion] {
             let _ = app.update(Message::NewGame);
             assert!(app.confirm_new_game);
@@ -432,8 +421,8 @@ mod navigation_tests {
                 Position::standard().piece_at(square)
             );
         }
-        assert!(app.sources_open);
-        assert_eq!(app.logs.snapshot(), logs);
+        assert!(app.console.sources_open);
+        assert_eq!(app.console.logs.snapshot(), logs);
     }
 
     #[test]
@@ -487,7 +476,7 @@ mod navigation_tests {
         let _ = app.update(Message::SelectSquare(E2));
         let _ = app.update(Message::SelectSquare(E4));
         for console in [true, false] {
-            app.console_open = console;
+            app.console.open = console;
             app.pending_promotion = (!console).then_some(Move {
                 from: Square::B7,
                 to: Square::A8,

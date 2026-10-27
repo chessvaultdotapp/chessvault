@@ -6,7 +6,9 @@ Source links below refer to the repository's `main` branch.
 
 | Module | Responsibility |
 | --- | --- |
-| [main.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/main.rs) | Startup, `ChessVault`, messages, views, subscriptions, and window serialization |
+| [main.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/main.rs) | Startup, window settings, and window serialization |
+| [App](https://github.com/chessvaultdotapp/chessvault/tree/main/apps/chessvault/src/app) | Shared state, message routing, game actions, layout, and global subscriptions |
+| [Components](https://github.com/chessvaultdotapp/chessvault/tree/main/apps/chessvault/src/components) | Board, game controls, move history, developer console, and new-game confirmation |
 | [Board](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/components/board.rs) | Selection, legal destinations, board layout, and embedded pieces |
 | [Move history](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/components/move_history.rs) | Cached SAN labels and independent review positions |
 | [game_status.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/game_status.rs) | Human-readable results |
@@ -19,16 +21,20 @@ Source links below refer to the repository's `main` branch.
 ## Lifecycle and ownership
 
 Startup installs the global tracing subscriber, loads window dimensions with a
-fallback to defaults, and boots `ChessVault` with `Game::new(Position::standard())`.
+fallback to defaults, and boots `app::State` with `Game::new(Position::standard())`.
 Creating the application state directory during boot is fatal on failure.
 
 The app uses `iced::application`, not the older `Application` trait.
-`ChessVault` owns the live `Game`, independent `History`, selection, pending
-promotion, new-game confirmation, PGN-save state, shared `Logs`, and console UI state.
+`app::State` owns the live `Game`, independent `History`, selection, pending
+promotion, new-game confirmation, PGN-save state, and a developer-console component.
+The console owns its shared `Logs` handle, editor content, source-panel state, and refresh subscription.
+Logging infrastructure remains in `logs`, outside the UI components.
 
 - `update` handles `Message` values and returns tasks for effects such as clipboard,
   save dialogs, and window operations; ordinary updates return `Task::none()`.
-- `view` derives widgets from state. Keep board presentation in `board.rs` and chess rules in `chess-core`.
+- `view` composes components from state. Components expose their own messages or callbacks, not app messages.
+  Game controls emit intents that the app maps to game actions; the confirmation view emits confirm/cancel callbacks.
+  Keep board presentation in `components/board.rs` and chess rules in `chess-core`.
 - `subscription` handles navigation keys, F12, Escape, and close requests.
   A 250 ms timer is subscribed only while the console is open.
 
