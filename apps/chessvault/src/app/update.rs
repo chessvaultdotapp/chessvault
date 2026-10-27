@@ -1,71 +1,11 @@
-use std::time::Duration;
-
-use anyhow::{Context, Result};
-use chess_core::{Game, GameStatus, Move, Position, Square};
-use iced::{
-    Subscription, Task,
-    keyboard::{self, Key, key::Named},
-    widget::text_editor,
-    window,
-};
+use chess_core::{Game, GameStatus, Move, Position};
+use iced::{Task, widget::text_editor, window};
 use tracing::{debug, error};
 
-use crate::{
-    Message, WindowRecreateInfo, board,
-    history::{History, Navigation},
-    logs::{self, Logs},
-    pgn,
-};
-
-pub(crate) struct State {
-    pub(crate) logs: Logs,
-    pub(crate) console_open: bool,
-    pub(crate) log_text: String,
-    pub(crate) log_content: text_editor::Content,
-    pub(crate) sources_open: bool,
-    pub(crate) game: Game,
-    pub(crate) history: History,
-    pub(crate) selected_square: Option<Square>,
-    pub(crate) pending_promotion: Option<Move>,
-    pub(crate) confirm_new_game: bool,
-    pub(crate) saving_pgn: bool,
-    pub(crate) pgn_error: Option<String>,
-}
+use super::{Message, State};
+use crate::{WindowRecreateInfo, board, history::History, pgn};
 
 impl State {
-    pub(crate) fn boot(logs: logs::Logs) -> Self {
-        let mut app = Self {
-            history: History::default(),
-            logs,
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
-            game: Game::new(Position::standard()),
-            selected_square: None,
-            pending_promotion: None,
-            confirm_new_game: false,
-            saving_pgn: false,
-            pgn_error: None,
-        };
-
-        if let Err(err) = app.initialize() {
-            error!(error = ?err, "Application initialization failed");
-            std::process::exit(1);
-        }
-
-        app
-    }
-
-    fn initialize(&mut self) -> Result<()> {
-        match platform_dirs::user_state_dir(Some("chessvault")).context("Failed to resolve application state directory")
-        {
-            Ok(path) => std::fs::create_dir_all(&path)
-                .with_context(|| format!("Failed to create application state directory: {}", path.display())),
-            Err(err) => Err(err),
-        }
-    }
-
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {
         if self.confirm_new_game
             && matches!(
@@ -282,43 +222,8 @@ impl State {
             self.log_text = logs;
         }
     }
-
-    pub(crate) fn subscription(&self) -> Subscription<Message> {
-        let keyboard = iced::event::listen_with(|event, status, _window| match event {
-            iced::Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(Named::F12),
-                repeat: false,
-                ..
-            }) => Some(Message::ToggleConsole),
-            iced::Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(Named::Escape),
-                repeat: false,
-                ..
-            }) => Some(Message::CancelPromotion),
-            iced::Event::Keyboard(keyboard::Event::KeyPressed {
-                key: Key::Named(key),
-                modifiers,
-                ..
-            }) if status == iced::event::Status::Ignored && modifiers.is_empty() => {
-                Navigation::from_key(key).map(Message::Navigate)
-            }
-            _ => None,
-        });
-
-        let close_requests = window::close_requests().map(Message::WindowCloseRequested);
-
-        if self.console_open {
-            Subscription::batch([
-                keyboard,
-                close_requests,
-                iced::time::every(Duration::from_millis(250)).map(|_| Message::RefreshLogs),
-            ])
-        } else {
-            Subscription::batch([keyboard, close_requests])
-        }
-    }
 }
 
 #[cfg(test)]
-#[path = "state_tests.rs"]
+#[path = "update_tests.rs"]
 mod tests;

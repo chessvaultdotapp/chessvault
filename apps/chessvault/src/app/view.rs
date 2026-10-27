@@ -4,8 +4,8 @@ use iced::{
     widget::{Space, button, checkbox, column, container, row, scrollable, text, text_editor},
 };
 
-use super::State;
-use crate::{Message, board, game_status};
+use super::{Message, State};
+use crate::{board, game_status};
 
 impl State {
     pub(crate) fn view(&self) -> Element<'_, Message> {

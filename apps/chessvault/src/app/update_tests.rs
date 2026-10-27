@@ -1,7 +1,10 @@
 use super::*;
-use chess_core::{Piece, Side};
+use chess_core::{Piece, Side, Square};
 
-use crate::history;
+use crate::{
+    history::{self, Navigation},
+    logs,
+};
 
 mod draw_tests {
     use super::*;

@@ -1,10 +1,8 @@
 use std::io::Write;
 
 use anyhow::{Context, Result};
-use iced::{Size, widget::text_editor, window};
+use iced::{Size, window};
 use tracing::{error, info};
-
-use chess_core::{Move, Piece, Side, Square};
 
 mod app;
 mod board;
@@ -14,8 +12,7 @@ mod history;
 mod icon;
 mod pgn;
 
-use app::State;
-use history::Navigation;
+use app::{Message, State};
 mod logs;
 mod serialization;
 
@@ -180,31 +177,4 @@ mod window_recreate_tests {
             }
         }
     }
-}
-
-#[derive(Debug, Clone)]
-enum Message {
-    NewGame,
-    SavePgn,
-    PgnSaved(Result<(), String>),
-    ConfirmNewGame,
-    CancelNewGame,
-    Navigate(Navigation),
-    SelectSquare(Square),
-    Promote(Piece),
-    CancelPromotion,
-    Resign(Side),
-    ClaimDraw,
-    ClaimDrawWithMove(Move),
-    OfferDraw(Side),
-    AcceptDraw(Side),
-    DeclineDraw(Side),
-    ToggleConsole,
-    ClearLogs,
-    RefreshLogs,
-    LogAction(text_editor::Action),
-    CopyLogs,
-    ToggleSources,
-    SetSourceEnabled(String, bool),
-    WindowCloseRequested(window::Id),
 }
