@@ -8,11 +8,10 @@ mod app;
 mod components;
 mod fs;
 mod game_status;
-mod history;
 mod icon;
 mod pgn;
 
-use app::{Message, State};
+use app::State;
 mod logs;
 mod serialization;
 

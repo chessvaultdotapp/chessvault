@@ -1,7 +1,7 @@
 use chess_core::{Move, Piece, Side, Square};
 use iced::{widget::text_editor, window};
 
-use crate::history::Navigation;
+use crate::components::move_history::Navigation;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Message {
