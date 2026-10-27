@@ -4,7 +4,7 @@ use iced::{
     widget::{Space, button, checkbox, column, container, row, scrollable, text, text_editor},
 };
 
-use super::state::State;
+use super::State;
 use crate::{Message, board, game_status};
 
 impl State {
