@@ -131,8 +131,9 @@ impl State {
                 .width(Fill)
                 .into(),
             text("Move history").size(20).into(),
-            self.history.controls(&self.game, navigation_enabled),
-            self.history.move_list(&self.game, navigation_enabled),
+            self.history.controls(&self.game, navigation_enabled, Message::Navigate),
+            self.history
+                .move_list(&self.game, navigation_enabled, Message::Navigate),
         ]);
 
         let content = column![

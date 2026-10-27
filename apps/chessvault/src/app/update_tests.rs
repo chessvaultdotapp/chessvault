@@ -2,7 +2,7 @@ use super::*;
 use chess_core::{Piece, Side, Square};
 
 use crate::{
-    history::{self, Navigation},
+    components::move_history::{self as history, Navigation},
     logs,
 };
 

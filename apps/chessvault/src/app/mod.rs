@@ -4,7 +4,7 @@ use iced::widget::text_editor;
 use tracing::error;
 
 use crate::{
-    history::History,
+    components::move_history::History,
     logs::{self, Logs},
 };
 

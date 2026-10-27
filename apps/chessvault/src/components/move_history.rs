@@ -5,8 +5,6 @@ use iced::{
     widget::{button, column, row, scrollable, text},
 };
 
-use crate::Message;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Navigation {
     First,
@@ -97,7 +95,7 @@ impl History {
         }
     }
 
-    pub fn scroll_to_current(&self, game: &Game) -> Task<Message> {
+    pub fn scroll_to_current<Message>(&self, game: &Game) -> Task<Message> {
         let ply = self.ply(game);
         // Two moves per 34-pixel row; the starting position has no list entry.
         let row = ply.saturating_sub(1) / 2;
@@ -110,13 +108,18 @@ impl History {
         )
     }
 
-    pub fn controls(&self, game: &Game, enabled: bool) -> Element<'_, Message> {
+    pub fn controls<'a, Message: Clone + 'a>(
+        &self,
+        game: &Game,
+        enabled: bool,
+        on_navigate: impl Fn(Navigation) -> Message,
+    ) -> Element<'a, Message> {
         let ply = self.ply(game);
         let latest = game.moves().len();
         let control = |label, action, available| {
             button(text(label).size(14))
                 .padding(6)
-                .on_press_maybe((enabled && available).then_some(Message::Navigate(action)))
+                .on_press_maybe((enabled && available).then_some(on_navigate(action)))
         };
         let buttons = row![
             control("First", Navigation::First, ply > 0),
@@ -147,14 +150,19 @@ impl History {
         .into()
     }
 
-    pub fn move_list(&self, game: &Game, enabled: bool) -> Element<'_, Message> {
+    pub fn move_list<'a, Message: Clone + 'a>(
+        &self,
+        game: &Game,
+        enabled: bool,
+        on_navigate: impl Fn(Navigation) -> Message,
+    ) -> Element<'a, Message> {
         let current = self.ply(game);
         let entry = |label: String, ply| {
             button(text(label).size(16))
                 .height(32)
                 .width(Fill)
                 .style(if current == ply { button::primary } else { button::text })
-                .on_press_maybe(enabled.then_some(Message::Navigate(Navigation::Ply(ply))))
+                .on_press_maybe(enabled.then_some(on_navigate(Navigation::Ply(ply))))
         };
         let mut moves = column![].spacing(2);
         for (index, pair) in self.labels.chunks(2).enumerate() {
@@ -174,6 +182,15 @@ impl History {
 mod tests {
     use super::*;
     use chess_core::{Move, Square::*};
+
+    #[test]
+    fn views_and_scroll_tasks_accept_component_consumer_messages() {
+        let game = Game::new(Position::standard());
+        let history = History::default();
+        let _: Element<'_, Navigation> = history.controls(&game, true, std::convert::identity);
+        let _: Element<'_, Navigation> = history.move_list(&game, true, std::convert::identity);
+        let _: Task<Navigation> = history.scroll_to_current(&game);
+    }
 
     #[test]
     fn keys_match_the_navigation_convention() {

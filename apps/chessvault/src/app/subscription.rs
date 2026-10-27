@@ -7,7 +7,7 @@ use iced::{
 };
 
 use super::{Message, State};
-use crate::history::Navigation;
+use crate::components::move_history::Navigation;
 
 impl State {
     pub(crate) fn subscription(&self) -> Subscription<Message> {
