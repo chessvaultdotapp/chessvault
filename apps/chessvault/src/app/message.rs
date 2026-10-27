@@ -1,7 +1,7 @@
 use chess_core::{Move, Piece, Side, Square};
-use iced::{widget::text_editor, window};
+use iced::window;
 
-use crate::components::{game_controls, move_history::Navigation};
+use crate::components::{developer_console, game_controls, move_history::Navigation};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Message {
@@ -20,13 +20,7 @@ pub(crate) enum Message {
     OfferDraw(Side),
     AcceptDraw(Side),
     DeclineDraw(Side),
-    ToggleConsole,
-    ClearLogs,
-    RefreshLogs,
-    LogAction(text_editor::Action),
-    CopyLogs,
-    ToggleSources,
-    SetSourceEnabled(String, bool),
+    Console(developer_console::Message),
     WindowCloseRequested(window::Id),
 }
 

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use iced::{
     Subscription,
     keyboard::{self, Key, key::Named},
@@ -7,7 +5,7 @@ use iced::{
 };
 
 use super::{Message, State};
-use crate::components::move_history::Navigation;
+use crate::components::{developer_console, move_history::Navigation};
 
 impl State {
     pub(crate) fn subscription(&self) -> Subscription<Message> {
@@ -16,7 +14,7 @@ impl State {
                 key: Key::Named(Named::F12),
                 repeat: false,
                 ..
-            }) => Some(Message::ToggleConsole),
+            }) => Some(Message::Console(developer_console::Message::Toggle)),
             iced::Event::Keyboard(keyboard::Event::KeyPressed {
                 key: Key::Named(Named::Escape),
                 repeat: false,
@@ -34,14 +32,10 @@ impl State {
 
         let close_requests = window::close_requests().map(Message::WindowCloseRequested);
 
-        if self.console_open {
-            Subscription::batch([
-                keyboard,
-                close_requests,
-                iced::time::every(Duration::from_millis(250)).map(|_| Message::RefreshLogs),
-            ])
-        } else {
-            Subscription::batch([keyboard, close_requests])
-        }
+        Subscription::batch([
+            keyboard,
+            close_requests,
+            self.console.subscription().map(Message::Console),
+        ])
     }
 }

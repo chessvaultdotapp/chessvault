@@ -1,6 +1,6 @@
 use chess_core::{Game, GameStatus, Move, Position};
-use iced::{Task, widget::text_editor, window};
-use tracing::{debug, error};
+use iced::{Task, window};
+use tracing::error;
 
 use super::{Message, State};
 use crate::{
@@ -74,7 +74,7 @@ impl State {
             }
             Message::CancelNewGame => self.confirm_new_game = false,
             Message::Navigate(navigation) => {
-                if !self.console_open && self.pending_promotion.is_none() {
+                if !self.console.open && self.pending_promotion.is_none() {
                     self.history.sync(&self.game);
                     self.history.navigate(&self.game, navigation);
                     self.selected_square = None;
@@ -133,7 +133,7 @@ impl State {
             }
             Message::ClaimDraw => {
                 if !self.history.is_reviewing()
-                    && !self.console_open
+                    && !self.console.open
                     && self.pending_promotion.is_none()
                     && self.game.claim_draw()
                 {
@@ -142,7 +142,7 @@ impl State {
             }
             Message::ClaimDrawWithMove(mv) => {
                 if !self.history.is_reviewing()
-                    && !self.console_open
+                    && !self.console.open
                     && self.pending_promotion.is_none()
                     && self.game.claim_draw_with_move(mv)
                 {
@@ -155,33 +155,8 @@ impl State {
                     self.pending_promotion = None;
                 }
             }
-            Message::ToggleConsole => {
-                self.console_open = !self.console_open;
-                debug!(open = self.console_open, "Developer console toggled");
-                self.refresh_logs();
-            }
-            Message::ClearLogs => {
-                self.logs.clear();
-                self.log_text.clear();
-                self.log_content = text_editor::Content::new();
-            }
-            Message::RefreshLogs => {
-                // Keep a selection stable while the user is copying, even if
-                // new events arrive. Capture continues in the log buffer.
-                if self.log_content.selection().is_none() {
-                    self.refresh_logs();
-                }
-            }
-            Message::LogAction(action) => {
-                if !action.is_edit() {
-                    self.log_content.perform(action);
-                }
-            }
-            Message::CopyLogs => return iced::clipboard::write(self.logs.snapshot()),
-            Message::ToggleSources => self.sources_open = !self.sources_open,
-            Message::SetSourceEnabled(source, enabled) => {
-                self.logs.set_source_enabled(source, enabled);
-                self.refresh_logs();
+            Message::Console(message) => {
+                return self.console.update(message).map(Message::Console);
             }
             Message::WindowCloseRequested(id) => {
                 return window::size(id).then(move |size| {
@@ -202,7 +177,7 @@ impl State {
 
     pub(super) fn draw_actions_enabled(&self) -> bool {
         !self.history.is_reviewing()
-            && !self.console_open
+            && !self.console.open
             && self.pending_promotion.is_none()
             && !self.confirm_new_game
             && self.game.status() == GameStatus::Ongoing
@@ -215,16 +190,6 @@ impl State {
         self.pending_promotion = None;
         self.confirm_new_game = false;
         self.pgn_error = None;
-    }
-
-    fn refresh_logs(&mut self) {
-        let logs = self.logs.snapshot();
-        if logs != self.log_text {
-            self.log_content = text_editor::Content::with_text(&logs);
-            self.log_content
-                .perform(text_editor::Action::Move(text_editor::Motion::DocumentEnd));
-            self.log_text = logs;
-        }
     }
 }
 

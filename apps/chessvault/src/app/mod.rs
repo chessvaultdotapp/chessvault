@@ -1,11 +1,10 @@
 use anyhow::{Context, Result};
 use chess_core::{Game, Move, Position, Square};
-use iced::widget::text_editor;
 use tracing::error;
 
 use crate::{
-    components::move_history::History,
-    logs::{self, Logs},
+    components::{developer_console, move_history::History},
+    logs,
 };
 
 mod message;
@@ -16,11 +15,7 @@ mod view;
 pub(crate) use message::Message;
 
 pub(crate) struct State {
-    pub(crate) logs: Logs,
-    pub(crate) console_open: bool,
-    pub(crate) log_text: String,
-    pub(crate) log_content: text_editor::Content,
-    pub(crate) sources_open: bool,
+    pub(crate) console: developer_console::State,
     pub(crate) game: Game,
     pub(crate) history: History,
     pub(crate) selected_square: Option<Square>,
@@ -34,11 +29,7 @@ impl State {
     pub(crate) fn boot(logs: logs::Logs) -> Self {
         let mut app = Self {
             history: History::default(),
-            logs,
-            console_open: false,
-            log_text: String::new(),
-            log_content: text_editor::Content::new(),
-            sources_open: false,
+            console: developer_console::State::new(logs),
             game: Game::new(Position::standard()),
             selected_square: None,
             pending_promotion: None,
