@@ -1,128 +1,35 @@
-use chess_core::{GameStatus, Side};
 use iced::{
     Element, Fill, Font,
     widget::{Space, button, checkbox, column, container, row, scrollable, text, text_editor},
 };
 
 use super::{Message, State};
-use crate::{
-    components::{board, new_game_confirmation},
-    game_status,
-};
+use crate::components::{board, game_controls, new_game_confirmation};
 
 impl State {
     pub(crate) fn view(&self) -> Element<'_, Message> {
         if self.confirm_new_game {
             return new_game_confirmation::view(Message::CancelNewGame, Message::ConfirmNewGame);
         }
-        let game_status = self.history.status(&self.game);
-        let ongoing = !self.history.is_reviewing() && game_status == GameStatus::Ongoing;
         let navigation_enabled = !self.console_open && self.pending_promotion.is_none();
-        let label = game_status::label(game_status);
-        let status = container(text(label).size(24)).padding(16).width(Fill);
-        let status = if label.is_empty() {
-            status
-        } else {
-            status.style(container::rounded_box)
-        };
-
-        let controls = column![
-            button("New game")
-                .on_press_maybe(
-                    (!self.game.moves().is_empty() || self.game.status() != GameStatus::Ongoing)
-                        .then_some(Message::NewGame),
-                )
-                .width(Fill)
-        ]
-        .spacing(12)
-        .height(Fill);
-        let controls = if !self.history.is_reviewing() && self.game.can_claim_draw() {
-            controls.push(
-                button("Claim draw")
-                    .on_press_maybe(navigation_enabled.then_some(Message::ClaimDraw))
-                    .width(Fill),
-            )
-        } else {
-            controls
-        };
-        let mut controls = controls;
-        if ongoing {
-            let enabled = self.draw_actions_enabled();
-            if let Some(offering) = self.game.draw_offer() {
-                let (label, responding) = if offering == Side::White {
-                    ("White offers a draw", Side::Black)
-                } else {
-                    ("Black offers a draw", Side::White)
-                };
-                let player = if responding == Side::White { "White" } else { "Black" };
-                controls = controls.push(
-                    column![
-                        text(label),
-                        row![
-                            button(text(format!("{player} accepts")))
-                                .on_press_maybe(enabled.then_some(Message::AcceptDraw(responding))),
-                            button("Decline").on_press_maybe(enabled.then_some(Message::DeclineDraw(responding))),
-                        ]
-                        .spacing(8),
-                    ]
-                    .spacing(8),
-                );
-            } else {
-                let side = self.game.position().side_to_move();
-                let label = if side == Side::White {
-                    "White offers draw"
-                } else {
-                    "Black offers draw"
-                };
-                controls = controls.push(
-                    button(label)
-                        .on_press_maybe(enabled.then_some(Message::OfferDraw(side)))
-                        .width(Fill),
-                );
-            }
-        }
-        if ongoing && !self.game.can_claim_draw() {
-            let mut intended_claims = column![].spacing(8);
-            let mut has_intended_claim = false;
-            for mv in self.game.position().legal_moves() {
-                if self.game.can_claim_draw_with_move(mv) {
-                    has_intended_claim = true;
-                    intended_claims = intended_claims.push(
-                        button(text(format!("Claim draw with {}–{}", mv.from, mv.to)))
-                            .on_press_maybe(navigation_enabled.then_some(Message::ClaimDrawWithMove(mv)))
-                            .width(Fill),
-                    );
-                }
-            }
-            if has_intended_claim {
-                controls = controls.push(container(scrollable(intended_claims)).max_height(140));
-            }
-        }
-        if self.game.status() != GameStatus::Ongoing && !self.history.is_reviewing() {
-            controls = controls.push(
-                button("Save PGN")
-                    .on_press_maybe((!self.saving_pgn).then_some(Message::SavePgn))
-                    .width(Fill),
-            );
-            if let Some(error) = &self.pgn_error {
-                controls = controls.push(text(error));
-            }
-        }
-        let controls = controls.extend([
-            button("Black resigns")
-                .on_press_maybe(ongoing.then_some(Message::Resign(Side::Black)))
-                .width(Fill)
-                .into(),
-            status.into(),
-            button("White resigns")
-                .on_press_maybe(ongoing.then_some(Message::Resign(Side::White)))
-                .width(Fill)
-                .into(),
+        let controls = game_controls::view(game_controls::Props {
+            game: &self.game,
+            status: self.history.status(&self.game),
+            reviewing: self.history.is_reviewing(),
+            navigation_enabled,
+            draw_actions_enabled: self.draw_actions_enabled(),
+            saving_pgn: self.saving_pgn,
+            pgn_error: self.pgn_error.as_deref(),
+        });
+        let controls = iced::widget::Column::from_vec(vec![
+            iced::Element::from(controls).map(Message::from),
             text("Move history").size(20).into(),
             self.history.controls(&self.game, navigation_enabled, Message::Navigate),
             self.history
                 .move_list(&self.game, navigation_enabled, Message::Navigate),
-        ]);
+        ])
+        .spacing(12)
+        .height(Fill);
 
         let content = column![
             container(
