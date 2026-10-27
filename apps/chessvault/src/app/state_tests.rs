@@ -1,5 +1,5 @@
 use super::*;
-use chess_core::Piece;
+use chess_core::{Piece, Side};
 
 use crate::history;
 
