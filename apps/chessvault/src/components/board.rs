@@ -12,27 +12,27 @@ const DARK: Color = Color::from_rgb8(26, 26, 26);
 static PIECES: LazyLock<[[svg::Handle; 6]; 2]> = LazyLock::new(|| {
     [
         [
-            include_bytes!("../assets/rhosgfx-outline/wP.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/wN.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/wB.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/wR.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/wQ.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/wK.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wP.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wN.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wB.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wR.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wQ.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/wK.svg").as_slice(),
         ],
         [
-            include_bytes!("../assets/rhosgfx-outline/bP.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/bN.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/bB.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/bR.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/bQ.svg").as_slice(),
-            include_bytes!("../assets/rhosgfx-outline/bK.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bP.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bN.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bB.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bR.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bQ.svg").as_slice(),
+            include_bytes!("../../assets/rhosgfx-outline/bK.svg").as_slice(),
         ],
     ]
     .map(|pieces| pieces.map(svg::Handle::from_memory))
 });
 
 static CHECK_MARKER: LazyLock<svg::Handle> =
-    LazyLock::new(|| svg::Handle::from_memory(include_bytes!("../assets/check-marker.svg").as_slice()));
+    LazyLock::new(|| svg::Handle::from_memory(include_bytes!("../../assets/check-marker.svg").as_slice()));
 
 fn piece_handle(piece: Piece, side: Side) -> Option<svg::Handle> {
     PIECES.get(side as usize)?.get(piece as usize).cloned()

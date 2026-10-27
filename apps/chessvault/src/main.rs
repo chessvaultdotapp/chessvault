@@ -5,7 +5,7 @@ use iced::{Size, window};
 use tracing::{error, info};
 
 mod app;
-mod board;
+mod components;
 mod fs;
 mod game_status;
 mod history;

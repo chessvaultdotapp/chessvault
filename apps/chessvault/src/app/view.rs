@@ -5,7 +5,7 @@ use iced::{
 };
 
 use super::{Message, State};
-use crate::{board, game_status};
+use crate::{components::board, game_status};
 
 impl State {
     pub(crate) fn view(&self) -> Element<'_, Message> {
