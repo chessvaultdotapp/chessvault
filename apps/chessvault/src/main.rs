@@ -14,7 +14,7 @@ mod history;
 mod icon;
 mod pgn;
 
-use app::state::State;
+use app::State;
 use history::Navigation;
 mod logs;
 mod serialization;
