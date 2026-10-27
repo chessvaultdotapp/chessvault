@@ -3,7 +3,7 @@ use iced::{Task, widget::text_editor, window};
 use tracing::{debug, error};
 
 use super::{Message, State};
-use crate::{WindowRecreateInfo, board, history::History, pgn};
+use crate::{WindowRecreateInfo, components::board, history::History, pgn};
 
 impl State {
     pub(crate) fn update(&mut self, message: Message) -> Task<Message> {

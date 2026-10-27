@@ -7,7 +7,7 @@ Source links below refer to the repository's `main` branch.
 | Module | Responsibility |
 | --- | --- |
 | [main.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/main.rs) | Startup, `ChessVault`, messages, views, subscriptions, and window serialization |
-| [board.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/board.rs) | Selection, legal destinations, board layout, and embedded pieces |
+| [Board](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/components/board.rs) | Selection, legal destinations, board layout, and embedded pieces |
 | [history.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/history.rs) | Cached SAN labels and independent review positions |
 | [game_status.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/game_status.rs) | Human-readable results |
 | [pgn.rs](https://github.com/chessvaultdotapp/chessvault/blob/main/apps/chessvault/src/pgn.rs) | Finished-game headerless SAN movetext export |
