@@ -86,7 +86,8 @@ substituted for release builds on newer hosts. Ubuntu 22.04 or newer is the init
 compatibility target, not yet a verified support guarantee for every distribution.
 
 Stable and development release workflows identify the tag, build/package Linux
-and macOS artifacts in parallel, and publish only after both platforms succeed.
+and macOS artifacts in parallel when enabled, and publish after required platforms succeed.
+Stable macOS packaging is currently disabled; stable Linux publication remains enabled.
 The Ubuntu 22.04 build job compiles once, stages and
 smoke-tests the native archive, then packages and validates the AppImage using the
 same executable and generated PNG. This avoids intermediate binary uploads,

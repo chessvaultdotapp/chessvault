@@ -95,12 +95,13 @@ $ git push origin v1.2.3
 
 The [stable release workflow](../../.github/workflows/stable-release.yml) accepts only
 `vMAJOR.MINOR.PATCH` tags without prerelease identifiers or build metadata. It must
-be present in the tagged commit. It builds the same Linux x86_64 native archive,
-AppImage, and Apple Silicon macOS ZIP as the development workflow described below,
-then publishes a regular GitHub
+be present in the tagged commit. It builds the Linux x86_64 native archive and
+AppImage, then publishes a regular GitHub
 release marked as latest. If present, `changelogs/<tag>.md` is included before generated
 release notes. Existing notes and assets are preserved on reruns; missing assets are uploaded.
-After publishing and uploading all three assets, the stable workflow deletes all published
+Stable macOS infrastructure is retained but disabled pending manual acceptance testing;
+see [macOS packaging](../development/macos-packaging.md#release-downloads) for the enabling flag.
+After publishing and uploading the enabled assets, the stable workflow deletes all published
 GitHub development prereleases matching the tag-tool development tag format, retaining
 their Git tags. Drafts and unrelated prereleases are preserved. Cleanup also runs on
 successful reruns; stable releases themselves are never deleted by this cleanup.

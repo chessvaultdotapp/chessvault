@@ -91,6 +91,7 @@ all runtime-loaded dependencies and are not a substitute for testing on a clean 
 
 The development and stable release workflows each define a `build-macos` job
 on Apple Silicon `macos-15`. Both jobs use the same Python packaging tools.
+Stable macOS packaging is currently disabled pending manual acceptance testing.
 It builds the locked release executable for `aarch64-apple-darwin`
 with `MACOSX_DEPLOYMENT_TARGET=13.0` and runs the full packaging driver with real
 Apple tools. This is a provisional baseline; building on macOS 15 does not verify
@@ -127,15 +128,22 @@ Cargo version must exactly match the release tag (`v<Cargo version>`), including
 prerelease and build suffixes, before packaging succeeds. Bundle versions use the
 same numeric mapping above, with the caller release workflow's run number.
 
-The publishing job waits for both platforms and verifies all three final assets:
+Development publication waits for both platforms and verifies all three final assets:
 
 - `chessvault-<tag>-linux-x86_64.tar.gz`
 - `chessvault-<tag>-linux-x86_64.AppImage`
 - `chessvault-<tag>-macos-aarch64.zip`
 
+Stable releases currently publish Linux assets only. The stable workflow retains
+the macOS job behind `identify-tag.env.MACOS_ENABLED: 'false'`. Changing this single
+flag to `'true'` enables macOS packaging, required asset checks, upload, and the
+release-note warning. A skipped, disabled macOS job does not block Linux publication;
+an enabled macOS job must succeed before publication. Enable it only after manual
+acceptance testing of the downloaded development app on the intended macOS versions.
+
 Only publishing jobs have write permission. Existing assets are not overwritten
 on reruns; tag filtering and release retention rules remain unchanged. No Apple
-secrets are needed. Release notes include an Apple Silicon/unnotarized warning
+secrets are needed. Releases that include macOS assets include an Apple Silicon/unnotarized warning
 and identify macOS 13.0 as a provisional deployment target.
 
 Download the macOS ZIP from the project's trusted GitHub release page, compare
