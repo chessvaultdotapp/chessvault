@@ -1,0 +1,73 @@
+# macOS app bundle staging
+
+`tools/dist-prepare/macos.py` stages a standalone `ChessVault.app`. It does not build
+Rust code, generate icons, sign, notarize, archive, or publish the app. Linux staging
+remains in `tools/dist-prepare/linux.py`.
+
+## Inputs
+
+- A release-mode macOS executable, initially targeting `aarch64-apple-darwin`.
+- A prepared `chessvault.icns` icon derived from the application logo. PNG or SVG
+  files cannot simply be renamed to `.icns`. Icon generation is a separate step
+  and is not yet automated in this repository.
+- Numeric display and build versions, with one to three dot-separated components.
+  Git tags, prerelease suffixes, and SemVer build metadata are not accepted as
+  Apple bundle versions. Release automation must choose the numeric mapping.
+- The minimum macOS version used when compiling the executable. Set
+  `MACOSX_DEPLOYMENT_TARGET` at build time and pass the same value to the packager;
+  writing `Info.plist` does not lower the executable's actual deployment target.
+
+For example, **if the binary was built with a deployment target of 13.0**:
+
+```sh
+python3 tools/dist-prepare/macos.py target/aarch64-apple-darwin/release/chessvault \
+    --icon /path/to/chessvault.icns \
+    --version 0.1.0 --build-version 1 --minimum-macos 13.0 \
+    --output dist/ChessVault.app
+```
+
+This example does not establish macOS 13 as a tested compatibility baseline.
+
+## Bundle contents
+
+```text
+ChessVault.app/
+└── Contents/
+    ├── Info.plist
+    ├── MacOS/
+    │   └── chessvault
+    └── Resources/
+        ├── chessvault.icns
+        └── LICENSE
+```
+
+The bundle identifier is `app.chessvault.ChessVault`. Executable and directory
+permissions are normalized to 0755; resource files use 0644. Existing outputs,
+including dangling symlinks, are rejected. Staging uses a temporary sibling and
+renames only after all files have been written; ordinary staging failures leave
+no partial bundle. Inputs are not modified.
+
+## Validation and next steps
+
+Run layout and CLI tests on Linux or macOS without a Rust build:
+
+```sh
+just --justfile venvs/justfile dist-prepare
+venvs/dist-prepare/bin/python -m pytest tools/dist-prepare -q
+```
+
+The packager deliberately treats binary and icon contents as opaque. Tests verify
+layout, metadata, permissions, existing-output rejection, and failure cleanup,
+not Mach-O architecture, linked-library portability, or ICNS validity.
+
+Before distribution, macOS-specific automation must validate those inputs, apply
+ad-hoc signing to the completed bundle, verify the signature, and create a ZIP
+with a bundle-preserving tool such as `ditto`. Developer ID signing and notarization
+are deferred; ad-hoc signing alone does not establish a trusted publisher or
+satisfy Gatekeeper's normal downloaded-app checks.
+
+Manual acceptance testing must include launching from Finder outside the checkout,
+board rendering and input, resizing, and closing/reopening to restore window state.
+Native release state lives under `~/Library/Application Support/chessvault`, with
+logs under `~/Library/Logs/chessvault`. Do not infer native release behavior from
+development-mode debug builds.

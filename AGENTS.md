@@ -44,7 +44,7 @@
 - The tag tool requires a clean tree and cached Cargo dependencies, consumes committed `changelogs/unreleased.md` if present,
   and commits/tags locally. Pushing its development tag publishes a release; read `docs/tools/tag-tool.md` first.
 - Before packaging, read `docs/development/appimage.md` and `.github/workflows/development-release.yml`.
-  `tools/dist-prepare/main.py` only stages files, requires `chessvault.png` beside the binary, and rejects existing output.
+  `tools/dist-prepare/linux.py` only stages files, requires `chessvault.png` beside the binary, and rejects existing output.
 
 ## Package boundaries
 

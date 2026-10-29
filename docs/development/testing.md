@@ -410,7 +410,7 @@ or SVG icon, test environment, or workflow dependencies change. Two jobs start i
 
 - Fixture tests use a fake package and require no Rust build or release download.
 - The package build compiles the current checkout in release mode on Ubuntu 22.04,
-  stages it with `tools/dist-prepare/main.py`, and uploads a tar archive. This matches
+  stages it with `tools/dist-prepare/linux.py`, and uploads a tar archive. This matches
   the native development-release layout and preserves executable permissions.
 
 A third job waits for the package build, downloads the archive on a fresh Ubuntu runner,

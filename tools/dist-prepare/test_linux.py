@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-SCRIPT = Path(__file__).with_name("main.py")
+SCRIPT = Path(__file__).with_name("linux.py")
 SPEC = importlib.util.spec_from_file_location("dist_prepare", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 dist_prepare = importlib.util.module_from_spec(SPEC)
