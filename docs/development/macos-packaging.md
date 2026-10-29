@@ -73,7 +73,13 @@ runtime support guarantee. The driver:
 4. Ad-hoc signs the completed bundle with `codesign` (no credentials or timestamp)
    and verifies its signature with strict checks.
 5. Archives with `ditto --sequesterRsrc --keepParent`, extracts to a temporary
-   directory, and verifies the extracted app's signature before publishing the ZIP.
+   directory, and smoke-checks the extracted app before publishing the ZIP:
+   verify its signature, expected bundle/version/deployment metadata, nonempty
+   executable/icon/license files, and preserved executable permission.
+
+This is a package-integrity smoke check, comparable to Linux's native archive
+installer checks and AppImage extraction/content checks. It does not launch the
+GUI or attempt a broad OS compatibility matrix.
 
 Existing outputs are rejected. Temporary bundle/archive files are removed on ordinary
 failures; the destination ZIP appears only after all checks pass. The source binary

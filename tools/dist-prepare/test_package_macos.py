@@ -1,6 +1,8 @@
 """Test macOS packaging orchestration with isolated stand-ins for Apple tools."""
 
 import importlib
+import plistlib
+import shutil
 import subprocess
 from pathlib import Path
 from types import ModuleType
@@ -97,7 +99,9 @@ def test_binary_validation_accepts(driver: ModuleType, platform: str) -> None:
         driver.validate_binary(Path("binary"), "13.0.0")
 
 
-@pytest.mark.parametrize("failure", [None, "iconutil", "plutil", "codesign", "ditto"])
+@pytest.mark.parametrize(
+    "failure", [None, "iconutil", "plutil", "codesign", "ditto", "contents"]
+)
 def test_package(
     driver: ModuleType, inputs: tuple[Path, Path, Path], failure: str | None
 ) -> None:
@@ -109,6 +113,11 @@ def test_package(
             raise subprocess.CalledProcessError(1, command, stderr="failed")
         if command[:3] == ("/usr/bin/ditto", "-c", "-k"):
             Path(command[-1]).write_bytes(b"archive")
+        if command[:3] == ("/usr/bin/ditto", "-x", "-k"):
+            extracted = Path(command[-1]) / "ChessVault.app"
+            shutil.copytree(Path(command[-2]).parent / "ChessVault.app", extracted)
+            if failure == "contents":
+                (extracted / "Contents/Resources/LICENSE").unlink()
         return ""
 
     with (
@@ -116,7 +125,10 @@ def test_package(
         patch.object(driver, "run", side_effect=fake_run),
     ):
         if failure:
-            with pytest.raises(subprocess.CalledProcessError):
+            error = (
+                ValueError if failure == "contents" else subprocess.CalledProcessError
+            )
+            with pytest.raises(error):
                 invoke(driver, inputs)
         else:
             invoke(driver, inputs)
@@ -138,6 +150,35 @@ def test_package(
         ]
         assert calls[2][1:5] == ("--force", "--sign", "-", "--timestamp=none")
         assert "--keepParent" in calls[4]
+
+
+@pytest.mark.parametrize(
+    "problem", ["missing-executable", "empty-icon", "permissions", "version"]
+)
+def test_bundle_smoke_check(
+    driver: ModuleType, inputs: tuple[Path, Path, Path], problem: str
+) -> None:
+    binary, icon, archive = inputs
+    bundle = archive.with_suffix(".app")
+    driver.macos.prepare(
+        binary, icon, bundle, version="0.1.0", build_version="1", minimum_macos="13.0"
+    )
+    contents = bundle / "Contents"
+    if problem == "missing-executable":
+        (contents / "MacOS/chessvault").unlink()
+    elif problem == "empty-icon":
+        (contents / "Resources/chessvault.icns").write_bytes(b"")
+    elif problem == "permissions":
+        (contents / "MacOS/chessvault").chmod(0o644)
+    else:
+        plist = contents / "Info.plist"
+        metadata = plistlib.loads(plist.read_bytes())
+        metadata["CFBundleVersion"] = "999"
+        plist.write_bytes(plistlib.dumps(metadata))
+    with pytest.raises(ValueError, match="extracted bundle"):
+        driver.smoke_check_bundle(
+            bundle, version="0.1.0", build_version="1", minimum_macos="13.0"
+        )
 
 
 def test_existing_output(driver: ModuleType, inputs: tuple[Path, Path, Path]) -> None:

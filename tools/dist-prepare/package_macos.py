@@ -1,6 +1,7 @@
 """Validate, stage, ad-hoc sign, and ZIP an Apple Silicon macOS app."""
 
 import argparse
+import plistlib
 import re
 import subprocess
 import sys
@@ -49,6 +50,36 @@ def validate_binary(binary: Path, minimum_macos: str) -> None:
         library = line.strip().split(" (", 1)[0]
         if not library.startswith(("/System/Library/", "/usr/lib/")):
             raise ValueError(f"non-system linked library is not bundled: {library}")
+
+
+def smoke_check_bundle(
+    bundle: Path, *, version: str, build_version: str, minimum_macos: str
+) -> None:
+    """Check the extracted download's essential contents, not GUI behavior."""
+    contents = bundle / "Contents"
+    metadata = plistlib.loads((contents / "Info.plist").read_bytes())
+    expected = {
+        "CFBundleIdentifier": macos.BUNDLE_ID,
+        "CFBundlePackageType": "APPL",
+        "CFBundleExecutable": "chessvault",
+        "CFBundleIconFile": "chessvault.icns",
+        "CFBundleShortVersionString": version,
+        "CFBundleVersion": build_version,
+        "LSMinimumSystemVersion": minimum_macos,
+    }
+    for key, value in expected.items():
+        if metadata.get(key) != value:
+            raise ValueError(f"extracted bundle metadata mismatch: {key}")
+    for relative in (
+        "MacOS/chessvault",
+        "Resources/chessvault.icns",
+        "Resources/LICENSE",
+    ):
+        path = contents / relative
+        if not path.is_file() or path.stat().st_size == 0:
+            raise ValueError(f"extracted bundle is missing a nonempty file: {relative}")
+    if not (contents / "MacOS/chessvault").stat().st_mode & 0o111:
+        raise ValueError("extracted bundle executable has no execute permission")
 
 
 def package(
@@ -138,6 +169,12 @@ def package(
             "--strict",
             "--verbose=2",
             str(extracted / "ChessVault.app"),
+        )
+        smoke_check_bundle(
+            extracted / "ChessVault.app",
+            version=version,
+            build_version=build_version,
+            minimum_macos=minimum_macos,
         )
         archive.rename(output)
 
