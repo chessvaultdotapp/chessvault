@@ -35,17 +35,24 @@ $ cargo clippy --workspace --all-targets --locked --no-deps
 ```
 
 Check workflows run on pushes to `main` and on pull requests, subject to their existing path filters.
-Feature-branch pushes without a pull request and tag pushes do not run these checks.
+Feature-branch pushes without a pull request and tag pushes do not run these checks automatically.
+The Rust workflow can also be started manually.
 Release workflows handle tags separately; documentation deployment remains limited to `main`.
 
 This is the sequence used by [CI](../../.github/workflows/ci.yml). Eligible pushes and pull
 requests trigger it only when Rust source, desktop assets, Cargo manifests or
 lockfiles, `rust-toolchain.toml`, `.cargo` configuration, differential-test inputs,
-or the root/venv recipes change. Markdown-only changes do not trigger Rust builds. Nextest is our
+the uv setup action, or the root/venv recipes change.
+Markdown-only changes do not trigger Rust builds. Nextest is our
 preferred test runner, but it does not execute doctests, so the separate
 `cargo test --doc` step is required. Formatting checks do not modify files.
 Clippy's `--no-deps` excludes dependency linting, though dependencies may still
 need to be compiled or checked.
+
+macOS release packaging runs in the development and stable release workflows,
+not ordinary Rust CI. See [macOS packaging](macos-packaging.md#release-artifact-builds)
+for the provisional deployment baseline, bundle versions, and artifact instructions.
+Ordinary CI still builds, tests, lints, and runs differential checks on macOS.
 
 If nextest is unavailable, replace both test commands with
 `cargo test --workspace --locked`, which runs unit tests, integration tests, and
@@ -194,13 +201,13 @@ $ cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-fe
 
 Stop on failure here too. Linux resolver tests are compiled only on Linux and
 use the `linux::tests::` prefix. Passing tests on another OS does not verify
-Linux resolution. Native directory resolution currently supports only
-Linux; the development path working elsewhere is not evidence of release app
+Linux resolution. Native directory resolution supports Linux and macOS;
+the development path working elsewhere is not evidence of release app
 support. See [Platform directories](../components/platform-dirs.md) for the path policy.
 
 ### Differential platform-directory tests
 
-On Linux, compare the native public APIs against pinned Python `platformdirs`:
+On Linux or macOS, compare the native public APIs against pinned Python `platformdirs`:
 
 ```sh
 just --justfile venvs/justfile platform-dirs-differential
@@ -216,14 +223,21 @@ rejects builds with the development feature. Ordinary Rust tests need no Python 
 
 Each case launches Rust and Python in separate child processes with equivalent controlled
 XDG variables and an explicit home directory; the test process environment is never mutated.
-The reference uses Linux `Unix` with `appauthor=False`, `version=None`, `multipath=True`,
+The reference uses `Unix` on Linux and `MacOS` on macOS with `appauthor=False`, `version=None`, `multipath=True`,
 `ensure_exists=False`, and `use_site_for_root=False`, including when tests run as root.
 It compares state with user state, share with user data, and system share with the complete
 ordered site-data list. All three Rust log opinions are compared against the corresponding
 Python opinion. Failures report the case inputs, both outputs, and reference version;
 the installed version must match the requirements pin.
 
-The suite distinguishes parity from these explicit policy differences:
+macOS cases verify Application Support data/state paths and Library/Logs for every log opinion.
+Both Rust and pinned Python honor valid XDG state/data/system overrides on macOS;
+log paths remain under Library/Logs regardless of XDG overrides or log opinion.
+The MacOS reference expectations are also exercised on Linux using a child process,
+while the real Rust macOS APIs are compared only on macOS.
+
+The suite also distinguishes parity from these explicit policy differences
+(the XDG differences apply to both Linux and macOS):
 
 - An explicitly configured system list containing no absolute entries produces an empty Rust
   list; Python falls back to the default system directories. Both results are asserted.
@@ -238,7 +252,7 @@ non-Unicode byte preservation, and development-local paths remain covered by Rus
 the JSON probe intentionally handles Unicode paths only. Real unset-home lookup depends on the
 OS account database, so deterministic fallback failures use injected resolver tests instead.
 
-The Linux differential job in `ci.yml` runs on Rust/native inputs and changes to the runner,
+The Linux and macOS differential jobs in `ci.yml` run on Rust/native inputs and changes to the runner,
 pin, or recipes. Python CI separately lints and type-checks the runner. When updating the pin,
 review changed reference behavior rather than normalizing away new mismatches.
 
@@ -408,7 +422,7 @@ or SVG icon, test environment, or workflow dependencies change. Two jobs start i
 
 - Fixture tests use a fake package and require no Rust build or release download.
 - The package build compiles the current checkout in release mode on Ubuntu 22.04,
-  stages it with `tools/dist-prepare/main.py`, and uploads a tar archive. This matches
+  stages it with `tools/dist-prepare/linux.py`, and uploads a tar archive. This matches
   the native development-release layout and preserves executable permissions.
 
 A third job waits for the package build, downloads the archive on a fresh Ubuntu runner,

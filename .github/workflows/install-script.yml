@@ -101,7 +101,7 @@ jobs:
 
       - name: Stage and archive Linux package
         run: |
-          python3 tools/dist-prepare/main.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
+          python3 tools/dist-prepare/linux.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
           tar -czf dist/chessvault-linux-x86_64.tar.gz -C dist/package bin install-linux.sh share
 
       # Transfer the archive, not loose files, to preserve Unix permissions.

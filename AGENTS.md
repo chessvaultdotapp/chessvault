@@ -44,7 +44,7 @@
 - The tag tool requires a clean tree and cached Cargo dependencies, consumes committed `changelogs/unreleased.md` if present,
   and commits/tags locally. Pushing its development tag publishes a release; read `docs/tools/tag-tool.md` first.
 - Before packaging, read `docs/development/appimage.md` and `.github/workflows/development-release.yml`.
-  `tools/dist-prepare/main.py` only stages files, requires `chessvault.png` beside the binary, and rejects existing output.
+  `tools/dist-prepare/linux.py` only stages files, requires `chessvault.png` beside the binary, and rejects existing output.
 
 ## Package boundaries
 
@@ -65,14 +65,17 @@
 - `platform-dirs` APIs only resolve paths; callers create directories.
   Default-enabled `development` plus debug assertions selects
   `<cwd>/.local/state` and `<cwd>/.local/share` on every platform; release builds or `default-features = false` use OS
-  resolution, currently Linux-only (other platforms error).
+  resolution on Linux and macOS (other platforms error).
 - `system_share_dirs` always uses native resolution, even in development; it excludes user data directories.
   Preserve search order and duplicates; explicitly configured lists with no absolute entries return an empty vector.
-- Linux requires absolute XDG/home bases and preserves non-Unicode paths. Resolver tests inject environment/home
+- Linux and macOS require absolute XDG/home bases and preserve non-Unicode paths. Resolver tests inject environment/home
   values; do not mutate process-wide environment. Base resolution errors precede application-name validation.
 - Path-policy changes also require `just check-platform-native` (the `platform-dirs` checks with
   `--no-default-features`); default debug checks do not exercise native resolution through the public entrypoint.
 - Linux differential checks: `just --justfile venvs/justfile platform-dirs-differential`, then
   `just check-platform-differential`. This builds the native Rust probe and compares with pinned Python `platformdirs`;
   ordinary Rust tests need no Python. Review reference behavior changes when updating the pin.
-- `user_log_dir` appends `log` unless its opinion argument is `Some(false)`.
+- macOS state/data honor `XDG_STATE_HOME`/`XDG_DATA_HOME`, defaulting to `~/Library/Application Support`;
+  system data honors `XDG_DATA_DIRS`, defaulting to `/Library/Application Support`.
+- `user_log_dir` appends `log` unless its opinion argument is `Some(false)`, except native macOS uses
+  `~/Library/Logs` and ignores opinion and XDG overrides.

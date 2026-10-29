@@ -14,7 +14,7 @@
 //! `<current working directory>/.local/share` for data on every platform. Builds
 //! without debug assertions, or with this feature disabled, use native platform
 //! resolution for user directories. System directories bypass this override.
-//! Native resolution is currently supported only on Linux.
+//! Native resolution is supported on Linux and macOS.
 //!
 //! To use native resolution in debug builds, disable default features:
 //!
@@ -29,6 +29,8 @@ use anyhow::Result;
 
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(any(target_os = "macos", all(test, unix)))]
+mod macos;
 
 /// Returns the absolute directory for persistent user state.
 ///
@@ -43,7 +45,8 @@ mod linux;
 /// `XDG_STATE_HOME` takes precedence. If it is unset, empty, or relative, falls
 /// back to `.local/state` beneath the home directory returned by
 /// [`std::env::home_dir`], which must also be absolute. Non-Unicode paths are
-/// preserved.
+/// preserved. On macOS, an absolute `XDG_STATE_HOME` takes precedence over
+/// `~/Library/Application Support` beneath an absolute home directory.
 ///
 /// Does not create the directory or check whether it exists or is writable.
 ///
@@ -58,7 +61,7 @@ mod linux;
 /// - Native Linux resolution has neither an absolute `XDG_STATE_HOME` nor an
 ///   absolute home directory.
 /// - Native resolution is requested on an unsupported platform (anything other
-///   than Linux).
+///   than Linux or macOS), or macOS has neither an absolute XDG override nor home directory.
 ///
 /// # Examples
 ///
@@ -104,7 +107,9 @@ fn with_app_name(mut path: PathBuf, app_name: Option<&str>) -> Result<PathBuf> {
 /// With debug assertions and the default-enabled `development` feature, uses
 /// `<current working directory>/.local/share` on every platform. Otherwise, on
 /// Linux, prefers an absolute `XDG_DATA_HOME`, falling back to `.local/share`
-/// beneath an absolute home directory. Non-Unicode paths are preserved.
+/// beneath an absolute home directory. On macOS, also prefers an absolute
+/// `XDG_DATA_HOME`, falling back to `~/Library/Application Support`.
+/// Non-Unicode paths are preserved.
 ///
 /// Pass `None` for the base or an application name validated as in
 /// [`user_state_dir`]. Does not create directories or check their existence.
@@ -133,6 +138,8 @@ pub fn user_share_dir(app_name: Option<&str>) -> Result<PathBuf> {
 /// defaults to `/usr/local/share` followed by `/usr/share`. Empty and relative
 /// entries are ignored; an explicitly configured list with no absolute entries
 /// returns an empty vector. Order, duplicates, and non-Unicode paths are preserved.
+/// On macOS, applies the same XDG filtering policy, defaulting instead to
+/// `/Library/Application Support`.
 /// The user data directory is not included.
 ///
 /// Unlike user directories, these paths use native resolution even with the
@@ -141,7 +148,7 @@ pub fn user_share_dir(app_name: Option<&str>) -> Result<PathBuf> {
 ///
 /// # Errors
 ///
-/// Returns an error on unsupported platforms (anything other than Linux), or for
+/// Returns an error on unsupported platforms (anything other than Linux or macOS), or for
 /// an invalid application name, even when the search list is empty. Platform
 /// resolution errors take precedence over application-name validation.
 ///
@@ -156,7 +163,10 @@ pub fn system_share_dirs(app_name: Option<&str>) -> Result<Vec<PathBuf>> {
     #[cfg(target_os = "linux")]
     let bases = linux::system_share_dirs();
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    let bases = macos::system_share_dirs();
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let bases: Vec<PathBuf> = {
         anyhow::bail!("System share directories are unsupported on this platform");
     };
@@ -182,7 +192,15 @@ fn base_share_dir() -> Result<PathBuf> {
         linux::user_share_dir()
     }
 
-    #[cfg(all(not(all(debug_assertions, feature = "development")), not(target_os = "linux")))]
+    #[cfg(all(not(all(debug_assertions, feature = "development")), target_os = "macos"))]
+    {
+        macos::user_share_dir()
+    }
+
+    #[cfg(all(
+        not(all(debug_assertions, feature = "development")),
+        not(any(target_os = "linux", target_os = "macos"))
+    ))]
     {
         anyhow::bail!("User share directory is unsupported on this platform")
     }
@@ -204,7 +222,15 @@ fn base_state_dir() -> Result<PathBuf> {
         linux::user_state_dir()
     }
 
-    #[cfg(all(not(all(debug_assertions, feature = "development")), not(target_os = "linux")))]
+    #[cfg(all(not(all(debug_assertions, feature = "development")), target_os = "macos"))]
+    {
+        macos::user_state_dir()
+    }
+
+    #[cfg(all(
+        not(all(debug_assertions, feature = "development")),
+        not(any(target_os = "linux", target_os = "macos"))
+    ))]
     {
         anyhow::bail!("User state directory is unsupported on this platform")
     }
@@ -216,7 +242,9 @@ fn base_state_dir() -> Result<PathBuf> {
 /// `log` when `opinion` is `None` (the default) or `Some(true)`. With
 /// `Some(false)`, returns the state directory unchanged.
 ///
-/// Uses the same development and native resolution rules as [`user_state_dir`].
+/// On native macOS builds, instead uses `~/Library/Logs` with the application
+/// name appended; `opinion` has no effect. Development builds retain the state/log
+/// convention on every platform.
 /// Does not create the directory or check whether it exists or is writable.
 ///
 /// # Errors
@@ -230,26 +258,35 @@ fn base_state_dir() -> Result<PathBuf> {
 /// match platform_dirs::user_log_dir(Some("my-app"), None) {
 ///     Ok(path) => {
 ///         assert!(path.is_absolute());
-///         assert!(path.ends_with("my-app/log"));
+///         assert!(path.ends_with("my-app/log") || path.ends_with("my-app"));
 ///         println!("User log directory: {}", path.display());
 ///     }
 ///     Err(error) => eprintln!("Cannot resolve user log directory: {error}"),
 /// }
 /// ```
 pub fn user_log_dir(app_name: Option<&str>, opinion: Option<bool>) -> Result<PathBuf> {
-    let mut base = user_state_dir(app_name)?;
-    if opinion.unwrap_or(true) {
-        base.push("log");
+    #[cfg(all(target_os = "macos", not(all(debug_assertions, feature = "development"))))]
+    {
+        let _ = opinion;
+        with_app_name(macos::user_log_dir()?, app_name)
     }
 
-    Ok(base)
+    #[cfg(not(all(target_os = "macos", not(all(debug_assertions, feature = "development")))))]
+    {
+        let mut base = user_state_dir(app_name)?;
+        if opinion.unwrap_or(true) {
+            base.push("log");
+        }
+
+        Ok(base)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn system_share_directory_application_names() {
         let bases = system_share_dirs(None).unwrap();
@@ -261,6 +298,33 @@ mod tests {
         }
         for name in ["", ".", "..", "/app", "a/b", "a\\b", "C:app", "a\0b"] {
             assert!(system_share_dirs(Some(name)).is_err());
+        }
+    }
+
+    #[cfg(all(target_os = "macos", not(all(debug_assertions, feature = "development"))))]
+    #[test]
+    fn native_macos_directories() {
+        let home = std::env::home_dir().expect("macOS test runner needs a home directory");
+        for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
+            for (variable, actual) in [
+                ("XDG_STATE_HOME", user_state_dir(name)),
+                ("XDG_DATA_HOME", user_share_dir(name)),
+            ] {
+                let base = std::env::var_os(variable)
+                    .map(PathBuf::from)
+                    .filter(|path| path.is_absolute())
+                    .unwrap_or_else(|| home.join("Library/Application Support"));
+                assert_eq!(actual.unwrap(), with_app_name(base, name).unwrap());
+            }
+            let logs = with_app_name(home.join("Library/Logs"), name).unwrap();
+            for opinion in [None, Some(true), Some(false)] {
+                assert_eq!(user_log_dir(name, opinion).unwrap(), logs);
+            }
+        }
+        for name in ["", ".", "..", "a/b", "a\\b", "C:app", "a\0b"] {
+            for opinion in [None, Some(true), Some(false)] {
+                assert!(user_log_dir(Some(name), opinion).is_err());
+            }
         }
     }
 
@@ -290,6 +354,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(all(target_os = "macos", not(all(debug_assertions, feature = "development")))))]
     #[test]
     fn log_directory_opinions_and_application_names() {
         for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
@@ -309,6 +374,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(all(target_os = "macos", not(all(debug_assertions, feature = "development")))))]
     #[test]
     fn log_directory_preserves_invalid_name_errors() {
         for name in ["", ".", "..", "/app", "a/b", "a\\b", "C:app", "a\0b"] {

@@ -1,6 +1,6 @@
 # Distribution preparation tool
 
-[`tools/dist-prepare/main.py`](../../tools/dist-prepare/main.py) stages a built
+[`tools/dist-prepare/linux.py`](../../tools/dist-prepare/linux.py) stages a built
 ChessVault binary, the repository's desktop entry, and the Linux installer in a
 directory ready for creating a native release tarball. It does not build
 binaries, create archives, install files, or publish releases.
@@ -42,7 +42,7 @@ with that directory:
 $ cargo build -p chessvault --bin chessvault --release --locked
 ...
 $ cp <OUT_DIR>/chessvault.png target/release/chessvault.png
-$ venvs/dist-prepare/bin/python tools/dist-prepare/main.py target/release/chessvault
+$ venvs/dist-prepare/bin/python tools/dist-prepare/linux.py target/release/chessvault
 Prepared /path/to/chessvault/dist/package
 ```
 
@@ -51,7 +51,7 @@ repository containing the tool, regardless of the current working directory.
 Use `--output` to select a different, not-yet-existing staging directory:
 
 ```console
-$ venvs/dist-prepare/bin/python tools/dist-prepare/main.py target/release/chessvault --output dist/native
+$ venvs/dist-prepare/bin/python tools/dist-prepare/linux.py target/release/chessvault --output dist/native
 Prepared dist/native
 ```
 
@@ -114,7 +114,7 @@ checks out the tagged commit, builds the Linux binary and PNG, copies the PNG
 beside the binary, then runs in the same build/packaging job:
 
 ```console
-$ python3 tools/dist-prepare/main.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
+$ python3 tools/dist-prepare/linux.py target/x86_64-unknown-linux-gnu/release/chessvault --output dist/package
 Prepared dist/package
 ```
 

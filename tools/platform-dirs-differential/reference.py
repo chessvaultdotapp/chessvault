@@ -5,14 +5,17 @@ import os
 import sys
 
 import platformdirs
+from platformdirs.api import PlatformDirsABC
+from platformdirs.macos import MacOS
 from platformdirs.unix import Unix
 
 
 def main() -> None:
     request = json.load(sys.stdin)
 
-    def configured(opinion: bool) -> Unix:
-        return Unix(
+    def configured(opinion: bool) -> PlatformDirsABC:
+        implementation = MacOS if sys.platform == "darwin" else Unix
+        return implementation(
             appname=request["app"],
             appauthor=False,
             version=None,

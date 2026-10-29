@@ -17,7 +17,10 @@ fn path(result: Result<PathBuf>) -> Value {
 }
 
 fn main() -> Result<()> {
-    ensure!(cfg!(target_os = "linux"), "The differential probe requires Linux");
+    ensure!(
+        cfg!(any(target_os = "linux", target_os = "macos")),
+        "The differential probe requires Linux or macOS"
+    );
     ensure!(
         !cfg!(feature = "development"),
         "Build the probe with --no-default-features"

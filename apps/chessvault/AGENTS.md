@@ -32,7 +32,8 @@ Paths below are relative to `apps/chessvault/`; run commands from the workspace 
 - Preserve embedded SVGs (`include_bytes!`) and cached `LazyLock` handles so rendering is directory-independent
   and reuses handles.
 - `build.rs` renders `assets/logo.svg` into `OUT_DIR/window-icon.rgba` (embedded by `src/icon.rs`) and
-  `OUT_DIR/chessvault.png` (distribution icon). Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
+  `OUT_DIR/chessvault.png` (Linux distribution icon) and `OUT_DIR/chessvault.icns` (macOS bundle icon).
+  Edit the SVG source; window pixels must use straight (demultiplied) RGBA.
 
 ## Logging and console
 

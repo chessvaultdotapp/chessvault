@@ -14,6 +14,10 @@
 - [Installation manifest](install-manifest.md) — metadata format, file identities, and native installer
   reinstall, upgrade, and uninstall safety requirements.
 
+## Native macOS distribution
+
+- [App bundle staging](macos-packaging.md) — bundle layout, inputs, metadata, and validation scope.
+
 ## Testing
 
 - [Testing](testing.md) — ordered checks, focused tests, and desktop verification.
