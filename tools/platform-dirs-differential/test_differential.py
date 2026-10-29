@@ -20,8 +20,8 @@ PIN = (
 
 @pytest.fixture(scope="session")
 def probe() -> Path:
-    if sys.platform != "linux":
-        pytest.fail("The native differential suite currently requires Linux")
+    if sys.platform not in {"linux", "darwin"}:
+        pytest.fail("The native differential suite requires Linux or macOS")
     command = [
         "cargo",
         "build",
@@ -117,6 +117,31 @@ def test_parity(probe: Path, changes: dict[str, str], app: str | None):
     assert rust == python, context
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="Native macOS directory policy")
+@pytest.mark.parametrize("app", [None, "chessvault", "échecs", "two words"])
+def test_macos_paths_and_log_opinions(probe: Path, app: str | None):
+    changes = {
+        "HOME": "/Users/player échecs",
+        "XDG_STATE_HOME": "/ignored/state",
+        "XDG_DATA_HOME": "/ignored/data",
+        "XDG_DATA_DIRS": "/ignored/site",
+    }
+    rust, python, context = compare(probe, changes, app)
+    suffix = f"/{app}" if app else ""
+    data = f"/Users/player échecs/Library/Application Support{suffix}"
+    logs = f"/Users/player échecs/Library/Logs{suffix}"
+    expected = {
+        "state": {"paths": [data]},
+        "data": {"paths": [data]},
+        "site": {"paths": [f"/Library/Application Support{suffix}"]},
+        "log_default": {"paths": [logs]},
+        "log_true": {"paths": [logs]},
+        "log_false": {"paths": [logs]},
+    }
+    assert rust == python == expected, context
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux XDG policy divergence")
 @pytest.mark.parametrize("value", ["relative", ":relative::../data:"])
 @pytest.mark.parametrize("app", [None, "chessvault"])
 def test_all_invalid_system_entries(probe: Path, value: str, app: str | None):
@@ -130,6 +155,7 @@ def test_all_invalid_system_entries(probe: Path, value: str, app: str | None):
     assert rust == python, context
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux XDG policy divergence")
 def test_whitespace_is_preserved(probe: Path):
     changes = {
         "XDG_STATE_HOME": "/state ",
@@ -165,6 +191,15 @@ def test_relative_home(probe: Path):
     rust, python, context = compare(probe, {"HOME": "relative/home"}, None)
     assert rust.pop("site") == python.pop("site"), context
     assert all("error" in result for result in rust.values()), context
+    if sys.platform == "darwin":
+        assert python == {
+            "state": {"paths": ["relative/home/Library/Application Support"]},
+            "data": {"paths": ["relative/home/Library/Application Support"]},
+            "log_default": {"paths": ["relative/home/Library/Logs"]},
+            "log_true": {"paths": ["relative/home/Library/Logs"]},
+            "log_false": {"paths": ["relative/home/Library/Logs"]},
+        }, context
+        return
     assert python == {
         "state": {"paths": ["relative/home/.local/state"]},
         "data": {"paths": ["relative/home/.local/share"]},

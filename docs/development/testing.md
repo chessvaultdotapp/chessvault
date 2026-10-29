@@ -194,13 +194,13 @@ $ cargo clippy -p platform-dirs --all-targets --locked --no-deps --no-default-fe
 
 Stop on failure here too. Linux resolver tests are compiled only on Linux and
 use the `linux::tests::` prefix. Passing tests on another OS does not verify
-Linux resolution. Native directory resolution currently supports only
-Linux; the development path working elsewhere is not evidence of release app
+Linux resolution. Native directory resolution supports Linux and macOS;
+the development path working elsewhere is not evidence of release app
 support. See [Platform directories](../components/platform-dirs.md) for the path policy.
 
 ### Differential platform-directory tests
 
-On Linux, compare the native public APIs against pinned Python `platformdirs`:
+On Linux or macOS, compare the native public APIs against pinned Python `platformdirs`:
 
 ```sh
 just --justfile venvs/justfile platform-dirs-differential
@@ -216,14 +216,16 @@ rejects builds with the development feature. Ordinary Rust tests need no Python 
 
 Each case launches Rust and Python in separate child processes with equivalent controlled
 XDG variables and an explicit home directory; the test process environment is never mutated.
-The reference uses Linux `Unix` with `appauthor=False`, `version=None`, `multipath=True`,
+The reference uses `Unix` on Linux and `MacOS` on macOS with `appauthor=False`, `version=None`, `multipath=True`,
 `ensure_exists=False`, and `use_site_for_root=False`, including when tests run as root.
 It compares state with user state, share with user data, and system share with the complete
 ordered site-data list. All three Rust log opinions are compared against the corresponding
 Python opinion. Failures report the case inputs, both outputs, and reference version;
 the installed version must match the requirements pin.
 
-The suite distinguishes parity from these explicit policy differences:
+macOS cases verify Application Support data/state paths, Library/Logs for every log opinion,
+and that XDG variables are ignored. The suite distinguishes parity from these explicit policy differences
+(the XDG differences apply only to Linux):
 
 - An explicitly configured system list containing no absolute entries produces an empty Rust
   list; Python falls back to the default system directories. Both results are asserted.
@@ -238,7 +240,7 @@ non-Unicode byte preservation, and development-local paths remain covered by Rus
 the JSON probe intentionally handles Unicode paths only. Real unset-home lookup depends on the
 OS account database, so deterministic fallback failures use injected resolver tests instead.
 
-The Linux differential job in `ci.yml` runs on Rust/native inputs and changes to the runner,
+The Linux and macOS differential jobs in `ci.yml` run on Rust/native inputs and changes to the runner,
 pin, or recipes. Python CI separately lints and type-checks the runner. When updating the pin,
 review changed reference behavior rather than normalizing away new mismatches.
 
