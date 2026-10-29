@@ -17,7 +17,11 @@ install_dir=$(mktemp -d "${RUNNER_TEMP}/nextest.XXXXXX")
 curl --fail --silent --show-error --location --retry 3 \
     "https://get.nexte.st/${NEXTEST_VERSION}/${platform}" \
     --output "$install_dir/nextest.tar.gz"
-tar -xzf "$install_dir/nextest.tar.gz" -C "$install_dir"
+# A relative archive path avoids GNU tar treating Windows drive letters as remote hosts.
+(
+    cd "$install_dir"
+    tar -xzf nextest.tar.gz
+)
 rm "$install_dir/nextest.tar.gz"
 
 "$install_dir/cargo-nextest" nextest --version
