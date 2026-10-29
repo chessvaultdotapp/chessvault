@@ -49,6 +49,37 @@ including dangling symlinks, are rejected. Staging uses a temporary sibling and
 renames only after all files have been written; ordinary staging failures leave
 no partial bundle. Inputs are not modified.
 
+## Signed ZIP packaging on macOS
+
+`tools/dist-prepare/package_macos.py` runs on macOS with Xcode command-line tools.
+It consumes the same binary, icon, and explicit version/deployment metadata as the
+staging tool. It does not build Rust code or publish a release.
+
+```sh
+python3 tools/dist-prepare/package_macos.py target/aarch64-apple-darwin/release/chessvault \
+    --icon /path/to/chessvault.icns \
+    --version 0.1.0 --build-version 1 --minimum-macos 13.0 \
+    --output dist/ChessVault-macos-aarch64.zip
+```
+
+Again, 13.0 is only an example, not an established support baseline. The driver:
+
+1. Uses `lipo` to require an arm64-only executable.
+2. Uses `otool` to require the declared deployment target to match the Mach-O
+   target and rejects linked libraries outside `/System/Library` and `/usr/lib`.
+   Non-system libraries, including `@rpath` references, are not bundled automatically.
+3. Decodes the ICNS with `iconutil`, stages the app, and checks the plist with `plutil`.
+4. Ad-hoc signs the completed bundle with `codesign` (no credentials or timestamp)
+   and verifies its signature with strict checks.
+5. Archives with `ditto --sequesterRsrc --keepParent`, extracts to a temporary
+   directory, and verifies the extracted app's signature before publishing the ZIP.
+
+Existing outputs are rejected. Temporary bundle/archive files are removed on ordinary
+failures; the destination ZIP appears only after all checks pass. The source binary
+is never signed or modified. This initial driver does not support Intel/universal
+binaries or copy non-system dynamic libraries. Linked-library checks do not detect
+all runtime-loaded dependencies and are not a substitute for testing on a clean Mac.
+
 ## Validation and next steps
 
 Run layout and CLI tests on Linux or macOS without a Rust build:
@@ -68,11 +99,14 @@ entry sizes, and PNG decoding on any host:
 cargo test -p chessvault --test distribution_icon --locked
 ```
 
-Before distribution, macOS-specific automation must validate those inputs, apply
-ad-hoc signing to the completed bundle, verify the signature, and create a ZIP
-with a bundle-preserving tool such as `ditto`. Developer ID signing and notarization
-are deferred; ad-hoc signing alone does not establish a trusted publisher or
-satisfy Gatekeeper's normal downloaded-app checks.
+The packaging driver's orchestration and failure paths are tested with stand-ins
+for Apple tools on any host. Real tool execution still requires validation on macOS;
+release CI integration is not yet implemented. Before publication, choose and test
+a minimum macOS version and a numeric build-version mapping for development tags.
+
+Developer ID signing and notarization are deferred; ad-hoc signing alone does not
+establish a trusted publisher or satisfy Gatekeeper's normal downloaded-app checks.
+A Gatekeeper assessment is not expected to pass for these unnotarized downloads.
 
 Manual acceptance testing must include launching from Finder outside the checkout,
 board rendering and input, resizing, and closing/reopening to restore window state.
