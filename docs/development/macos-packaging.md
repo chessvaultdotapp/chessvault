@@ -62,7 +62,8 @@ python3 tools/dist-prepare/package_macos.py target/aarch64-apple-darwin/release/
     --output dist/ChessVault-macos-aarch64.zip
 ```
 
-Again, 13.0 is only an example, not an established support baseline. The driver:
+The CI job currently uses 13.0 as a provisional deployment baseline, not a verified
+runtime support guarantee. The driver:
 
 1. Uses `lipo` to require an arm64-only executable.
 2. Uses `otool` to require the declared deployment target to match the Mach-O
@@ -79,6 +80,35 @@ failures; the destination ZIP appears only after all checks pass. The source bin
 is never signed or modified. This initial driver does not support Intel/universal
 binaries or copy non-system dynamic libraries. Linked-library checks do not detect
 all runtime-loaded dependencies and are not a substitute for testing on a clean Mac.
+
+## CI artifact builds
+
+The `macos-package` job in `.github/workflows/ci.yml` runs on Apple Silicon
+`macos-15`. It builds the locked release executable for `aarch64-apple-darwin`
+with `MACOSX_DEPLOYMENT_TARGET=13.0` and runs the full packaging driver with real
+Apple tools. This is a provisional baseline; building on macOS 15 does not verify
+that the GUI works on macOS 13. The locked wgpu-hal Metal backend documents a
+macOS 10.13 minimum, below this baseline, but other dependencies and runtime
+behavior still need acceptance testing on the intended minimum OS.
+
+`ci_macos.py` reads the executable and ICNS locations from Cargo JSON messages,
+matching the desktop package ID from Cargo metadata. It supports custom target
+directories rather than guessing a build-script hash. Bundle versions are:
+
+- `CFBundleShortVersionString`: Cargo's numeric `major.minor.patch`, with prerelease
+  and build suffixes removed.
+- `CFBundleVersion`: the CI run number encoded as
+  `1 + run_number / 10000`, `(run_number / 100) % 100`, and `run_number % 100`
+  using integer division. This fits Apple's four/two/two digit component limits
+  for run numbers 1 through 99,989,999. For example, run 12,345 becomes `2.23.45`.
+- Reruns keep the bundle version; the uploaded artifact name includes both run
+  number and attempt. This is CI identity, not a final release-version policy.
+
+The job uploads `ChessVault-macos-aarch64.zip` inside a seven-day CI artifact.
+Download that artifact from the workflow run and extract the outer GitHub artifact
+archive, then the inner app ZIP. It does not publish to GitHub Releases and needs
+no Apple secrets. CI can also be started manually with `workflow_dispatch`.
+Changes to distribution tooling trigger the Rust/packaging workflow as well.
 
 ## Validation and next steps
 
@@ -100,9 +130,10 @@ cargo test -p chessvault --test distribution_icon --locked
 ```
 
 The packaging driver's orchestration and failure paths are tested with stand-ins
-for Apple tools on any host. Real tool execution still requires validation on macOS;
-release CI integration is not yet implemented. Before publication, choose and test
-a minimum macOS version and a numeric build-version mapping for development tags.
+for Apple tools on any host. The macOS packaging CI job exercises real tools;
+its first successful run and manual artifact testing are still required before
+claiming packaging compatibility. Before publication, verify the deployment baseline
+and choose a release build-version policy for development tags.
 
 Developer ID signing and notarization are deferred; ad-hoc signing alone does not
 establish a trusted publisher or satisfy Gatekeeper's normal downloaded-app checks.

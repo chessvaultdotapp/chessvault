@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: &rust-paths
@@ -12,6 +13,8 @@ on:
       - '.cargo/**'
       - '.github/workflows/ci.yml'
       - 'tools/platform-dirs-differential/**'
+      - 'tools/dist-prepare/**'
+      - 'LICENSE'
       - 'venvs/platform-dirs-differential.requirements.txt'
       - 'venvs/justfile'
       - 'justfile'
@@ -54,6 +57,54 @@ jobs:
 
       - name: Compare native paths
         run: just check-platform-differential
+
+  macos-package:
+    name: Package macOS app (Apple Silicon)
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      CARGO_INCREMENTAL: '0'
+      # Provisional build baseline; runtime compatibility still needs testing.
+      MACOSX_DEPLOYMENT_TARGET: '13.0'
+      BUILD_NUMBER: ${{ github.run_number }}
+      UV_PYTHON: '3.14.5'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain and target
+        run: |
+          rustup show active-toolchain
+          rustup target add aarch64-apple-darwin
+
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install packaging Python
+        run: uv python install "$UV_PYTHON"
+
+      - name: Build release executable and icon
+        run: |
+          cargo build -p chessvault --bin chessvault --release --locked \
+            --target aarch64-apple-darwin --message-format=json > build-messages.jsonl
+          cargo metadata --format-version=1 --no-deps --locked > cargo-metadata.json
+
+      - name: Validate, sign, and archive app
+        run: |
+          uv run --no-project --python "$UV_PYTHON" python tools/dist-prepare/ci_macos.py \
+            --messages build-messages.jsonl --metadata cargo-metadata.json \
+            --build-number "$BUILD_NUMBER" --minimum-macos "$MACOSX_DEPLOYMENT_TARGET" \
+            --output dist/ChessVault-macos-aarch64.zip
+
+      - name: Upload app for manual testing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: chessvault-macos-aarch64-${{ github.run_number }}-${{ github.run_attempt }}
+          path: dist/ChessVault-macos-aarch64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
   check:
     name: Build and check (${{ matrix.os }})
