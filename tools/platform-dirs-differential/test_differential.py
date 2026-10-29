@@ -117,20 +117,15 @@ def test_parity(probe: Path, changes: dict[str, str], app: str | None):
     assert rust == python, context
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Native macOS directory policy")
-@pytest.mark.parametrize("app", [None, "chessvault", "échecs", "two words"])
-def test_macos_paths_and_log_opinions(probe: Path, app: str | None):
-    changes = {
-        "HOME": "/Users/player échecs",
-        "XDG_STATE_HOME": "/ignored/state",
-        "XDG_DATA_HOME": "/ignored/data",
-        "XDG_DATA_DIRS": "/ignored/site",
-    }
-    rust, python, context = compare(probe, changes, app)
+def assert_macos_outputs(
+    rust, python, changes: dict[str, str], app: str | None, context: str
+):
+    # Check native defaults, absolute XDG overrides, and independent log paths.
     suffix = f"/{app}" if app else ""
-    data = f"/Users/player échecs/Library/Application Support{suffix}"
-    logs = f"/Users/player échecs/Library/Logs{suffix}"
-    expected = {
+    home = changes.get("HOME", "/differential/home")
+    data = f"{home}/Library/Application Support{suffix}"
+    logs = f"{home}/Library/Logs{suffix}"
+    native = {
         "state": {"paths": [data]},
         "data": {"paths": [data]},
         "site": {"paths": [f"/Library/Application Support{suffix}"]},
@@ -138,10 +133,98 @@ def test_macos_paths_and_log_opinions(probe: Path, app: str | None):
         "log_true": {"paths": [logs]},
         "log_false": {"paths": [logs]},
     }
-    assert rust == python == expected, context
+    reference = dict(native)
+    for key, variable in [("state", "XDG_STATE_HOME"), ("data", "XDG_DATA_HOME")]:
+        value = changes.get(variable, "").strip()
+        if value.startswith("/"):
+            reference[key] = {"paths": [f"{value}{suffix}"]}
+    sites = [
+        f"{value.strip()}{suffix}"
+        for value in changes.get("XDG_DATA_DIRS", "").split(":")
+        if value.strip().startswith("/")
+    ]
+    if sites:
+        reference["site"] = {"paths": sites}
+    assert rust == python == reference, context
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux XDG policy divergence")
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {},
+        {
+            "XDG_STATE_HOME": "/custom/state",
+            "XDG_DATA_HOME": "/custom/data",
+            "XDG_DATA_DIRS": ":relative:/second:/first:/second:",
+        },
+    ],
+)
+def test_macos_reference_policy_on_any_host(changes: dict[str, str]):
+    # Exercise the pinned MacOS reference even on Linux, where the real native
+    # Rust macOS entrypoints cannot run. Environment changes stay child-only.
+    env = {
+        key: value for key, value in os.environ.items() if not key.startswith("XDG_")
+    }
+    env.update(HOME="/differential/home", **changes)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys, runpy; sys.platform = 'darwin'; "
+            "runpy.run_path(sys.argv[1], run_name='__main__')",
+            str(REFERENCE),
+        ],
+        input=json.dumps({"app": "chessvault"}),
+        text=True,
+        capture_output=True,
+        env=env,
+        check=True,
+        timeout=30,
+    )
+    native = {
+        "state": {
+            "paths": ["/differential/home/Library/Application Support/chessvault"]
+        },
+        "data": {
+            "paths": ["/differential/home/Library/Application Support/chessvault"]
+        },
+        "site": {"paths": ["/Library/Application Support/chessvault"]},
+        "log_default": {"paths": ["/differential/home/Library/Logs/chessvault"]},
+        "log_true": {"paths": ["/differential/home/Library/Logs/chessvault"]},
+        "log_false": {"paths": ["/differential/home/Library/Logs/chessvault"]},
+    }
+    if changes:
+        native.update(
+            {
+                "state": {"paths": ["/custom/state/chessvault"]},
+                "data": {"paths": ["/custom/data/chessvault"]},
+                "site": {
+                    "paths": [
+                        "/second/chessvault",
+                        "/first/chessvault",
+                        "/second/chessvault",
+                    ]
+                },
+            }
+        )
+    reference = json.loads(result.stdout)
+    assert reference["version"] == PIN
+    assert reference["outputs"] == native
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Native macOS directory policy")
+@pytest.mark.parametrize("app", [None, "chessvault", "échecs", "two words"])
+def test_macos_paths_and_log_opinions(probe: Path, app: str | None):
+    changes = {
+        "HOME": "/Users/player échecs",
+        "XDG_STATE_HOME": "/custom/state",
+        "XDG_DATA_HOME": "/custom/data",
+        "XDG_DATA_DIRS": "/custom/site",
+    }
+    rust, python, context = compare(probe, changes, app)
+    assert_macos_outputs(rust, python, changes, app, context)
+
+
 @pytest.mark.parametrize("value", ["relative", ":relative::../data:"])
 @pytest.mark.parametrize("app", [None, "chessvault"])
 def test_all_invalid_system_entries(probe: Path, value: str, app: str | None):
@@ -149,13 +232,18 @@ def test_all_invalid_system_entries(probe: Path, value: str, app: str | None):
     suffix = f"/{app}" if app else ""
     # Python falls back after filtering; Rust preserves an explicitly empty list.
     assert rust.pop("site") == {"paths": []}, context
-    assert python.pop("site") == {
-        "paths": [f"/usr/local/share{suffix}", f"/usr/share{suffix}"]
-    }, context
+    defaults = (
+        [f"/Library/Application Support{suffix}"]
+        if sys.platform == "darwin"
+        else [
+            f"/usr/local/share{suffix}",
+            f"/usr/share{suffix}",
+        ]
+    )
+    assert python.pop("site") == {"paths": defaults}, context
     assert rust == python, context
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux XDG policy divergence")
 def test_whitespace_is_preserved(probe: Path):
     changes = {
         "XDG_STATE_HOME": "/state ",
@@ -169,9 +257,27 @@ def test_whitespace_is_preserved(probe: Path):
             "state": {"paths": [f"/state{space}"]},
             "data": {"paths": [f"/data{space}"]},
             "site": {"paths": [f"/site{space}"]},
-            "log_default": {"paths": [f"/state{space}/log"]},
-            "log_true": {"paths": [f"/state{space}/log"]},
-            "log_false": {"paths": [f"/state{space}"]},
+            "log_default": {
+                "paths": [
+                    "/differential/home/Library/Logs"
+                    if sys.platform == "darwin"
+                    else f"/state{space}/log"
+                ]
+            },
+            "log_true": {
+                "paths": [
+                    "/differential/home/Library/Logs"
+                    if sys.platform == "darwin"
+                    else f"/state{space}/log"
+                ]
+            },
+            "log_false": {
+                "paths": [
+                    "/differential/home/Library/Logs"
+                    if sys.platform == "darwin"
+                    else f"/state{space}"
+                ]
+            },
         }, context
 
 

@@ -10,6 +10,7 @@ directory; the library only resolves paths.
 | --- | --- |
 | [`lib.rs`](../../crates/platform-dirs/src/lib.rs) | Public API, development override, and platform selection |
 | [`linux.rs`](../../crates/platform-dirs/src/linux.rs) | Linux resolution and injected-input tests |
+| [`macos.rs`](../../crates/platform-dirs/src/macos.rs) | macOS resolution and injected-input tests |
 
 ## Public API
 
@@ -26,6 +27,7 @@ to reconstruct paths.
 `platform_dirs::user_log_dir(app_name: Option<&str>, opinion: Option<bool>)` returns
 `anyhow::Result<PathBuf>`. It delegates to `user_state_dir(app_name)` and appends
 `log` for `None` or `Some(true)`. `Some(false)` returns the state directory unchanged.
+Native macOS instead uses `~/Library/Logs/<app>` regardless of opinion or XDG overrides.
 Both arguments must be supplied explicitly in Rust; `None` selects the default opinion.
 
 For example, `user_log_dir(Some("chessvault"), None)` returns
@@ -46,6 +48,7 @@ They preserve non-Unicode paths and do not create directories.
 On Linux it reads `XDG_DATA_DIRS` in search order, defaulting to `/usr/local/share` then `/usr/share`
 when unset or empty. Relative and empty entries are ignored; an explicitly configured list with no
 absolute entries produces an empty list. Order, duplicates, and non-Unicode paths are preserved.
+macOS uses the same XDG policy, defaulting instead to `/Library/Application Support`.
 The user share directory is not included.
 
 An optional application name is validated using the same rules as user directories and appended to
@@ -74,16 +77,17 @@ enabling `development` for the same package can re-enable the override.
 
 ### Native platform resolution
 
-Release builds, and builds without `development`, use native resolution. Only
-Linux is currently implemented:
+Release builds, and builds without `development`, use native resolution on Linux and macOS.
+Both platforms apply the following policy:
 
 1. Accept `XDG_STATE_HOME` (state) or `XDG_DATA_HOME` (share) when it is absolute.
 2. Otherwise obtain an absolute home directory using `std::env::home_dir` and
-   append `.local/state` or `.local/share`, respectively.
+   append `.local/state` or `.local/share`, respectively, on Linux; macOS uses
+   `Library/Application Support` for both.
 3. Return an error if neither provides a usable path.
 
 Unset, empty, and relative XDG values all trigger the home fallback.
-The resolver logs unset variables at info level and non-absolute values (including
+The Linux resolver logs unset variables at info level and non-absolute values (including
 empty values) at warn level through `tracing`, explaining the fallback. The desktop
 app enables these logs by default; `RUST_LOG` can override its filter. An absolute
 XDG path does not require a home-directory lookup. Other operating systems
@@ -92,8 +96,8 @@ for those platforms.
 
 ## Verification
 
-Linux tests inject environment values and a home-directory lookup into
-`resolve_user_state_dir` and `resolve_user_share_dir`. Follow that pattern instead of mutating process-wide
+Linux and macOS tests inject environment values and a home-directory lookup into
+resolver helpers. Follow that pattern instead of mutating process-wide
 environment variables. Coverage includes XDG precedence, fallback behavior,
 invalid homes, and non-Unicode paths for both state and share directories.
 Public share-directory tests cover application names and the development override.

@@ -230,9 +230,14 @@ ordered site-data list. All three Rust log opinions are compared against the cor
 Python opinion. Failures report the case inputs, both outputs, and reference version;
 the installed version must match the requirements pin.
 
-macOS cases verify Application Support data/state paths, Library/Logs for every log opinion,
-and that XDG variables are ignored. The suite distinguishes parity from these explicit policy differences
-(the XDG differences apply only to Linux):
+macOS cases verify Application Support data/state paths and Library/Logs for every log opinion.
+Both Rust and pinned Python honor valid XDG state/data/system overrides on macOS;
+log paths remain under Library/Logs regardless of XDG overrides or log opinion.
+The MacOS reference expectations are also exercised on Linux using a child process,
+while the real Rust macOS APIs are compared only on macOS.
+
+The suite also distinguishes parity from these explicit policy differences
+(the XDG differences apply to both Linux and macOS):
 
 - An explicitly configured system list containing no absolute entries produces an empty Rust
   list; Python falls back to the default system directories. Both results are asserted.

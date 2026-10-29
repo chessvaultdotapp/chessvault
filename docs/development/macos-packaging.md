@@ -141,6 +141,7 @@ A Gatekeeper assessment is not expected to pass for these unnotarized downloads.
 
 Manual acceptance testing must include launching from Finder outside the checkout,
 board rendering and input, resizing, and closing/reopening to restore window state.
-Native release state lives under `~/Library/Application Support/chessvault`, with
-logs under `~/Library/Logs/chessvault`. Do not infer native release behavior from
+Native release state lives under `$XDG_STATE_HOME/chessvault` when the override
+is absolute, otherwise `~/Library/Application Support/chessvault`. Logs remain
+under `~/Library/Logs/chessvault` regardless of XDG overrides. Do not infer native release behavior from
 development-mode debug builds.

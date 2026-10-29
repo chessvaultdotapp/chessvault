@@ -45,8 +45,8 @@ mod macos;
 /// `XDG_STATE_HOME` takes precedence. If it is unset, empty, or relative, falls
 /// back to `.local/state` beneath the home directory returned by
 /// [`std::env::home_dir`], which must also be absolute. Non-Unicode paths are
-/// preserved. On macOS, uses `~/Library/Application Support` beneath an absolute
-/// home directory.
+/// preserved. On macOS, an absolute `XDG_STATE_HOME` takes precedence over
+/// `~/Library/Application Support` beneath an absolute home directory.
 ///
 /// Does not create the directory or check whether it exists or is writable.
 ///
@@ -61,7 +61,7 @@ mod macos;
 /// - Native Linux resolution has neither an absolute `XDG_STATE_HOME` nor an
 ///   absolute home directory.
 /// - Native resolution is requested on an unsupported platform (anything other
-///   than Linux or macOS), or macOS has no absolute home directory.
+///   than Linux or macOS), or macOS has neither an absolute XDG override nor home directory.
 ///
 /// # Examples
 ///
@@ -107,7 +107,8 @@ fn with_app_name(mut path: PathBuf, app_name: Option<&str>) -> Result<PathBuf> {
 /// With debug assertions and the default-enabled `development` feature, uses
 /// `<current working directory>/.local/share` on every platform. Otherwise, on
 /// Linux, prefers an absolute `XDG_DATA_HOME`, falling back to `.local/share`
-/// beneath an absolute home directory. On macOS, uses `~/Library/Application Support`.
+/// beneath an absolute home directory. On macOS, also prefers an absolute
+/// `XDG_DATA_HOME`, falling back to `~/Library/Application Support`.
 /// Non-Unicode paths are preserved.
 ///
 /// Pass `None` for the base or an application name validated as in
@@ -137,7 +138,8 @@ pub fn user_share_dir(app_name: Option<&str>) -> Result<PathBuf> {
 /// defaults to `/usr/local/share` followed by `/usr/share`. Empty and relative
 /// entries are ignored; an explicitly configured list with no absolute entries
 /// returns an empty vector. Order, duplicates, and non-Unicode paths are preserved.
-/// On macOS, returns `/Library/Application Support`.
+/// On macOS, applies the same XDG filtering policy, defaulting instead to
+/// `/Library/Application Support`.
 /// The user data directory is not included.
 ///
 /// Unlike user directories, these paths use native resolution even with the
@@ -222,7 +224,7 @@ fn base_state_dir() -> Result<PathBuf> {
 
     #[cfg(all(not(all(debug_assertions, feature = "development")), target_os = "macos"))]
     {
-        macos::user_share_dir()
+        macos::user_state_dir()
     }
 
     #[cfg(all(
@@ -304,9 +306,16 @@ mod tests {
     fn native_macos_directories() {
         let home = std::env::home_dir().expect("macOS test runner needs a home directory");
         for name in [None, Some("chessvault"), Some("my app"), Some("šah")] {
-            let data = with_app_name(home.join("Library/Application Support"), name).unwrap();
-            assert_eq!(user_state_dir(name).unwrap(), data);
-            assert_eq!(user_share_dir(name).unwrap(), data);
+            for (variable, actual) in [
+                ("XDG_STATE_HOME", user_state_dir(name)),
+                ("XDG_DATA_HOME", user_share_dir(name)),
+            ] {
+                let base = std::env::var_os(variable)
+                    .map(PathBuf::from)
+                    .filter(|path| path.is_absolute())
+                    .unwrap_or_else(|| home.join("Library/Application Support"));
+                assert_eq!(actual.unwrap(), with_app_name(base, name).unwrap());
+            }
             let logs = with_app_name(home.join("Library/Logs"), name).unwrap();
             for opinion in [None, Some(true), Some(false)] {
                 assert_eq!(user_log_dir(name, opinion).unwrap(), logs);
