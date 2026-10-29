@@ -9,12 +9,18 @@ from pathlib import Path
 import package_macos
 
 
-def bundle_versions(cargo_version: str, build_number: int) -> tuple[str, str]:
+def bundle_versions(
+    cargo_version: str, build_number: int, tag: str | None = None
+) -> tuple[str, str]:
     """Keep SemVer's release core; encode a run number in Apple's 4/2/2 digits.
 
-    CI reruns keep the same bundle version; artifact names include run_attempt.
+    Reruns keep the same bundle version; counters are scoped to each workflow.
     The range is deliberately bounded rather than producing invalid Apple versions.
     """
+    if tag is not None and tag != f"v{cargo_version}":
+        raise ValueError(
+            f"release tag {tag!r} does not match Cargo version {cargo_version!r}"
+        )
     match = re.fullmatch(r"([0-9]+\.[0-9]+\.[0-9]+)(?:[-+].+)?", cargo_version)
     if match is None:
         raise ValueError(f"invalid Cargo version: {cargo_version!r}")
@@ -69,12 +75,15 @@ def main() -> None:
     parser.add_argument("--messages", type=Path, required=True)
     parser.add_argument("--metadata", type=Path, required=True)
     parser.add_argument("--build-number", type=int, required=True)
+    parser.add_argument("--tag", help="release tag, which must equal v<Cargo version>")
     parser.add_argument("--minimum-macos", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
         binary, icon, cargo_version = cargo_inputs(args.messages, args.metadata)
-        version, build_version = bundle_versions(cargo_version, args.build_number)
+        version, build_version = bundle_versions(
+            cargo_version, args.build_number, args.tag
+        )
         print(
             f"Packaging Cargo {cargo_version}: display={version}, build={build_version}",
             flush=True,

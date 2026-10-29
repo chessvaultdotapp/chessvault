@@ -81,10 +81,11 @@ is never signed or modified. This initial driver does not support Intel/universa
 binaries or copy non-system dynamic libraries. Linked-library checks do not detect
 all runtime-loaded dependencies and are not a substitute for testing on a clean Mac.
 
-## CI artifact builds
+## Release artifact builds
 
-The `macos-package` job in `.github/workflows/ci.yml` runs on Apple Silicon
-`macos-15`. It builds the locked release executable for `aarch64-apple-darwin`
+The development and stable release workflows each define a `build-macos` job
+on Apple Silicon `macos-15`. Both jobs use the same Python packaging tools.
+It builds the locked release executable for `aarch64-apple-darwin`
 with `MACOSX_DEPLOYMENT_TARGET=13.0` and runs the full packaging driver with real
 Apple tools. This is a provisional baseline; building on macOS 15 does not verify
 that the GUI works on macOS 13. The locked wgpu-hal Metal backend documents a
@@ -101,14 +102,43 @@ directories rather than guessing a build-script hash. Bundle versions are:
   `1 + run_number / 10000`, `(run_number / 100) % 100`, and `run_number % 100`
   using integer division. This fits Apple's four/two/two digit component limits
   for run numbers 1 through 99,989,999. For example, run 12,345 becomes `2.23.45`.
-- Reruns keep the bundle version; the uploaded artifact name includes both run
-  number and attempt. This is CI identity, not a final release-version policy.
+- Reruns keep the bundle version. Each caller workflow has its own run-number
+  counter, so build versions are not globally unique or monotonic across
+  development and stable releases.
+  No in-app update mechanism relies on these numbers.
 
-The job uploads `ChessVault-macos-aarch64.zip` inside a seven-day CI artifact.
-Download that artifact from the workflow run and extract the outer GitHub artifact
-archive, then the inner app ZIP. It does not publish to GitHub Releases and needs
-no Apple secrets. CI can also be started manually with `workflow_dispatch`.
-Changes to distribution tooling trigger the Rust/packaging workflow as well.
+The build job uploads the versioned app ZIP inside a seven-day workflow artifact;
+only the publishing job uploads it to GitHub Releases. For manual testing, download
+that artifact from the release workflow run and extract the outer GitHub artifact
+archive, then the inner app ZIP. Ordinary Rust CI keeps macOS build, test, lint,
+and differential checks, but does not package the app.
+
+## Release downloads
+
+Both `development-release.yml` and `stable-release.yml` run their inline macOS
+packaging job in parallel with their existing Linux builds. The tagged
+Cargo version must exactly match the release tag (`v<Cargo version>`), including
+prerelease and build suffixes, before packaging succeeds. Bundle versions use the
+same numeric mapping above, with the caller release workflow's run number.
+
+The publishing job waits for both platforms and verifies all three final assets:
+
+- `chessvault-<tag>-linux-x86_64.tar.gz`
+- `chessvault-<tag>-linux-x86_64.AppImage`
+- `chessvault-<tag>-macos-aarch64.zip`
+
+Only publishing jobs have write permission. Existing assets are not overwritten
+on reruns; tag filtering and release retention rules remain unchanged. No Apple
+secrets are needed. Release notes include an Apple Silicon/unnotarized warning
+and identify macOS 13.0 as a provisional deployment target.
+
+Download the macOS ZIP from the project's trusted GitHub release page, compare
+its SHA-256 hash with GitHub's asset digest, and extract it using Archive Utility.
+Move `ChessVault.app` to Applications if desired. The app is ad-hoc signed, not
+Developer ID signed or notarized; Gatekeeper may block downloaded copies.
+Consult Apple's current instructions for opening an app from an unidentified
+developer only after verifying the download and deciding to trust it. Do not
+disable Gatekeeper globally. Intel Macs are not supported by this archive.
 
 ## Validation and next steps
 
@@ -130,10 +160,10 @@ cargo test -p chessvault --test distribution_icon --locked
 ```
 
 The packaging driver's orchestration and failure paths are tested with stand-ins
-for Apple tools on any host. The macOS packaging CI job exercises real tools;
-its first successful run and manual artifact testing are still required before
-claiming packaging compatibility. Before publication, verify the deployment baseline
-and choose a release build-version policy for development tags.
+for Apple tools on any host. The macOS release packaging job exercises real tools;
+manual artifact testing is still required before claiming runtime compatibility,
+particularly on the provisional minimum OS. Release workflows do not exercise
+Finder launch or GUI interactions.
 
 Developer ID signing and notarization are deferred; ad-hoc signing alone does not
 establish a trusted publisher or satisfy Gatekeeper's normal downloaded-app checks.

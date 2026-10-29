@@ -36,23 +36,23 @@ $ cargo clippy --workspace --all-targets --locked --no-deps
 
 Check workflows run on pushes to `main` and on pull requests, subject to their existing path filters.
 Feature-branch pushes without a pull request and tag pushes do not run these checks automatically.
-The Rust/packaging workflow can also be started manually.
+The Rust workflow can also be started manually.
 Release workflows handle tags separately; documentation deployment remains limited to `main`.
 
 This is the sequence used by [CI](../../.github/workflows/ci.yml). Eligible pushes and pull
 requests trigger it only when Rust source, desktop assets, Cargo manifests or
 lockfiles, `rust-toolchain.toml`, `.cargo` configuration, differential-test inputs,
-distribution tooling, `LICENSE`, or the root/venv recipes change.
+the uv setup action, or the root/venv recipes change.
 Markdown-only changes do not trigger Rust builds. Nextest is our
 preferred test runner, but it does not execute doctests, so the separate
 `cargo test --doc` step is required. Formatting checks do not modify files.
 Clippy's `--no-deps` excludes dependency linting, though dependencies may still
 need to be compiled or checked.
 
-A separate macOS CI job builds a release executable, validates and ad-hoc signs
-an Apple Silicon app bundle, and uploads a ZIP for manual testing without publishing
-a release. See [macOS packaging](macos-packaging.md#ci-artifact-builds) for the
-provisional deployment baseline, bundle versions, and artifact instructions.
+macOS release packaging runs in the development and stable release workflows,
+not ordinary Rust CI. See [macOS packaging](macos-packaging.md#release-artifact-builds)
+for the provisional deployment baseline, bundle versions, and artifact instructions.
+Ordinary CI still builds, tests, lints, and runs differential checks on macOS.
 
 If nextest is unavailable, replace both test commands with
 `cargo test --workspace --locked`, which runs unit tests, integration tests, and

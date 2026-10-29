@@ -30,6 +30,13 @@ def test_versions(
     assert ci.bundle_versions(version, number) == expected
 
 
+@pytest.mark.parametrize("version", ["0.1.0", "0.1.0+26w44a"])
+def test_release_tag(ci: ModuleType, version: str) -> None:
+    assert ci.bundle_versions(version, 1, f"v{version}")[0] == "0.1.0"
+    with pytest.raises(ValueError, match="does not match Cargo version"):
+        ci.bundle_versions(version, 1, "v9.9.9")
+
+
 @pytest.mark.parametrize("number", [0, -1, 99990000])
 def test_invalid_build_number(ci: ModuleType, number: int) -> None:
     with pytest.raises(ValueError, match="build number"):

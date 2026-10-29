@@ -85,12 +85,13 @@ newer than 2.35. Local builds inherit the local system baseline and must not be
 substituted for release builds on newer hosts. Ubuntu 22.04 or newer is the initial
 compatibility target, not yet a verified support guarantee for every distribution.
 
-Stable and development release workflows each use three jobs: identify the tag,
-build/package, and publish. The Ubuntu 22.04 build job compiles once, stages and
+Stable and development release workflows identify the tag, build/package Linux
+and macOS artifacts in parallel, and publish only after both platforms succeed.
+The Ubuntu 22.04 build job compiles once, stages and
 smoke-tests the native archive, then packages and validates the AppImage using the
 same executable and generated PNG. This avoids intermediate binary uploads,
-downloads, and separate packaging runners. Only the final native and AppImage
-artifacts are transferred to the publishing job, which alone has write permission.
+downloads, and separate packaging runners. Only the final native archive, AppImage,
+and macOS ZIP artifacts are transferred to the publishing job, which alone has write permission.
 Tag validation, asset names, glibc checks, and release retention policies are unchanged.
 
 Packaging is now sequential rather than parallel. A failed packaging job rerun

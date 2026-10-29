@@ -95,11 +95,12 @@ $ git push origin v1.2.3
 
 The [stable release workflow](../../.github/workflows/stable-release.yml) accepts only
 `vMAJOR.MINOR.PATCH` tags without prerelease identifiers or build metadata. It must
-be present in the tagged commit. It builds the same Linux x86_64 native archive and
-AppImage as the development workflow described below, then publishes a regular GitHub
+be present in the tagged commit. It builds the same Linux x86_64 native archive,
+AppImage, and Apple Silicon macOS ZIP as the development workflow described below,
+then publishes a regular GitHub
 release marked as latest. If present, `changelogs/<tag>.md` is included before generated
 release notes. Existing notes and assets are preserved on reruns; missing assets are uploaded.
-After publishing and uploading both assets, the stable workflow deletes all published
+After publishing and uploading all three assets, the stable workflow deletes all published
 GitHub development prereleases matching the tag-tool development tag format, retaining
 their Git tags. Drafts and unrelated prereleases are preserved. Cleanup also runs on
 successful reruns; stable releases themselves are never deleted by this cleanup.
@@ -173,9 +174,13 @@ compatible system libraries.
 After tag validation, one read-only build/packaging job compiles the Linux binary
 and generated PNG. It stages the native archive, smoke-tests its installer, and
 uploads that archive before packaging and validating the AppImage from the same
-binary. Packaging is sequential, not parallel. Only the native archive and AppImage
-are retained as workflow artifacts, for seven days; the raw binary is not uploaded.
-The release job waits for the combined job to succeed, downloads and checks the
+binary. Linux packaging is sequential. A separate read-only macOS job runs in
+parallel, validates and ad-hoc signs an Apple Silicon app bundle, and uploads a ZIP.
+See [macOS packaging](../development/macos-packaging.md) for version mapping,
+Gatekeeper limitations, and the provisional minimum OS. Only the native archive,
+AppImage, and macOS ZIP are retained as workflow artifacts, for seven days;
+the raw binary is not uploaded.
+The release job waits for both platform jobs to succeed, downloads and checks the
 packages, and publishes them with `contents: write` permission. A publication-only
 retry can reuse retained artifacts without rebuilding. Retrying the combined job
 runs its build and packaging steps again.

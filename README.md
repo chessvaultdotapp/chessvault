@@ -27,8 +27,10 @@ This repository contains the desktop app and its supporting Rust libraries.
   developer console.
 
 The app is under active development, not a complete chess platform. Packaged
-builds currently target Linux x86_64; native directory resolution supports Linux
-and macOS. macOS packaging is not yet available.
+builds target Linux x86_64 and Apple Silicon macOS; native directory resolution
+supports Linux and macOS. macOS downloads are ad-hoc signed, not notarized, and
+may be blocked by Gatekeeper. See the [macOS packaging guide](docs/development/macos-packaging.md)
+for limitations and verification.
 
 ## Getting started
 
